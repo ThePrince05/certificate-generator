@@ -23,18 +23,39 @@ return (
     <>
       <CertificateTemplate {...data} />
       <div className="flex justify-center gap-4 mt-4">
-        <button
-          onClick={generatePDF}
-          className="bg-green-500 text-white px-4 py-2 rounded"
-        >
-          Download PDF
-        </button>
-        <button
-          onClick={generateJPEG}
-          className="bg-yellow-500 text-white px-4 py-2 rounded"
-        >
-          Download JPEG
-        </button>
+          <button
+      onClick={() =>
+        generatePDF({
+          heading: -20,
+          subheading: -5,
+          pak: -10,
+          name: -16,
+          date: -10,
+          signature: -20,
+          signatory: -20,
+        })
+      }
+      className="bg-green-500 text-white px-4 py-2 rounded"
+    >
+      Download PDF
+    </button>
+
+    <button
+      onClick={() =>
+        generateJPEG({
+         heading: -20,
+          subheading: -5,
+          pak: -10,
+          name: -16,
+          date: -10,
+          signature: -20,
+          signatory: -20,
+        })
+      }
+      className="bg-yellow-500 text-white px-4 py-2 rounded"
+    >
+      Download JPEG
+    </button>
       </div>
     </>
   )}

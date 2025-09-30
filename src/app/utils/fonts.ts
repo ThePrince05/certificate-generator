@@ -2,7 +2,7 @@
 import localFont from "next/font/local";
 
 export const headingFont = localFont({
-  src: "../../assets/fonts/Plamieri-heading.ttf",
+  src: "../../assets/fonts/Kingthings-foundation-heading.ttf",
   variable: "--font-heading",
   weight: "400",
 });
@@ -10,13 +10,13 @@ export const headingFont = localFont({
 export const bodyFont = localFont({
   src: [
     { path: "../../assets/fonts/Roman-capitals-body.otf", weight: "400" },
-    { path: "../../assets/fonts/Roman-capitals-body.otf", weight: "700" },
+    { path: "../../assets/fonts/jt-alvito-bold-body.otf", weight: "700" },
   ],
   variable: "--font-body",
 });
 
 export const signatureFont = localFont({
-  src: "../../assets/fonts/America-calligraphy-signature.ttf",
+  src: "../../assets/fonts/GreatVibes-Regular-signature.ttf",
   variable: "--font-signature",
   weight: "400",
 });

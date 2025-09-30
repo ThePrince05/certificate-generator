@@ -18,7 +18,7 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
     name: "",
     certificateDate: "",
     signature: "",
-    signatory: "authorized by Lyle Benjamin, PAK founder",
+    signatory: "AUTHORIZED BY LYLE BENJAMIN, PAK FOUNDER",
   });
 
   const [isDateEditable, setIsDateEditable] = useState(false);
@@ -28,11 +28,15 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
   useEffect(() => {
     const today = new Date();
     const formattedDate = today.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-    setFormData((prev) => ({ ...prev, certificateDate: `Awarded on ${formattedDate}` }));
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  setFormData((prev) => ({
+    ...prev,
+    certificateDate: `AWARDED ON ${formattedDate}`.toUpperCase(), // ← convert entire string to uppercase
+  }));
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
