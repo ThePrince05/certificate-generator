@@ -34,16 +34,17 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
   const [isSignatoryEditable, setIsSignatoryEditable] = useState(false);
 
   // Set default date
-  useEffect(() => {
-    const today = new Date();
-    const month = today.toLocaleString("en-GB", { month: "long" });
-    const year = 2020;
+ useEffect(() => {
+  const today = new Date();
+  const month = today.toLocaleString("en-GB", { month: "long" });
+  const year = today.getFullYear(); // <-- dynamic year
 
-    setFormData((prev) => ({
-      ...prev,
-      certificateDate: `AWARDED ${month} ${year}`.toUpperCase(),
-    }));
-  }, []);
+  setFormData((prev) => ({
+    ...prev,
+    certificateDate: `AWARDED ${month} ${year}`.toUpperCase(),
+  }));
+}, []);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
