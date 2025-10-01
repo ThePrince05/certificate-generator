@@ -12,49 +12,38 @@ import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
 import ReactDOM from "react-dom/client";
 
-// ✅ Define the proper type for your certificate data
-export type CertificateData = {
-  heading: string;
-  subheading: string;
-  name: string;
-  certificateDate: string;
-  signature: string;
-  signatory: string;
-  [key: string]: any; // allows dynamic _invalid flags
+// ✅ Import types from certificates.ts
+import { CertificateData, CleanCertificateData, CertificateFields } from "@/types/certificates";
+
+// Max lengths for validation
+const MAX_LENGTHS: Record<CertificateFields, number> = {
+  heading: 25,
+  subheading: 54,
+  name: 15,
+  certificateDate: 22,
+  signature: 16,
+  signatory: 46,
 };
 
 export default function Home() {
-  const [data, setData] = useState<CertificateData | null>(null);
+  const [data, setData] = useState<CleanCertificateData | null>(null);
   const [batchData, setBatchData] = useState<CertificateData[]>([]);
   const [editedBatchData, setEditedBatchData] = useState<CertificateData[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [lastValidationErrors, setLastValidationErrors] = useState<string | null>(null);
 
-  const MAX_LENGTHS: Record<keyof CertificateData, number> = {
-    heading: 25,
-    subheading: 54,
-    name: 15,
-    certificateDate: 22,
-    signature: 16,
-    signatory: 46,
-  };
-
-  // ✅ Validation helper
+  // Validation helper
   const validateBatchData = (data: CertificateData[]) => {
     const invalidRows: string[] = [];
     const validatedData: CertificateData[] = data.map((item, index) => {
       const newItem: CertificateData = { ...item };
-      for (const key in MAX_LENGTHS) {
-        const field = key as keyof typeof MAX_LENGTHS;
-        const value = (item[field] ?? "").toString().trim();
-
-        if (value.length > MAX_LENGTHS[field]) {
-          newItem[`${field}_invalid`] = true;
-          invalidRows.push(
-            `Row ${index + 1}: "${field}" exceeds ${MAX_LENGTHS[field]} chars (length: ${value.length})`
-          );
+      for (const key of Object.keys(MAX_LENGTHS) as CertificateFields[]) {
+        const value = (item[key] ?? "").toString().trim();
+        if (value.length > MAX_LENGTHS[key]) {
+          newItem[`${key}_invalid`] = true;
+          invalidRows.push(`Row ${index + 1}: "${key}" exceeds ${MAX_LENGTHS[key]} chars (length: ${value.length})`);
         } else {
-          newItem[`${field}_invalid`] = false;
+          newItem[`${key}_invalid`] = false;
         }
       }
       return newItem;
@@ -86,7 +75,7 @@ export default function Home() {
     });
   };
 
-  // Batch Download
+  // Batch Download PDF
   const handleBatchDownloadPDF = async () => {
     if (!editedBatchData.length) return;
 
@@ -153,7 +142,7 @@ export default function Home() {
     <div className="space-y-8 p-8">
       <h1 className="text-4xl font-bold text-center">Custom Certificate Program</h1>
 
-      <CertificateForm onSubmit={setData} />
+      <CertificateForm onSubmit={(data: CertificateData) => setData(data)} />
 
       <div className="flex justify-center my-6">
         <div className="p-6 border rounded shadow bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-center gap-4">
@@ -198,9 +187,9 @@ export default function Home() {
               {editedBatchData.map((row, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-gray-50">
                   {Object.keys(MAX_LENGTHS).map((fieldKey) => {
-                    const field = fieldKey as keyof CertificateData;
+                    const field = fieldKey as CertificateFields;
                     const value = row[field] || "";
-                    const isInvalid = row[`${field}_invalid`] === true;
+                    const isInvalid = row[`${field}_invalid`] ?? false;
 
                     return (
                       <td
