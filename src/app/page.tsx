@@ -12,14 +12,25 @@ import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
 import ReactDOM from "react-dom/client";
 
+// ✅ Define the proper type for your certificate data
+export type CertificateData = {
+  heading: string;
+  subheading: string;
+  name: string;
+  certificateDate: string;
+  signature: string;
+  signatory: string;
+  [key: string]: any; // allows dynamic _invalid flags
+};
+
 export default function Home() {
-  const [data, setData] = useState<any>(null);
-  const [batchData, setBatchData] = useState<any[]>([]);
-  const [editedBatchData, setEditedBatchData] = useState<any[]>([]);
+  const [data, setData] = useState<CertificateData | null>(null);
+  const [batchData, setBatchData] = useState<CertificateData[]>([]);
+  const [editedBatchData, setEditedBatchData] = useState<CertificateData[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [lastValidationErrors, setLastValidationErrors] = useState<string | null>(null);
 
-  const MAX_LENGTHS = {
+  const MAX_LENGTHS: Record<keyof CertificateData, number> = {
     heading: 25,
     subheading: 54,
     name: 15,
@@ -29,10 +40,10 @@ export default function Home() {
   };
 
   // ✅ Validation helper
-  const validateBatchData = (data: any[]) => {
+  const validateBatchData = (data: CertificateData[]) => {
     const invalidRows: string[] = [];
-    const validatedData = data.map((item, index) => {
-      const newItem = { ...item };
+    const validatedData: CertificateData[] = data.map((item, index) => {
+      const newItem: CertificateData = { ...item };
       for (const key in MAX_LENGTHS) {
         const field = key as keyof typeof MAX_LENGTHS;
         const value = (item[field] ?? "").toString().trim();
@@ -49,7 +60,6 @@ export default function Home() {
       return newItem;
     });
 
-    console.log("✅ validateBatchData results:", { validatedData, invalidRows });
     return { validatedData, invalidRows };
   };
 
@@ -62,12 +72,9 @@ export default function Home() {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const rawData = results.data as any[];
-        console.log("📂 Parsed CSV Data:", rawData);
+        const rawData = results.data as CertificateData[];
 
         const { validatedData, invalidRows } = validateBatchData(rawData);
-
-        console.log("🚨 Invalid rows on upload:", invalidRows);
 
         setBatchData(rawData);
         setEditedBatchData(validatedData);
@@ -90,12 +97,10 @@ export default function Home() {
     setLastValidationErrors(errorString);
 
     if (errorString) {
-      console.log("❌ Blocking download, showing popup");
       setBatchWarning(errorString);
       return;
     }
 
-    console.log("✅ No errors, generating ZIP...");
     const zip = new JSZip();
 
     for (let i = 0; i < validatedData.length; i++) {
@@ -193,7 +198,7 @@ export default function Home() {
               {editedBatchData.map((row, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-gray-50">
                   {Object.keys(MAX_LENGTHS).map((fieldKey) => {
-                    const field = fieldKey as keyof typeof MAX_LENGTHS;
+                    const field = fieldKey as keyof CertificateData;
                     const value = row[field] || "";
                     const isInvalid = row[`${field}_invalid`] === true;
 
@@ -208,7 +213,6 @@ export default function Home() {
                             const newData = [...editedBatchData];
                             newData[rowIndex][field] = e.target.value;
 
-                            // Re-validate after edit
                             const { validatedData, invalidRows } = validateBatchData(newData);
                             setEditedBatchData(validatedData);
                             setLastValidationErrors(invalidRows.length > 0 ? invalidRows.join("\n") : null);
@@ -222,7 +226,7 @@ export default function Home() {
               ))}
             </tbody>
           </table>
-          {/* Show Errors Button */}
+
           {lastValidationErrors && (
             <button
               onClick={() => setBatchWarning(lastValidationErrors)}
