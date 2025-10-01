@@ -11,6 +11,15 @@ interface CertificateData {
   signatory: string;
 }
 
+const MAX_LENGTHS = {
+  heading: 25,
+  subheading: 52,
+  name: 15,
+  certificateDate: 21,
+  signature: 15,
+  signatory: 47,
+};
+
 export default function CertificateForm({ onSubmit }: { onSubmit: (data: CertificateData) => void }) {
   const [formData, setFormData] = useState<CertificateData>({
     heading: "",
@@ -24,27 +33,37 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
   const [isDateEditable, setIsDateEditable] = useState(false);
   const [isSignatoryEditable, setIsSignatoryEditable] = useState(false);
 
-  // Set the default date on mount
+  // Set default date
   useEffect(() => {
     const today = new Date();
-    const formattedDate = today.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-
-  setFormData((prev) => ({
-    ...prev,
-    certificateDate: `AWARDED ON ${formattedDate}`.toUpperCase(), // ← convert entire string to uppercase
-  }));
+    const monthYear = today.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    setFormData((prev) => ({
+      ...prev,
+      certificateDate: `AWARDED ${monthYear}`.toUpperCase(),
+    }));
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // Enforce max length
+    if (value.length <= MAX_LENGTHS[name as keyof CertificateData]) {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check all fields for length
+    for (const key in MAX_LENGTHS) {
+      const field = key as keyof CertificateData;
+      if ((formData[field] || "").length > MAX_LENGTHS[field]) {
+        alert(`"${field}" exceeds the maximum of ${MAX_LENGTHS[field]} characters.`);
+        return;
+      }
+    }
+
     onSubmit(formData);
   };
 

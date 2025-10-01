@@ -86,6 +86,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
             textAlign: "center",
             color: mainColor,
             wordBreak: "break-word",
+            textTransform: "uppercase"
           }}
         >
           {heading}
@@ -104,6 +105,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
             lineHeight: 1.3,
             textAlign: "center",
             color: mainColor,
+            textTransform: "uppercase"
           }}
         >
           {subheading}
