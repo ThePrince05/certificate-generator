@@ -12,35 +12,38 @@ import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
 import ReactDOM from "react-dom/client";
 
+// ✅ Import types from certificates.ts
+import { CertificateData, CleanCertificateData, CertificateFields } from "@/types/certificates";
+
+// Max lengths for validation
+const MAX_LENGTHS: Record<CertificateFields, number> = {
+  heading: 25,
+  subheading: 54,
+  name: 15,
+  certificateDate: 22,
+  signature: 16,
+  signatory: 46,
+};
+
 export default function Home() {
-  const [data, setData] = useState<any>(null);
-  const [batchData, setBatchData] = useState<any[]>([]);
-  const [editedBatchData, setEditedBatchData] = useState<any[]>([]);
+  const [data, setData] = useState<CleanCertificateData | null>(null);
+  const [batchData, setBatchData] = useState<CertificateData[]>([]);
+  const [editedBatchData, setEditedBatchData] = useState<CertificateData[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
+  const [lastValidationErrors, setLastValidationErrors] = useState<string | null>(null);
 
-  const MAX_LENGTHS = {
-    heading: 26,
-    subheading: 53,
-    name: 16,
-    certificateDate: 22,
-    signature: 16,
-    signatory: 48,
-  };
-
-  // ✅ Validation helper
-  const validateBatchData = (data: any[]) => {
+  // Validation helper
+  const validateBatchData = (data: CertificateData[]) => {
     const invalidRows: string[] = [];
-    const validatedData = data.map((item, index) => {
-      const newItem = { ...item };
-      for (const key in MAX_LENGTHS) {
-        const field = key as keyof typeof MAX_LENGTHS;
-        if ((item[field] || "").length > MAX_LENGTHS[field]) {
-          newItem[`${field}_invalid`] = true;
-          invalidRows.push(
-            `Row ${index + 1}: "${field}" exceeds ${MAX_LENGTHS[field]} chars`
-          );
+    const validatedData: CertificateData[] = data.map((item, index) => {
+      const newItem: CertificateData = { ...item };
+      for (const key of Object.keys(MAX_LENGTHS) as CertificateFields[]) {
+        const value = (item[key] ?? "").toString().trim();
+        if (value.length > MAX_LENGTHS[key]) {
+          newItem[`${key}_invalid`] = true;
+          invalidRows.push(`Row ${index + 1}: "${key}" exceeds ${MAX_LENGTHS[key]} chars (length: ${value.length})`);
         } else {
-          newItem[`${field}_invalid`] = false;
+          newItem[`${key}_invalid`] = false;
         }
       }
       return newItem;
@@ -58,27 +61,32 @@ export default function Home() {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const rawData = results.data as any[];
+        const rawData = results.data as CertificateData[];
+
         const { validatedData, invalidRows } = validateBatchData(rawData);
+
         setBatchData(rawData);
         setEditedBatchData(validatedData);
 
-        if (invalidRows.length > 0) {
-          setBatchWarning(invalidRows.join("\n"));
-        }
+        const errorString = invalidRows.length > 0 ? invalidRows.join("\n") : null;
+        setLastValidationErrors(errorString);
+        if (errorString) setBatchWarning(errorString);
       },
     });
   };
 
-  // Batch Download
+  // Batch Download PDF
   const handleBatchDownloadPDF = async () => {
     if (!editedBatchData.length) return;
 
     const { validatedData, invalidRows } = validateBatchData(editedBatchData);
     setEditedBatchData(validatedData);
 
-    if (invalidRows.length > 0) {
-      setBatchWarning(invalidRows.join("\n")); // ✅ popup shows again
+    const errorString = invalidRows.length > 0 ? invalidRows.join("\n") : null;
+    setLastValidationErrors(errorString);
+
+    if (errorString) {
+      setBatchWarning(errorString);
       return;
     }
 
@@ -101,7 +109,7 @@ export default function Home() {
           certificateDate={item.certificateDate}
           signature={item.signature}
           signatory={item.signatory}
-          pdfOffsets={{ heading: -20, subheading: -5, pak: -10, name: -16, date: -10, signature: -20, signatory: -20 }}
+          pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -8, date: -2, signature: -12, signatory: -2 }}
         />
       );
 
@@ -134,7 +142,7 @@ export default function Home() {
     <div className="space-y-8 p-8">
       <h1 className="text-4xl font-bold text-center">Custom Certificate Program</h1>
 
-      <CertificateForm onSubmit={setData} />
+      <CertificateForm onSubmit={(data: CertificateData) => setData(data)} />
 
       <div className="flex justify-center my-6">
         <div className="p-6 border rounded shadow bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-center gap-4">
@@ -179,16 +187,14 @@ export default function Home() {
               {editedBatchData.map((row, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-gray-50">
                   {Object.keys(MAX_LENGTHS).map((fieldKey) => {
-                    const field = fieldKey as keyof typeof MAX_LENGTHS;
+                    const field = fieldKey as CertificateFields;
                     const value = row[field] || "";
-                    const isInvalid = row[`${field}_invalid`] === true;
+                    const isInvalid = row[`${field}_invalid`] ?? false;
 
                     return (
                       <td
                         key={fieldKey}
-                        className={`border px-2 py-1 ${
-                          isInvalid ? "bg-red-100 border-2 border-red-500" : "border-black"
-                        }`}
+                        className={`border px-2 py-1 ${isInvalid ? "bg-red-100 border-2 border-red-500" : "border-black"}`}
                       >
                         <input
                           value={value}
@@ -196,13 +202,11 @@ export default function Home() {
                             const newData = [...editedBatchData];
                             newData[rowIndex][field] = e.target.value;
 
-                            // ✅ re-validate on edit
-                            const { validatedData } = validateBatchData(newData);
+                            const { validatedData, invalidRows } = validateBatchData(newData);
                             setEditedBatchData(validatedData);
+                            setLastValidationErrors(invalidRows.length > 0 ? invalidRows.join("\n") : null);
                           }}
-                          className={`w-full px-2 py-1 rounded focus:outline-none ${
-                            isInvalid ? "bg-red-100" : "bg-white"
-                          }`}
+                          className={`w-full px-2 py-1 rounded focus:outline-none ${isInvalid ? "bg-red-100" : "bg-white"}`}
                         />
                       </td>
                     );
@@ -211,6 +215,15 @@ export default function Home() {
               ))}
             </tbody>
           </table>
+
+          {lastValidationErrors && (
+            <button
+              onClick={() => setBatchWarning(lastValidationErrors)}
+              className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Show Errors
+            </button>
+          )}
         </div>
       )}
 
@@ -241,7 +254,7 @@ export default function Home() {
                   name: -16,
                   date: -10,
                   signature: -20,
-                  signatory: -20,
+                  signatory: -10,
                 })
               }
               className="bg-green-500 text-white px-4 py-2 rounded"
@@ -258,7 +271,7 @@ export default function Home() {
                   name: -16,
                   date: -10,
                   signature: -20,
-                  signatory: -20,
+                  signatory: -10,
                 })
               }
               className="bg-yellow-500 text-white px-4 py-2 rounded"

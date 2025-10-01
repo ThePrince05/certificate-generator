@@ -156,7 +156,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 360 + offset("date"),
+            top: 350 + offset("date"),
             left: 0,
             width: "800px",
             textAlign: "center",
@@ -180,7 +180,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
             fontSize: "50px",
             lineHeight: 1.2,
             color: "#111827",
-            width: "300px",
+            width: "400px",
             textAlign: "center",
             whiteSpace: "normal",
             wordBreak: "break-word",
@@ -195,7 +195,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 500 + offset("signatory"),
+            top: 485 + offset("signatory"),
             left: "62%",
             transform: "translateX(-50%)",
             width: "500px",

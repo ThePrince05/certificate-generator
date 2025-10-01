@@ -13,11 +13,11 @@ interface CertificateData {
 
 const MAX_LENGTHS = {
   heading: 25,
-  subheading: 52,
+  subheading: 54,
   name: 15,
-  certificateDate: 21,
-  signature: 15,
-  signatory: 47,
+  certificateDate: 22,
+  signature: 16,
+  signatory: 46,
 };
 
 export default function CertificateForm({ onSubmit }: { onSubmit: (data: CertificateData) => void }) {
@@ -36,20 +36,22 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
   // Set default date
   useEffect(() => {
     const today = new Date();
-    const monthYear = today.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    const month = today.toLocaleString("en-GB", { month: "long" });
+    const year = 2020;
+
     setFormData((prev) => ({
       ...prev,
-      certificateDate: `AWARDED ${monthYear}`.toUpperCase(),
+      certificateDate: `AWARDED ${month} ${year}`.toUpperCase(),
     }));
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    // Enforce max length
-    if (value.length <= MAX_LENGTHS[name as keyof CertificateData]) {
-      setFormData({ ...formData, [name]: value });
-    }
+    const maxLength = MAX_LENGTHS[name as keyof CertificateData] || Infinity;
+    setFormData({
+      ...formData,
+      [name]: value.slice(0, maxLength),
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -67,75 +69,106 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
     onSubmit(formData);
   };
 
+  // helper to display remaining characters
+  const renderCounter = (fieldName: keyof CertificateData) => {
+    const max = MAX_LENGTHS[fieldName];
+    const current = formData[fieldName].length;
+    return (
+      <p className="text-xs text-gray-500 text-right">
+        {current}/{max} characters
+      </p>
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-4 border rounded shadow">
-      <input
-        name="heading"
-        placeholder="Heading"
-        value={formData.heading}
-        onChange={handleChange}
-        required
-        className="border p-2 w-full"
-      />
-      <input
-        name="subheading"
-        placeholder="Subheading"
-        value={formData.subheading}
-        onChange={handleChange}
-        required
-        className="border p-2 w-full"
-      />
-      <input
-        name="name"
-        placeholder="Recipient Name"
-        value={formData.name}
-        onChange={handleChange}
-        required
-        className="border p-2 w-full"
-      />
-
-      {/* Toggle to allow editing the date */}
-      <div className="flex items-center space-x-2">
+      <div>
         <input
-          name="certificateDate"
-          value={formData.certificateDate}
+          name="heading"
+          placeholder="Heading"
+          value={formData.heading}
           onChange={handleChange}
-          readOnly={!isDateEditable}
-          className={`border p-2 w-full ${isDateEditable ? "bg-white" : "bg-gray-100"}`}
+          required
+          className="border p-2 w-full"
         />
-        <button
-          type="button"
-          onClick={() => setIsDateEditable((prev) => !prev)}
-          className="px-2 py-1 border rounded text-sm"
-        >
-          {isDateEditable ? "Lock" : "Edit"}
-        </button>
+        {renderCounter("heading")}
       </div>
 
-      <input
-        name="signature"
-        placeholder="Signature"
-        value={formData.signature}
-        onChange={handleChange}
-        className="border p-2 w-full"
-      />
+      <div>
+        <input
+          name="subheading"
+          placeholder="Subheading"
+          value={formData.subheading}
+          onChange={handleChange}
+          required
+          className="border p-2 w-full"
+        />
+        {renderCounter("subheading")}
+      </div>
+
+      <div>
+        <input
+          name="name"
+          placeholder="Recipient Name"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          className="border p-2 w-full"
+        />
+        {renderCounter("name")}
+      </div>
+
+      {/* Toggle to allow editing the date */}
+      <div>
+        <div className="flex items-center space-x-2">
+          <input
+            name="certificateDate"
+            value={formData.certificateDate}
+            onChange={handleChange}
+            readOnly={!isDateEditable}
+            className={`border p-2 w-full ${isDateEditable ? "bg-white" : "bg-gray-100"}`}
+          />
+          <button
+            type="button"
+            onClick={() => setIsDateEditable((prev) => !prev)}
+            className="px-2 py-1 border rounded text-sm"
+          >
+            {isDateEditable ? "Lock" : "Edit"}
+          </button>
+        </div>
+        {renderCounter("certificateDate")}
+      </div>
+
+      <div>
+        <input
+          name="signature"
+          placeholder="Signature"
+          value={formData.signature}
+          onChange={handleChange}
+          className="border p-2 w-full"
+        />
+        {renderCounter("signature")}
+      </div>
 
       {/* Signatory with toggle */}
-      <div className="flex items-center space-x-2">
-        <input
-          name="signatory"
-          value={formData.signatory}
-          onChange={handleChange}
-          readOnly={!isSignatoryEditable}
-          className={`border p-2 w-full ${isSignatoryEditable ? "bg-white" : "bg-gray-100"}`}
-        />
-        <button
-          type="button"
-          onClick={() => setIsSignatoryEditable((prev) => !prev)}
-          className="px-2 py-1 border rounded text-sm"
-        >
-          {isSignatoryEditable ? "Lock" : "Edit"}
-        </button>
+      <div>
+        <div className="flex items-center space-x-2">
+          <input
+            name="signatory"
+            value={formData.signatory}
+            onChange={handleChange}
+            readOnly={!isSignatoryEditable}
+            className={`border p-2 w-full ${isSignatoryEditable ? "bg-white" : "bg-gray-100"}`}
+          />
+          <button
+            type="button"
+            onClick={() => setIsSignatoryEditable((prev) => !prev)}
+            className="px-2 py-1 border rounded text-sm"
+          >
+            {isSignatoryEditable ? "Lock" : "Edit"}
+          </button>
+        </div>
+        {renderCounter("signatory")}
       </div>
 
       <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
