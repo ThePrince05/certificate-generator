@@ -1,10 +1,21 @@
-// components/home/CSVUploader.tsx
 "use client";
 import Papa from "papaparse";
 
+type CSVValue = string | number | boolean;
+type CSVRow = Record<string, CSVValue>;
+
 interface CSVUploaderProps {
-  onDataParsed: (data: any[]) => void;
+  onDataParsed: (data: CSVRow[]) => void;
 }
+
+// Helper to convert CSV string values to proper types
+const parseValue = (value: string): CSVValue => {
+  const trimmed = value.trim();
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  if (!isNaN(Number(trimmed)) && trimmed !== "") return Number(trimmed);
+  return trimmed;
+};
 
 export default function CSVUploader({ onDataParsed }: CSVUploaderProps) {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -12,10 +23,17 @@ export default function CSVUploader({ onDataParsed }: CSVUploaderProps) {
     if (!file) return;
 
     Papa.parse(file, {
-      header: true, // treat first row as headers
+      header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        onDataParsed(results.data as any[]);
+        const parsedData = (results.data as Record<string, string>[]).map((row) => {
+          const newRow: CSVRow = {};
+          for (const key in row) {
+            newRow[key] = parseValue(row[key]);
+          }
+          return newRow;
+        });
+        onDataParsed(parsedData);
       },
     });
   };
