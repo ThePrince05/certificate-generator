@@ -115,7 +115,7 @@ export default function Home() {
           certificateDate={item.certificateDate}
           signature={item.signature}
           signatory={item.signatory}
-          pdfOffsets={{ heading: -20, subheading: -5, pak: -10, name: -16, date: -10, signature: -20, signatory: -10 }}
+          pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -8, date: -2, signature: -12, signatory: -2 }}
         />
       );
 
