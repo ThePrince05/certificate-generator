@@ -1,5 +1,5 @@
 "use client";
-import { headingFont, bodyFont, signatureFont } from "../../app/utils/fonts";
+import { headingFont, bodyFont } from "../../app/utils/fonts";
 
 interface PDFOffsets {
   heading?: number;
@@ -12,72 +12,66 @@ interface PDFOffsets {
 }
 
 interface CertificateProps {
-    heading: string;
+  heading: string;
   subheading: string;
   name: string;
   certificateDate: string;
-  signature: string;
-  signatory: string;
+  pakText: string; 
   templateUrl?: string;
-  pdfOffsets?: {
-    heading?: number;
-    subheading?: number;
-    pak?: number;
-    name?: number;
-    date?: number;
-    signature?: number;
-    signatory?: number;
-  };
+  pdfOffsets?: PDFOffsets;
 }
+
+
+// ✅ constants (instead of props)
+const SIGNATURE_PATH = "/signature.svg"; 
+const SIGNATORY_NAME = "AUTHORIZED BY LYLE BENJAMIN, PAK FOUNDER";
 
 export default function CertificateTemplate({
   heading,
   subheading,
+  pakText,
   name,
   certificateDate,
-  signature,
-  signatory,
   templateUrl = "/templates/certificate-template.jpg",
   pdfOffsets,
 }: CertificateProps) {
   const mainColor = "#695511"; // main font color
 
-
-const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
+  const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
 
   return (
-   <div
-  style={{
-    width: "100%",
-    height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f3f4f6",
-    overflow: "auto", // allow scroll if screen smaller
-  }}
->
-  <div
-    id="certificate"
-    style={{
-      width: "800px",   // locked design size
-      height: "640px",  // locked design size
-      flexShrink: 0,    // prevent shrinking
-      position: "relative",
-      backgroundImage: `url(${templateUrl})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-      color: mainColor,
-    }}
-  >
+    <div
+      style={{
+        width: "100%",
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#f3f4f6",
+        overflow: "auto",
+      }}
+    >
+      <div
+        id="certificate"
+        style={{
+          width: "800px",
+          height: "640px",
+          flexShrink: 0,
+          position: "relative",
+          backgroundImage: `url(${templateUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          color: mainColor,
+        }}
+      >
         {/* Heading */}
         <h1
-          id="heading-text" 
+          id="heading-text"
           className={headingFont.className}
           style={{
             position: "absolute",
-            top: 60 + offset("heading"),
+            top: 80 + offset("heading"),
             left: 0,
             width: "800px",
             padding: "0 20px",
@@ -86,7 +80,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
             textAlign: "center",
             color: mainColor,
             wordBreak: "break-word",
-            textTransform: "uppercase"
+            textTransform: "uppercase",
           }}
         >
           {heading}
@@ -98,37 +92,38 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 135 + offset("subheading"),
+            top: 155 + offset("subheading"),
             left: 0,
             width: "800px",
             fontSize: "20px",
             lineHeight: 1.3,
             textAlign: "center",
             color: mainColor,
-            textTransform: "uppercase"
+            textTransform: "uppercase",
           }}
         >
           {subheading}
         </h2>
 
         {/* PAK Paragraph */}
-        <p
-          id="pak-text"
-          className={bodyFont.className}
-          style={{
-            position: "absolute",
-            top: 180 + offset("pak"),
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "600px",
-            fontSize: "20px",
-            lineHeight: 1.4,
-            textAlign: "center",
-            color: mainColor,
-          }}
-        >
-          I Hereby Make a PAK to Treat Others with Respect and Kindness and to Go Through Life from this Day Forward Acting Towards Others as I Wish to Be Treated Myself
-        </p>
+       <p
+        id="pak-text"
+        className={bodyFont.className}
+        style={{
+          position: "absolute",
+          top: 200 + offset("pak"),
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "600px",
+          fontSize: "20px",
+          lineHeight: 1.4,
+          textAlign: "center",
+          color: mainColor,
+        }}
+      >
+        {pakText}
+      </p>
+
 
         {/* Candidate Name */}
         <p
@@ -136,14 +131,14 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 300 + offset("name"),
+            top: 320 + offset("name"),
             left: 0,
             width: "800px",
             textAlign: "center",
             fontSize: "32px",
             fontWeight: 600,
             lineHeight: 1.2,
-            color: "#111827",
+            color: "#363636",
             textTransform: "uppercase",
           }}
         >
@@ -156,7 +151,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 350 + offset("date"),
+            top: 370 + offset("date"),
             left: 0,
             width: "800px",
             textAlign: "center",
@@ -168,34 +163,27 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
           {certificateDate}
         </p>
 
-        {/* Signature */}
-        <p
-          id="signature-text"
-          className={signatureFont.className}
-          style={{
+        {/* Signature (locked constant) */}
+        <div
+          id="signature"
+          style={{ 
             position: "absolute",
-            top: 430 + offset("signature"),
-            left: "61%",
+            top: 440 + offset("signature"),
+            left: "60%",
             transform: "translateX(-50%)",
-            fontSize: "50px",
-            lineHeight: 1.2,
-            color: "#111827",
-            width: "400px",
-            textAlign: "center",
-            whiteSpace: "normal",
-            wordBreak: "break-word",
           }}
         >
-          {signature}
-        </p>
+          <img src={SIGNATURE_PATH} alt="Signature" style={{ width: "300px", height: "auto" }} />
+        </div>
 
-        {/* Signatory */}
+
+        {/* Signatory (locked constant) */}
         <p
           id="signatory-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 485 + offset("signatory"),
+            top: 500 + offset("signatory"),
             left: "62%",
             transform: "translateX(-50%)",
             width: "500px",
@@ -207,7 +195,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
             textTransform: "uppercase",
           }}
         >
-          {signatory}
+          {SIGNATORY_NAME}
         </p>
       </div>
     </div>

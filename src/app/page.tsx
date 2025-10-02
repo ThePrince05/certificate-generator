@@ -19,10 +19,9 @@ import { CertificateData, CleanCertificateData, CertificateFields } from "@/type
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   heading: 25,
   subheading: 54,
+  pakText: 250,
   name: 15,
   certificateDate: 22,
-  signature: 16,
-  signatory: 46,
 };
 
 export default function Home() {
@@ -31,6 +30,8 @@ export default function Home() {
   const [editedBatchData, setEditedBatchData] = useState<CertificateData[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [lastValidationErrors, setLastValidationErrors] = useState<string | null>(null);
+  const SIGNATURE_PATH = "/signature.svg";
+  const SIGNATORY_NAME = "Authorized by Lyle Benjamin, PAK";
 
   // Validation helper
   const validateBatchData = (data: CertificateData[]) => {
@@ -102,16 +103,17 @@ export default function Home() {
 
       const root = ReactDOM.createRoot(container);
       root.render(
-        <CertificateTemplate
-          heading={item.heading}
-          subheading={item.subheading}
-          name={item.name}
-          certificateDate={item.certificateDate}
-          signature={item.signature}
-          signatory={item.signatory}
-          pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -8, date: -2, signature: -12, signatory: -2 }}
-        />
-      );
+    <CertificateTemplate
+      heading={item.heading}
+      subheading={item.subheading}
+      name={item.name}
+      certificateDate={item.certificateDate}
+      pakText={item.pakText} 
+      pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -8, date: -2, signature: -12, signatory: -2 }}
+    />
+    );
+
+
 
       await new Promise((res) => setTimeout(res, 500));
 
@@ -243,7 +245,7 @@ export default function Home() {
 
       {data && (
         <>
-          <CertificateTemplate {...data} />
+       <CertificateTemplate {...data} />
           <div className="flex justify-center gap-4 mt-4">
             <button
               onClick={() =>
@@ -254,7 +256,7 @@ export default function Home() {
                   name: -16,
                   date: -10,
                   signature: -20,
-                  signatory: -10,
+                  signatory: -5,
                 })
               }
               className="bg-green-500 text-white px-4 py-2 rounded"
@@ -271,7 +273,7 @@ export default function Home() {
                   name: -16,
                   date: -10,
                   signature: -20,
-                  signatory: -10,
+                  signatory: -5,
                 })
               }
               className="bg-yellow-500 text-white px-4 py-2 rounded"

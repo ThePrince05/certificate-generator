@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 interface CertificateData {
   heading: string;
   subheading: string;
+  pakText: string;  
   name: string;
   certificateDate: string;
   signature: string;
@@ -14,6 +15,7 @@ interface CertificateData {
 const MAX_LENGTHS = {
   heading: 25,
   subheading: 54,
+  pakText: 250,
   name: 15,
   certificateDate: 22,
   signature: 16,
@@ -24,41 +26,39 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
   const [formData, setFormData] = useState<CertificateData>({
     heading: "",
     subheading: "",
+    pakText: "",
     name: "",
     certificateDate: "",
-    signature: "",
-    signatory: "AUTHORIZED BY LYLE BENJAMIN, PAK FOUNDER",
+    signature: "/signature.svg", // constant
+    signatory: "AUTHORIZED BY LYLE BENJAMIN, PAK FOUNDER", // constant
   });
 
-  const [isDateEditable, setIsDateEditable] = useState(false);
-  const [isSignatoryEditable, setIsSignatoryEditable] = useState(false);
+  // Set default date automatically
+  useEffect(() => {
+    const today = new Date();
+    const month = today.toLocaleString("en-GB", { month: "long" });
+    const year = today.getFullYear();
+    setFormData(prev => ({
+      ...prev,
+      certificateDate: `AWARDED ${month} ${year}`.toUpperCase(),
+    }));
+  }, []);
 
-  // Set default date
- useEffect(() => {
-  const today = new Date();
-  const month = today.toLocaleString("en-GB", { month: "long" });
-  const year = today.getFullYear(); // <-- dynamic year
+ const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+) => {
+  const { name, value } = e.target;
+  const maxLength = MAX_LENGTHS[name as keyof CertificateData] || Infinity;
+  setFormData({
+    ...formData,
+    [name]: value.slice(0, maxLength),
+  });
+};
 
-  setFormData((prev) => ({
-    ...prev,
-    certificateDate: `AWARDED ${month} ${year}`.toUpperCase(),
-  }));
-}, []);
-
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const maxLength = MAX_LENGTHS[name as keyof CertificateData] || Infinity;
-    setFormData({
-      ...formData,
-      [name]: value.slice(0, maxLength),
-    });
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Check all fields for length
+    // validate field lengths
     for (const key in MAX_LENGTHS) {
       const field = key as keyof CertificateData;
       if ((formData[field] || "").length > MAX_LENGTHS[field]) {
@@ -66,11 +66,9 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
         return;
       }
     }
-
     onSubmit(formData);
   };
 
-  // helper to display remaining characters
   const renderCounter = (fieldName: keyof CertificateData) => {
     const max = MAX_LENGTHS[fieldName];
     const current = formData[fieldName].length;
@@ -108,6 +106,20 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
       </div>
 
       <div>
+      <textarea
+        name="pakText"
+        placeholder="PAK Paragraph"
+        value={formData.pakText}
+        onChange={handleChange}
+        required
+        className="border p-2 w-full resize-none"
+        rows={4}
+      />
+      {renderCounter("pakText")}
+    </div>
+
+
+      <div>
         <input
           name="name"
           placeholder="Recipient Name"
@@ -119,58 +131,7 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
         {renderCounter("name")}
       </div>
 
-      {/* Toggle to allow editing the date */}
-      <div>
-        <div className="flex items-center space-x-2">
-          <input
-            name="certificateDate"
-            value={formData.certificateDate}
-            onChange={handleChange}
-            readOnly={!isDateEditable}
-            className={`border p-2 w-full ${isDateEditable ? "bg-white" : "bg-gray-100"}`}
-          />
-          <button
-            type="button"
-            onClick={() => setIsDateEditable((prev) => !prev)}
-            className="px-2 py-1 border rounded text-sm"
-          >
-            {isDateEditable ? "Lock" : "Edit"}
-          </button>
-        </div>
-        {renderCounter("certificateDate")}
-      </div>
-
-      <div>
-        <input
-          name="signature"
-          placeholder="Signature"
-          value={formData.signature}
-          onChange={handleChange}
-          className="border p-2 w-full"
-        />
-        {renderCounter("signature")}
-      </div>
-
-      {/* Signatory with toggle */}
-      <div>
-        <div className="flex items-center space-x-2">
-          <input
-            name="signatory"
-            value={formData.signatory}
-            onChange={handleChange}
-            readOnly={!isSignatoryEditable}
-            className={`border p-2 w-full ${isSignatoryEditable ? "bg-white" : "bg-gray-100"}`}
-          />
-          <button
-            type="button"
-            onClick={() => setIsSignatoryEditable((prev) => !prev)}
-            className="px-2 py-1 border rounded text-sm"
-          >
-            {isSignatoryEditable ? "Lock" : "Edit"}
-          </button>
-        </div>
-        {renderCounter("signatory")}
-      </div>
+      {/* No date input anymore, it's automatic */}
 
       <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
         Generate Certificate
