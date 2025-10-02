@@ -19,7 +19,7 @@ import { CertificateData, CleanCertificateData, CertificateFields } from "@/type
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   heading: 25,
   subheading: 54,
-  pakText: 250,
+  pakText: 162,
   name: 15,
   certificateDate: 22,
 };
@@ -30,8 +30,6 @@ export default function Home() {
   const [editedBatchData, setEditedBatchData] = useState<CertificateData[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [lastValidationErrors, setLastValidationErrors] = useState<string | null>(null);
-  const SIGNATURE_PATH = "/signature.svg";
-  const SIGNATORY_NAME = "Authorized by Lyle Benjamin, PAK";
   const [isBatchDownloading, setIsBatchDownloading] = useState(false);
 
 
@@ -314,7 +312,7 @@ const handleBatchDownloadJPEG = async () => {
                 generatePDF({
                   heading: -20,
                   subheading: -5,
-                  pak: -10,
+                  pak: -5,
                   name: -16,
                   date: -10,
                   signature: -20,
@@ -331,7 +329,7 @@ const handleBatchDownloadJPEG = async () => {
                 generateJPEG({
                   heading: -20,
                   subheading: -5,
-                  pak: -10,
+                  pak: -5,
                   name: -16,
                   date: -10,
                   signature: -20,

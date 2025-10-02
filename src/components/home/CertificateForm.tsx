@@ -15,7 +15,7 @@ interface CertificateData {
 const MAX_LENGTHS = {
   heading: 25,
   subheading: 54,
-  pakText: 250,
+  pakText: 162,
   name: 15,
   certificateDate: 22,
   signature: 16,
