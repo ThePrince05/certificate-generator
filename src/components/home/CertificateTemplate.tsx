@@ -61,7 +61,7 @@ const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
     id="certificate"
     style={{
       width: "800px",   // locked design size
-      height: "600px",  // locked design size
+      height: "640px",  // locked design size
       flexShrink: 0,    // prevent shrinking
       position: "relative",
       backgroundImage: `url(${templateUrl})`,
