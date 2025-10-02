@@ -169,7 +169,7 @@ export default function CertificateTemplate({
           style={{ 
             position: "absolute",
             top: 440 + offset("signature"),
-            left: "60%",
+            left: "59%",
             transform: "translateX(-50%)",
           }}
         >

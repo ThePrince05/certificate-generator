@@ -32,6 +32,8 @@ export default function Home() {
   const [lastValidationErrors, setLastValidationErrors] = useState<string | null>(null);
   const SIGNATURE_PATH = "/signature.svg";
   const SIGNATORY_NAME = "Authorized by Lyle Benjamin, PAK";
+  const [isBatchDownloading, setIsBatchDownloading] = useState(false);
+
 
   // Validation helper
   const validateBatchData = (data: CertificateData[]) => {
@@ -77,17 +79,17 @@ export default function Home() {
   };
 
   // Batch Download PDF
-  const handleBatchDownloadPDF = async () => {
-    if (!editedBatchData.length) return;
+ const handleBatchDownloadPDF = async () => {
+  if (!editedBatchData.length) return;
 
+  setIsBatchDownloading(true); // start loading
+  try {
     const { validatedData, invalidRows } = validateBatchData(editedBatchData);
     setEditedBatchData(validatedData);
 
-    const errorString = invalidRows.length > 0 ? invalidRows.join("\n") : null;
-    setLastValidationErrors(errorString);
-
-    if (errorString) {
-      setBatchWarning(errorString);
+    if (invalidRows.length > 0) {
+      setLastValidationErrors(invalidRows.join("\n"));
+      setBatchWarning(invalidRows.join("\n"));
       return;
     }
 
@@ -95,7 +97,6 @@ export default function Home() {
 
     for (let i = 0; i < validatedData.length; i++) {
       const item = validatedData[i];
-
       const container = document.createElement("div");
       container.style.position = "absolute";
       container.style.left = "-9999px";
@@ -103,20 +104,17 @@ export default function Home() {
 
       const root = ReactDOM.createRoot(container);
       root.render(
-    <CertificateTemplate
-      heading={item.heading}
-      subheading={item.subheading}
-      name={item.name}
-      certificateDate={item.certificateDate}
-      pakText={item.pakText} 
-      pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -8, date: -2, signature: -12, signatory: -2 }}
-    />
-    );
+        <CertificateTemplate
+          heading={item.heading}
+          subheading={item.subheading}
+          name={item.name}
+          certificateDate={item.certificateDate}
+          pakText={item.pakText}
+          pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -10, date: -2, signature: 8, signatory: 5 }}
+        />
+      );
 
-
-
-      await new Promise((res) => setTimeout(res, 500));
-
+      await new Promise((res) => setTimeout(res, 200)); // optional delay
       const certificateElement = container.querySelector("#certificate") as HTMLElement;
       if (certificateElement) {
         const canvas = await html2canvas(certificateElement, { scale: 2 });
@@ -138,7 +136,60 @@ export default function Home() {
 
     const blob = await zip.generateAsync({ type: "blob" });
     saveAs(blob, "certificates.zip");
-  };
+  } finally {
+    setIsBatchDownloading(false); // stop loading
+  }
+};
+const handleBatchDownloadJPEG = async () => {
+  if (!editedBatchData.length) return;
+
+  setIsBatchDownloading(true);
+  try {
+    const zip = new JSZip();
+
+    for (let i = 0; i < editedBatchData.length; i++) {
+      const item = editedBatchData[i];
+      const container = document.createElement("div");
+      container.style.position = "absolute";
+      container.style.left = "-9999px";
+      document.body.appendChild(container);
+
+      const root = ReactDOM.createRoot(container);
+      root.render(
+        <CertificateTemplate
+          heading={item.heading}
+          subheading={item.subheading}
+          name={item.name}
+          certificateDate={item.certificateDate}
+          pakText={item.pakText}
+          pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -10, date: -2, signature: 8, signatory: 5 }}
+        />
+      );
+
+      await new Promise((res) => setTimeout(res, 200));
+      const certificateElement = container.querySelector("#certificate") as HTMLElement;
+      if (certificateElement) {
+        const canvas = await html2canvas(certificateElement, { scale: 2 });
+        const imgData = canvas.toDataURL("image/jpeg", 0.9); // JPEG
+
+        // Convert base64 to blob
+        const res = await fetch(imgData);
+        const blob = await res.blob();
+
+        zip.file(`${item.name || "certificate"}-${i + 1}.jpg`, blob);
+      }
+
+      root.unmount();
+      document.body.removeChild(container);
+    }
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    saveAs(zipBlob, "certificates-jpeg.zip");
+  } finally {
+    setIsBatchDownloading(false);
+  }
+};
+
 
   return (
     <div className="space-y-8 p-8">
@@ -158,15 +209,26 @@ export default function Home() {
             />
           </div>
 
-          {editedBatchData.length > 0 && (
-            <button
-              onClick={handleBatchDownloadPDF}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded shadow transition-all"
-            >
-              Download ZIP ({editedBatchData.length} Certificates)
-            </button>
-          )}
+        {editedBatchData.length > 0 && (
+        <div className="flex gap-2">
+          <button
+            onClick={handleBatchDownloadPDF}
+            disabled={isBatchDownloading}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded shadow transition-all"
+          >
+            {isBatchDownloading ? "Downloading..." : `Download PDF (${editedBatchData.length})`}
+          </button>
+
+          <button
+            onClick={handleBatchDownloadJPEG}
+            disabled={isBatchDownloading}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-5 py-2 rounded shadow transition-all"
+          >
+            {isBatchDownloading ? "Downloading..." : `Download JPEG (${editedBatchData.length})`}
+          </button>
         </div>
+      )}
+      </div>
       </div>
 
       {/* Batch Table Preview */}
