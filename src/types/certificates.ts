@@ -1,12 +1,9 @@
-// src/types/certificates.ts
-
 // The fields in a certificate
 export type CertificateFields =
   | "heading"
   | "subheading"
   | "pakText"
-  | "name"
-  | "certificateDate";
+  | "name";
 
 // Certificate data including optional _invalid flags
 export type CertificateData = {
@@ -14,7 +11,6 @@ export type CertificateData = {
   subheading: string;
   pakText: string;
   name: string;
-  certificateDate: string;
 } & {
   [K in `${CertificateFields}_invalid`]?: boolean;
 };

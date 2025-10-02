@@ -9,7 +9,7 @@ export const headingFont = localFont({
 
 export const bodyFont = localFont({
   src: [
-    { path: "../../assets/fonts/Roman-capitals-body.otf", weight: "400" },
+    { path: "../../assets/fonts/cinzel.regular.ttf", weight: "400" },
     { path: "../../assets/fonts/jt-alvito-bold-body.otf", weight: "700" },
   ],
   variable: "--font-body",

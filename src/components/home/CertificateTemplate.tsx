@@ -71,7 +71,7 @@ export default function CertificateTemplate({
           className={headingFont.className}
           style={{
             position: "absolute",
-            top: 90 + offset("heading"),
+            top: 80 + offset("heading"),
             left: 0,
             width: "800px",
             padding: "0 20px",
@@ -91,7 +91,7 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 165 + offset("subheading"),
+            top: 155 + offset("subheading"),
             left: 0,
             width: "800px",
             fontSize: "20px",
@@ -110,11 +110,11 @@ export default function CertificateTemplate({
         className={bodyFont.className}
         style={{
           position: "absolute",
-          top: 210 + offset("pak"),
+          top: 190 + offset("pak"),
           left: "50%",
           transform: "translateX(-50%)",
-          width: "600px",
-          fontSize: "20px",
+          width: "650px",
+          fontSize: "21px",
           lineHeight: 1.4,
           textAlign: "center",
           color: mainColor,

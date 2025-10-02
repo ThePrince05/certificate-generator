@@ -19,10 +19,18 @@ import { CertificateData, CleanCertificateData, CertificateFields } from "@/type
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   heading: 25,
   subheading: 54,
-  pakText: 162,
+  pakText: 188,
   name: 15,
-  certificateDate: 22,
 };
+
+// Generates current month & year in uppercase for certificates
+const getCertificateDate = () => {
+  const today = new Date();
+  const month = today.toLocaleString("en-GB", { month: "long" });
+  const year = today.getFullYear();
+  return `AWARDED ${month.toUpperCase()} ${year}`;
+};
+
 
 export default function Home() {
   const [data, setData] = useState<CleanCertificateData | null>(null);
@@ -77,24 +85,29 @@ export default function Home() {
   };
 
   // Batch Download PDF
- const handleBatchDownloadPDF = async () => {
+ // ✅ Centralized validation check before batch download
+const validateBeforeDownload = (data: CertificateData[]) => {
+  const { validatedData, invalidRows } = validateBatchData(data);
+  const errorText = invalidRows.length > 0 ? invalidRows.join("\n") : null;
+  setEditedBatchData(validatedData); // mark invalid rows
+  setBatchWarning(errorText);
+  setLastValidationErrors(errorText);
+  return invalidRows.length === 0; // return true if all valid
+};
+
+// ---- Batch PDF Download ----
+const handleBatchDownloadPDF = async () => {
   if (!editedBatchData.length) return;
 
-  setIsBatchDownloading(true); // start loading
+  const isValid = validateBeforeDownload(editedBatchData);
+  if (!isValid) return; // stop if there are invalid rows
+
+  setIsBatchDownloading(true);
   try {
-    const { validatedData, invalidRows } = validateBatchData(editedBatchData);
-    setEditedBatchData(validatedData);
-
-    if (invalidRows.length > 0) {
-      setLastValidationErrors(invalidRows.join("\n"));
-      setBatchWarning(invalidRows.join("\n"));
-      return;
-    }
-
     const zip = new JSZip();
 
-    for (let i = 0; i < validatedData.length; i++) {
-      const item = validatedData[i];
+    for (let i = 0; i < editedBatchData.length; i++) {
+      const item = editedBatchData[i];
       const container = document.createElement("div");
       container.style.position = "absolute";
       container.style.left = "-9999px";
@@ -106,13 +119,13 @@ export default function Home() {
           heading={item.heading}
           subheading={item.subheading}
           name={item.name}
-          certificateDate={item.certificateDate}
+          certificateDate={getCertificateDate()}
           pakText={item.pakText}
-          pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -10, date: -2, signature: 8, signatory: 5 }}
+          pdfOffsets={{ heading: -20, subheading: -10, pak: -3, name: -15, date: -2, signature: 8, signatory: 5 }}
         />
       );
 
-      await new Promise((res) => setTimeout(res, 200)); // optional delay
+      await new Promise((res) => setTimeout(res, 200));
       const certificateElement = container.querySelector("#certificate") as HTMLElement;
       if (certificateElement) {
         const canvas = await html2canvas(certificateElement, { scale: 2 });
@@ -135,11 +148,16 @@ export default function Home() {
     const blob = await zip.generateAsync({ type: "blob" });
     saveAs(blob, "certificates.zip");
   } finally {
-    setIsBatchDownloading(false); // stop loading
+    setIsBatchDownloading(false);
   }
 };
+
+// ---- Batch JPEG Download ----
 const handleBatchDownloadJPEG = async () => {
   if (!editedBatchData.length) return;
+
+  const isValid = validateBeforeDownload(editedBatchData);
+  if (!isValid) return; // stop if there are invalid rows
 
   setIsBatchDownloading(true);
   try {
@@ -158,7 +176,7 @@ const handleBatchDownloadJPEG = async () => {
           heading={item.heading}
           subheading={item.subheading}
           name={item.name}
-          certificateDate={item.certificateDate}
+          certificateDate={getCertificateDate()}
           pakText={item.pakText}
           pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -10, date: -2, signature: 8, signatory: 5 }}
         />
@@ -168,9 +186,8 @@ const handleBatchDownloadJPEG = async () => {
       const certificateElement = container.querySelector("#certificate") as HTMLElement;
       if (certificateElement) {
         const canvas = await html2canvas(certificateElement, { scale: 2 });
-        const imgData = canvas.toDataURL("image/jpeg", 0.9); // JPEG
+        const imgData = canvas.toDataURL("image/jpeg", 0.9);
 
-        // Convert base64 to blob
         const res = await fetch(imgData);
         const blob = await res.blob();
 
@@ -187,7 +204,6 @@ const handleBatchDownloadJPEG = async () => {
     setIsBatchDownloading(false);
   }
 };
-
 
   return (
     <div className="space-y-8 p-8">
@@ -305,7 +321,10 @@ const handleBatchDownloadJPEG = async () => {
 
       {data && (
         <>
-       <CertificateTemplate {...data} />
+      <CertificateTemplate
+        {...data}
+        certificateDate={getCertificateDate()}
+      />
           <div className="flex justify-center gap-4 mt-4">
             <button
               onClick={() =>
@@ -313,7 +332,7 @@ const handleBatchDownloadJPEG = async () => {
                   heading: -20,
                   subheading: -5,
                   pak: -5,
-                  name: -16,
+                  name: -24,
                   date: -10,
                   signature: -20,
                   signatory: -5,
@@ -330,7 +349,7 @@ const handleBatchDownloadJPEG = async () => {
                   heading: -20,
                   subheading: -5,
                   pak: -5,
-                  name: -16,
+                  name: -24,
                   date: -10,
                   signature: -20,
                   signatory: -5,
