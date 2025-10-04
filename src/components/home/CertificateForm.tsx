@@ -34,6 +34,7 @@ const HEADING_MAP: Record<string, { subheading: string; pakText: string }> = {
   }
 };
 
+
 export default function CertificateForm({ onSubmit }: { onSubmit: (data: CertificateData) => void }) {
   const [formData, setFormData] = useState<CertificateData>({
     heading: "",
@@ -107,6 +108,13 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
     );
   };
 
+// Component state at the top
+const [isEditingDate, setIsEditingDate] = useState(false);
+const today = new Date();
+const [selectedMonth, setSelectedMonth] = useState(today.toLocaleString("en-GB", { month: "long" }).toUpperCase());
+const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-4 border rounded shadow">
       {/* Heading dropdown */}
@@ -134,7 +142,7 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
           value={formData.subheading}
           onChange={handleChange}
           required
-          className="border p-2 w-full"
+          className="border p-2 w-full mb-2"
         />
         {renderCounter("subheading")}
       </div>
@@ -161,10 +169,70 @@ export default function CertificateForm({ onSubmit }: { onSubmit: (data: Certifi
           value={formData.name}
           onChange={handleChange}
           required
-          className="border p-2 w-full"
+          className="border p-2 w-full mb-2"
         />
         {renderCounter("name")}
       </div>
+
+      {/* Certificate Date Field with Edit button */}
+      <div className="flex items-center gap-2">
+        <input
+          name="certificateDate"
+          placeholder="Certificate Date"
+          value={formData.certificateDate}
+          readOnly
+          className="border p-2 flex-1"
+        />
+        <button
+          type="button"
+          className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+          onClick={() => setIsEditingDate((prev) => !prev)}
+        >
+          Edit
+        </button>
+      </div>
+
+    {/* Month & Year Dropdowns */}
+    {isEditingDate && (
+      <div className="mt-2 flex gap-2">
+        {/* Month Dropdown */}
+        <select
+          value={selectedMonth}
+          onChange={(e) => {
+            const month = e.target.value;
+            setSelectedMonth(month);
+            setFormData(prev => ({
+              ...prev,
+              certificateDate: `AWARDED ${month} ${selectedYear}`,
+            }));
+          }}
+          className="border p-2 flex-1"
+        >
+          {[
+            "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
+            "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"
+          ].map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+
+        {/* Year Dropdown: Current to past 20 years */}
+        <select
+          value={selectedYear}
+          onChange={(e) => {
+            const year = Number(e.target.value);
+            setSelectedYear(year);
+            setFormData(prev => ({
+              ...prev,
+              certificateDate: `AWARDED ${selectedMonth} ${year}`,
+            }));
+          }}
+          className="border p-2 flex-1"
+        >
+          {Array.from({ length: 21 }, (_, i) => today.getFullYear() - i).map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+    )}
 
       <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
         Generate Certificate

@@ -21,6 +21,7 @@ const MAX_LENGTHS: Record<CertificateFields, number> = {
   subheading: 54,
   pakText: 188,
   name: 15,
+  certificateDate: 22,
 };
 
 // Generates current month & year in uppercase for certificates
@@ -115,15 +116,16 @@ const handleBatchDownloadPDF = async () => {
 
       const root = ReactDOM.createRoot(container);
       root.render(
-        <CertificateTemplate
-          heading={item.heading}
-          subheading={item.subheading}
-          name={item.name}
-          certificateDate={getCertificateDate()}
-          pakText={item.pakText}
-          pdfOffsets={{ heading: -20, subheading: -10, pak: -3, name: -15, date: -2, signature: 8, signatory: 5 }}
-        />
-      );
+      <CertificateTemplate
+        heading={item.heading}
+        subheading={item.subheading}
+        name={item.name}
+        certificateDate={item.certificateDate || getCertificateDate()}
+        pakText={item.pakText}
+        pdfOffsets={{ heading: -30, subheading: -15, pak: -8, name: -10, nameLetter: 1, date: -2, signature: 8, signatory: -2 }}
+      />
+    );
+
 
       await new Promise((res) => setTimeout(res, 200));
       const certificateElement = container.querySelector("#certificate") as HTMLElement;
@@ -172,13 +174,13 @@ const handleBatchDownloadJPEG = async () => {
 
       const root = ReactDOM.createRoot(container);
       root.render(
-        <CertificateTemplate
+       <CertificateTemplate
           heading={item.heading}
           subheading={item.subheading}
           name={item.name}
-          certificateDate={getCertificateDate()}
+          certificateDate={item.certificateDate || getCertificateDate()} // <-- CSV value preferred
           pakText={item.pakText}
-          pdfOffsets={{ heading: -12, subheading: 3, pak: 3, name: -10, date: -2, signature: 8, signatory: 5 }}
+          pdfOffsets={{ heading: -30, subheading: -15, pak: -8, name: -10, nameLetter: 1, date: -2, signature: 8, signatory: -2 }}
         />
       );
 
@@ -329,13 +331,14 @@ const handleBatchDownloadJPEG = async () => {
             <button
               onClick={() =>
                 generatePDF({
-                  heading: -20,
-                  subheading: -5,
-                  pak: -5,
-                  name: -24,
+                  heading: -30,
+                  subheading: -14,
+                  pak: -15,
+                  name: -18,
+                  nameLetter: 2,
                   date: -10,
                   signature: -20,
-                  signatory: -5,
+                  signatory: -8,
                 })
               }
               className="bg-green-500 text-white px-4 py-2 rounded"
@@ -346,13 +349,14 @@ const handleBatchDownloadJPEG = async () => {
             <button
               onClick={() =>
                 generateJPEG({
-                  heading: -20,
-                  subheading: -5,
-                  pak: -5,
-                  name: -24,
+                   heading: -30,
+                  subheading: -14,
+                  pak: -15,
+                  name: -18,
+                  nameLetter: 2,
                   date: -10,
                   signature: -20,
-                  signatory: -5,
+                  signatory: -8,
                 })
               }
               className="bg-yellow-500 text-white px-4 py-2 rounded"

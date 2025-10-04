@@ -7,6 +7,7 @@ export interface PDFOffsets {
   subheading?: number;
   pak?: number;
   name?: number;
+  nameLetter?: number; // ✅ NEW offset for small letters
   date?: number;
   signature?: number;
   signatory?: number;
@@ -16,11 +17,12 @@ const applyOffsets = (offsets?: PDFOffsets) => {
   if (!offsets) return () => {};
 
   const originalPositions: Record<string, string> = {};
+  const originalTransforms: string[] = [];
 
   const apply = (id: string, offset?: number) => {
     const el = document.getElementById(id);
     if (el && offset) {
-      originalPositions[id] = el.style.top; // save original
+      originalPositions[id] = el.style.top; // save original top
       const currentTop = parseInt(el.style.top || "0", 10);
       el.style.top = `${currentTop + offset}px`;
     }
@@ -34,11 +36,35 @@ const applyOffsets = (offsets?: PDFOffsets) => {
   apply("signature-text", offsets.signature);
   apply("signatory-text", offsets.signatory);
 
+  // ✅ Handle individual letter offset (for name small letters)
+  if (offsets.nameLetter) {
+    const letterSpans = document.querySelectorAll("#name-text span:nth-child(2)");
+    letterSpans.forEach((span, i) => {
+      const el = span as HTMLElement;
+      originalTransforms[i] = el.style.transform;
+      const currentY = parseInt(
+        el.style.transform.replace(/[^-0-9]/g, "") || "0",
+        10
+      );
+     el.style.transform = `translateY(${currentY + (offsets.nameLetter ?? 0)}px)`;
+    });
+  }
+
   // return reset function
   return () => {
+    // restore top positions
     for (const id in originalPositions) {
       const el = document.getElementById(id);
       if (el) el.style.top = originalPositions[id];
+    }
+
+    // restore name letter transforms
+    if (offsets.nameLetter) {
+      const letterSpans = document.querySelectorAll("#name-text span:nth-child(2)");
+      letterSpans.forEach((span, i) => {
+        const el = span as HTMLElement;
+        el.style.transform = originalTransforms[i] || "";
+      });
     }
   };
 };
@@ -47,7 +73,7 @@ export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
   const certificateElement = document.getElementById("certificate");
   if (!certificateElement) return;
 
- const resetOffsets = applyOffsets(pdfOffsets);
+  const resetOffsets = applyOffsets(pdfOffsets);
 
   await document.fonts.ready;
 
@@ -69,6 +95,7 @@ export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
 
   resetOffsets(); // restore original positions
 };
+
 export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
   const certificateElement = document.getElementById("certificate");
   if (!certificateElement) return;
