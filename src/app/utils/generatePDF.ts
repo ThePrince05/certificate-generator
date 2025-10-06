@@ -3,11 +3,11 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 export interface PDFOffsets {
-  heading?: number;
-  subheading?: number;
-  pak?: number;
-  name?: number;
-  date?: number;
+  initiative?: number;
+  category?: number;
+  textfield?: number;
+  recipientName?: number;
+  certificateDate?: number;
   signature?: number;
   signatory?: number;
 }
@@ -26,17 +26,16 @@ const applyOffsets = (offsets?: PDFOffsets) => {
     }
   };
 
-  apply("heading-text", offsets.heading);
-  apply("subheading-text", offsets.subheading);
-  apply("pak-text", offsets.pak);
-  apply("name-text", offsets.name);
-  apply("date-text", offsets.date);
+  apply("initiative-text", offsets.initiative);
+  apply("category-text", offsets.category);
+  apply("textfield-text", offsets.textfield);
+  apply("recipientName-text", offsets.recipientName);
+  apply("certificateDate-text", offsets.certificateDate);
   apply("signature-text", offsets.signature);
   apply("signatory-text", offsets.signatory);
 
   // return reset function
   return () => {
-    // restore top positions
     for (const id in originalPositions) {
       const el = document.getElementById(id);
       if (el) el.style.top = originalPositions[id];
@@ -49,7 +48,6 @@ export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
   if (!certificateElement) return;
 
   const resetOffsets = applyOffsets(pdfOffsets);
-
   await document.fonts.ready;
 
   const scale = 4;
@@ -76,7 +74,6 @@ export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
   if (!certificateElement) return;
 
   const resetOffsets = applyOffsets(pdfOffsets);
-
   await document.fonts.ready;
 
   const scale = 3;

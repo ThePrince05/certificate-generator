@@ -6,9 +6,9 @@ import { useTemplates } from "../context/TemplateContext";
 import { v4 as uuidv4 } from "uuid";
 
 const MAX_LENGTHS = {
-  heading: 25,
-  subheading: 54,
-  pakText: 188,
+  initiative: 25,
+  category: 54,
+  textField: 188,
 };
 
 export default function TemplateGroupsPage() {
@@ -16,16 +16,15 @@ export default function TemplateGroupsPage() {
   const { groups, addGroup, updateGroup, deleteGroup, setGroups } = useTemplates();
 
   const [newGroup, setNewGroup] = useState({
-    heading: "",
-    subheading: "",
-    pakText: "",
+    initiative: "",
+    category: "",
+    textField: "",
   });
 
-  // Ref to ensure localStorage loads only once
   const hasLoaded = useRef(false);
 
   useEffect(() => {
-    if (hasLoaded.current) return; // Prevent re-loading
+    if (hasLoaded.current) return;
 
     const saved = localStorage.getItem("templateGroups");
     if (!saved) return;
@@ -34,21 +33,16 @@ export default function TemplateGroupsPage() {
       const parsed: (typeof newGroup & { id?: string })[] = JSON.parse(saved);
       if (!Array.isArray(parsed)) return;
 
-      // Ensure each group has an ID
       const groupsWithId = parsed.map(g => ({ ...g, id: g.id || uuidv4() }));
-
-      // Remove duplicates by ID
       const uniqueGroups = Array.from(new Map(groupsWithId.map(g => [g.id, g])).values());
 
-      setGroups(uniqueGroups); // Safe update
+      setGroups(uniqueGroups);
       hasLoaded.current = true;
-
     } catch (err) {
       console.error("Failed to parse saved templates", err);
     }
   }, [setGroups]);
 
-  // Persist to localStorage whenever groups change
   useEffect(() => {
     if (groups.length > 0) {
       localStorage.setItem("templateGroups", JSON.stringify(groups));
@@ -57,9 +51,9 @@ export default function TemplateGroupsPage() {
 
   const handleAddGroup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGroup.heading.trim()) return alert("Heading is required.");
-    addGroup({ ...newGroup, id: uuidv4() }); // assign unique id
-    setNewGroup({ heading: "", subheading: "", pakText: "" });
+    if (!newGroup.initiative.trim()) return alert("Initiative is required.");
+    addGroup({ ...newGroup, id: uuidv4() });
+    setNewGroup({ initiative: "", category: "", textField: "" });
   };
 
   const renderCounter = (field: keyof typeof newGroup, value: string) => {
@@ -82,50 +76,50 @@ export default function TemplateGroupsPage() {
           <div>
             <input
               type="text"
-              placeholder="Heading"
-              value={newGroup.heading}
+              placeholder="Initiative"
+              value={newGroup.initiative}
               onChange={(e) =>
                 setNewGroup((prev) => ({
                   ...prev,
-                  heading: e.target.value.slice(0, MAX_LENGTHS.heading),
+                  initiative: e.target.value.slice(0, MAX_LENGTHS.initiative),
                 }))
               }
               className="border p-3 w-full rounded mb-2"
               required
             />
-            {renderCounter("heading", newGroup.heading)}
+            {renderCounter("initiative", newGroup.initiative)}
           </div>
 
           <div>
             <input
               type="text"
-              placeholder="Subheading"
-              value={newGroup.subheading}
+              placeholder="Category"
+              value={newGroup.category}
               onChange={(e) =>
                 setNewGroup((prev) => ({
                   ...prev,
-                  subheading: e.target.value.slice(0, MAX_LENGTHS.subheading),
+                  category: e.target.value.slice(0, MAX_LENGTHS.category),
                 }))
               }
               className="border p-3 w-full rounded mb-2"
             />
-            {renderCounter("subheading", newGroup.subheading)}
+            {renderCounter("category", newGroup.category)}
           </div>
 
           <div>
             <textarea
-              placeholder="PAK Paragraph"
-              value={newGroup.pakText}
+              placeholder="Text Field"
+              value={newGroup.textField}
               onChange={(e) =>
                 setNewGroup((prev) => ({
                   ...prev,
-                  pakText: e.target.value.slice(0, MAX_LENGTHS.pakText),
+                  textField: e.target.value.slice(0, MAX_LENGTHS.textField),
                 }))
               }
               className="border p-3 w-full rounded resize-none"
               rows={4}
             />
-            {renderCounter("pakText", newGroup.pakText)}
+            {renderCounter("textField", newGroup.textField)}
           </div>
 
           <div className="flex items-center gap-3 mt-4">
@@ -163,21 +157,21 @@ export default function TemplateGroupsPage() {
           <div className="space-y-4">
             {groups.map((group) => (
               <div
-                key={group.id} // unique key
+                key={group.id}
                 className="border p-4 rounded shadow-sm bg-white"
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold">{group.heading}</h3>
+                  <h3 className="font-bold">{group.initiative}</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        const heading = prompt("Edit heading:", group.heading);
-                        if (!heading) return;
-                        const subheading =
-                          prompt("Edit subheading:", group.subheading) || "";
-                        const pakText =
-                          prompt("Edit PAK Paragraph:", group.pakText) || "";
-                        updateGroup(group.id, { ...group, heading, subheading, pakText });
+                        const initiative = prompt("Edit initiative:", group.initiative);
+                        if (!initiative) return;
+                        const category =
+                          prompt("Edit category:", group.category) || "";
+                        const textField =
+                          prompt("Edit text field:", group.textField) || "";
+                        updateGroup(group.id, { ...group, initiative, category, textField });
                       }}
                       className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 border rounded transition"
                     >
@@ -192,10 +186,10 @@ export default function TemplateGroupsPage() {
                   </div>
                 </div>
 
-                {group.subheading && (
-                  <p className="text-sm font-medium text-gray-700 mb-1">{group.subheading}</p>
+                {group.category && (
+                  <p className="text-sm font-medium text-gray-700 mb-1">{group.category}</p>
                 )}
-                <p className="text-sm text-gray-600 whitespace-pre-line">{group.pakText}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-line">{group.textField}</p>
               </div>
             ))}
           </div>

@@ -5,9 +5,9 @@ import { v4 as uuidv4 } from "uuid";
 
 export interface TemplateGroup {
   id: string;
-  heading: string;
-  subheading: string;
-  pakText: string;
+  initiative: string;
+  category: string;
+  textField: string;
 }
 
 interface TemplateContextType {
@@ -15,7 +15,7 @@ interface TemplateContextType {
   addGroup: (group: TemplateGroup) => void;
   updateGroup: (id: string, updated: TemplateGroup) => void;
   deleteGroup: (id: string) => void;
-  setGroups: (groups: TemplateGroup[]) => void; // Added setGroups
+  setGroups: (groups: TemplateGroup[]) => void;
 }
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
@@ -24,16 +24,16 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
   const [groups, setGroupsState] = useState<TemplateGroup[]>([
     {
       id: uuidv4(),
-      heading: "Planned Acts of Kindness",
-      subheading: "Karma Club Member",
-      pakText:
+      initiative: "Planned Acts of Kindness",
+      category: "Karma Club Member",
+      textField:
         "I Hereby Make a PAK to Treat Others with Respect & Kindness and to Go Through Life from this Day Forward Acting Towards Others as I Wish to Be Treated Myself.",
     },
     {
       id: uuidv4(),
-      heading: "One Planet - One People",
-      subheading: "Global Ambassador",
-      pakText:
+      initiative: "One Planet - One People",
+      category: "Global Ambassador",
+      textField:
         "I hereby pledge I am committed to the Collaborative Sustainability initiatives of One Planet - One People & I Volunteer to actively work for the betterment of Kids, People & The Planet.",
     },
   ]);
@@ -44,7 +44,6 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
   const deleteGroup = (id: string) =>
     setGroupsState((prev) => prev.filter((g) => g.id !== id));
 
-  // Expose setGroups directly
   const setGroups = (groups: TemplateGroup[]) => setGroupsState(groups);
 
   return (

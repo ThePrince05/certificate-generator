@@ -2,21 +2,21 @@
 import { headingFont, bodyFont } from "../../app/utils/fonts";
 
 interface PDFOffsets {
-  heading?: number;
-  subheading?: number;
-  pak?: number;
-  name?: number;
-  date?: number;
+  initiative?: number;
+  category?: number;
+  textfield?: number;
+  recipientName?: number;
+  certificateDate?: number;
   signature?: number;
   signatory?: number;
 }
 
 interface CertificateProps {
-  heading: string;
-  subheading: string;
-  name: string;
+  initiative: string;
+  category: string;
+  textfield: string;
+  recipientName: string;
   certificateDate: string;
-  pakText: string; 
   templateUrl?: string;
   pdfOffsets?: PDFOffsets;
 }
@@ -26,10 +26,10 @@ const SIGNATURE_PATH = "/signature.png";
 const SIGNATORY_NAME = "Authorized By Lyle Benjamin, PAK Founder";
 
 export default function CertificateTemplate({
-  heading,
-  subheading,
-  pakText,
-  name,
+  initiative,
+  category,
+  textfield,
+  recipientName,
   certificateDate,
   templateUrl = "/templates/certificate-template.jpg",
   pdfOffsets,
@@ -73,13 +73,13 @@ export default function CertificateTemplate({
           }}
         />
 
-        {/* Heading */}
+        {/* Initiative (Heading) */}
         <h1
-          id="heading-text"
+          id="initiative-text"
           className={headingFont.className}
           style={{
             position: "absolute",
-            top: 90 + offset("heading"),
+            top: 90 + offset("initiative"),
             left: "20px",
             width: "800px",
             padding: "0 20px",
@@ -90,38 +90,37 @@ export default function CertificateTemplate({
             wordBreak: "break-word",
           }}
         >
-          {heading}
+          {initiative}
         </h1>
 
-        {/* Subheading */}
-      <h2
-        id="subheading-text"
-        className={bodyFont.className}
-        style={{
-          position: "absolute",
-          top: 170 + offset("subheading"),
-          left: 0,
-          width: "800px",
-          fontSize: "20px",
-          lineHeight: 1.3,
-          textAlign: "center",
-          color: mainColor,
-          fontWeight: 700,
-        }}
-      >
-        {subheading.replace(/\w\S*/g, (txt) => 
-          txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-        )}
-      </h2>
-
-
-        {/* PAK Paragraph */}
-        <p
-          id="pak-text"
+        {/* Category (Subheading) */}
+        <h2
+          id="category-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 208 + offset("pak"),
+            top: 170 + offset("category"),
+            left: 0,
+            width: "800px",
+            fontSize: "20px",
+            lineHeight: 1.3,
+            textAlign: "center",
+            color: mainColor,
+            fontWeight: 700,
+          }}
+        >
+          {category.replace(/\w\S*/g, (txt) => 
+            txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+          )}
+        </h2>
+
+        {/* Textfield (PAK Paragraph) */}
+        <p
+          id="textfield-text"
+          className={bodyFont.className}
+          style={{
+            position: "absolute",
+            top: 208 + offset("textfield"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "650px",
@@ -131,16 +130,16 @@ export default function CertificateTemplate({
             color: mainColor,
           }}
         >
-          {pakText}
+          {textfield}
         </p>
 
-        {/* Candidate Name */}
+        {/* Recipient Name */}
         <p
-          id="name-text"
+          id="recipientName-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 335 + offset("name"),
+            top: 335 + offset("recipientName"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "auto",
@@ -151,16 +150,16 @@ export default function CertificateTemplate({
             color: "#363636",
           }}
         >
-          {name}
+          {recipientName}
         </p>
 
-        {/* Date */}
+        {/* Awarded Date */}
         <p
-          id="date-text"
+          id="awardedDate-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 390 + offset("date"),
+            top: 390 + offset("certificateDate"),
             left: "15px",
             width: "800px",
             textAlign: "center",

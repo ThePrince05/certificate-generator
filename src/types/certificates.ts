@@ -1,17 +1,17 @@
 // The fields in a certificate
 export type CertificateFields =
-  | "heading"
-  | "subheading"
-  | "pakText"
-  | "name"
+  | "initiative"
+  | "category"
+  | "textField"
+  | "recipientName"
   | "certificateDate";
 
 // Certificate data including optional _invalid flags
 export type CertificateData = {
-  heading: string;
-  subheading: string;
-  pakText: string;
-  name: string;
+  initiative: string;
+  category: string;
+  textField: string;
+  recipientName: string;
   certificateDate?: string;
   signature?: string; // optional now
   signatory?: string;
