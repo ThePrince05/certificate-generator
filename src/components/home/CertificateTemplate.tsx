@@ -6,12 +6,10 @@ interface PDFOffsets {
   subheading?: number;
   pak?: number;
   name?: number;
-  nameLetter?: number; 
   date?: number;
   signature?: number;
   signatory?: number;
 }
-
 
 interface CertificateProps {
   heading: string;
@@ -23,10 +21,9 @@ interface CertificateProps {
   pdfOffsets?: PDFOffsets;
 }
 
-
 // ✅ constants (instead of props)
 const SIGNATURE_PATH = "/signature.png"; 
-const SIGNATORY_NAME = "AUTHORIZED BY LYLE BENJAMIN, PAK FOUNDER";
+const SIGNATORY_NAME = "Authorized By Lyle Benjamin, PAK Founder";
 
 export default function CertificateTemplate({
   heading,
@@ -39,6 +36,7 @@ export default function CertificateTemplate({
 }: CertificateProps) {
   const mainColor = "#695511"; // main font color
 
+  // Safely get optional offsets
   const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
 
   return (
@@ -53,22 +51,27 @@ export default function CertificateTemplate({
         overflow: "auto",
       }}
     >
-   <div
-  id="certificate"
-  style={{
-    width: "838px",
-    height: "auto", // Let height adjust dynamically
-    aspectRatio: "838 / 670", // Keeps correct proportions
-    flexShrink: 0,
-    position: "relative",
-    backgroundImage: `url(${templateUrl})`,
-    backgroundRepeat: "no-repeat",
-    backgroundSize: "contain", // Fit the full image without cropping
-    backgroundPosition: "center",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-    color: mainColor,
-  }}
->
+      <div
+        id="certificate"
+        style={{
+          width: "838px",
+          height: "auto",
+          position: "relative",
+          flexShrink: 0,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          color: mainColor,
+        }}
+      >
+        {/* Background image */}
+        <img
+          src={templateUrl}
+          alt="Certificate Template"
+          style={{
+            width: "100%",
+            height: "auto",
+            display: "block",
+          }}
+        />
 
         {/* Heading */}
         <h1
@@ -91,81 +94,65 @@ export default function CertificateTemplate({
         </h1>
 
         {/* Subheading */}
-        <h2
-          id="subheading-text"
-          className={bodyFont.className}
-          style={{
-            position: "absolute",
-            top: 170 + offset("subheading"),
-            left: 0,
-            width: "800px",
-            fontSize: "20px",
-            lineHeight: 1.3,
-            textAlign: "center",
-            color: mainColor,
-            textTransform: "uppercase",
-            fontWeight: 700, // <-- bold
-          }}
-        >
-          {subheading}
-        </h2>
-
-
-        {/* PAK Paragraph */}
-       <p
-        id="pak-text"
+      <h2
+        id="subheading-text"
         className={bodyFont.className}
         style={{
           position: "absolute",
-          top: 208 + offset("pak"),
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "650px",
-          fontSize: "21px",
-          lineHeight: 1.4,
+          top: 170 + offset("subheading"),
+          left: 0,
+          width: "800px",
+          fontSize: "20px",
+          lineHeight: 1.3,
           textAlign: "center",
           color: mainColor,
+          fontWeight: 700,
         }}
       >
-        {pakText}
-      </p>
+        {subheading.replace(/\w\S*/g, (txt) => 
+          txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+        )}
+      </h2>
 
 
-   {/* Candidate Name */}
-    <p
-      id="name-text"
-      className={bodyFont.className}
-      style={{
-        position: "absolute",
-        top: 338 + offset("name"),
-        left: "20px",
-        width: "800px",
-        textAlign: "center",
-        fontWeight: 600,
-        lineHeight: 1.2,
-        color: "#363636",
-        textTransform: "uppercase",
-        display: "flex",
-        justifyContent: "center",
-        gap: "6px",
-      }}
-    >
-      {name.split(" ").map((word, i) => (
-        <span key={i} style={{ margin: "0 6px", display: "inline-flex", alignItems: "flex-end" }}>
-          <span style={{ fontSize: "32px", lineHeight: 1 }}>{word.charAt(0)}</span>
-          <span
-            style={{
-              fontSize: "28px",
-              lineHeight: 1,
-              transform: `translateY(${offset("nameLetter") || -1}px)`, // <-- PDF-specific offset
-            }}
-          >
-            {word.slice(1)}
-          </span>
-        </span>
-      ))}
-    </p>
+        {/* PAK Paragraph */}
+        <p
+          id="pak-text"
+          className={bodyFont.className}
+          style={{
+            position: "absolute",
+            top: 208 + offset("pak"),
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "650px",
+            fontSize: "21px",
+            lineHeight: 1.4,
+            textAlign: "center",
+            color: mainColor,
+          }}
+        >
+          {pakText}
+        </p>
 
+        {/* Candidate Name */}
+        <p
+          id="name-text"
+          className={bodyFont.className}
+          style={{
+            position: "absolute",
+            top: 335 + offset("name"),
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "auto",
+            textAlign: "center",
+            fontWeight: 600,
+            lineHeight: 1.2,
+            fontSize: "32px",
+            color: "#363636",
+          }}
+        >
+          {name}
+        </p>
 
         {/* Date */}
         <p
@@ -185,7 +172,7 @@ export default function CertificateTemplate({
           {certificateDate}
         </p>
 
-        {/* Signature (locked constant) */}
+        {/* Signature */}
         <div
           id="signature"
           style={{ 
@@ -198,14 +185,13 @@ export default function CertificateTemplate({
           <img src={SIGNATURE_PATH} alt="Signature" style={{ width: "400px", height: "auto" }} />
         </div>
 
-
-        {/* Signatory (locked constant) */}
+        {/* Signatory */}
         <p
           id="signatory-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 528 + offset("signatory"),
+            top: 527 + offset("signatory"),
             left: "62%",
             transform: "translateX(-50%)",
             width: "500px",
@@ -214,7 +200,6 @@ export default function CertificateTemplate({
             color: mainColor,
             textAlign: "center",
             wordBreak: "break-word",
-            textTransform: "uppercase",
           }}
         >
           {SIGNATORY_NAME}

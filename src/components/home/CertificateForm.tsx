@@ -11,18 +11,16 @@ interface CertificateData {
   pakText: string;
   name: string;
   certificateDate: string;
-  signature: string;
-  signatory: string;
+  signature?: string;
+  signatory?: string;
 }
 
-const MAX_LENGTHS = {
+const MAX_LENGTHS: Partial<Record<keyof CertificateData, number>> = {
   heading: 25,
   subheading: 54,
   pakText: 188,
   name: 15,
   certificateDate: 22,
-  signature: 16,
-  signatory: 46,
 };
 
 export default function CertificateForm({
@@ -39,14 +37,12 @@ export default function CertificateForm({
     pakText: "",
     name: "",
     certificateDate: "",
-    signature: "/signature.svg",
-    signatory: "AUTHORIZED BY LYLE BENJAMIN, PAK FOUNDER",
   });
 
   const [isEditingDate, setIsEditingDate] = useState(false);
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
-    today.toLocaleString("en-GB", { month: "long" }).toUpperCase()
+    today.toLocaleString("en-GB", { month: "long" })
   );
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
@@ -55,7 +51,7 @@ export default function CertificateForm({
     const year = today.getFullYear();
     setFormData((prev) => ({
       ...prev,
-      certificateDate: `AWARDED ${month} ${year}`.toUpperCase(),
+      certificateDate: `Awarded ${month} ${year}`
     }));
   }, []);
 
@@ -87,29 +83,31 @@ export default function CertificateForm({
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    for (const key in MAX_LENGTHS) {
-      const field = key as keyof CertificateData;
-      if (field === "heading") continue;
-      if ((formData[field] || "").length > MAX_LENGTHS[field]) {
-        alert(
-          `"${field}" exceeds the maximum of ${MAX_LENGTHS[field]} characters.`
-        );
-        return;
-      }
+  e.preventDefault();
+  for (const key in MAX_LENGTHS) {
+    const field = key as keyof CertificateData;
+    if (field === "heading") continue;
+    const max = MAX_LENGTHS[field]; // could be undefined
+    if (max && (formData[field] || "").length > max) {
+      alert(`"${field}" exceeds the maximum of ${max} characters.`);
+      return;
     }
-    onSubmit(formData);
-  };
+  }
+  onSubmit(formData);
+};
 
-  const renderCounter = (fieldName: keyof CertificateData) => {
-    const max = MAX_LENGTHS[fieldName];
-    const current = formData[fieldName].length;
-    return (
-      <p className="text-xs text-gray-500 text-right">
-        {current}/{max} characters
-      </p>
-    );
-  };
+const renderCounter = (fieldName: keyof CertificateData) => {
+  const max = MAX_LENGTHS[fieldName];
+  if (!max) return null; // skip rendering counter if no max defined
+  const current = (formData[fieldName]?.length ?? 0); // safe for optional fields
+  return (
+    <p className="text-xs text-gray-500 text-right">
+      {current}/{max} characters
+    </p>
+  );
+};
+
+
 
   return (
     <form
@@ -203,24 +201,24 @@ export default function CertificateForm({
               setSelectedMonth(month);
               setFormData((prev) => ({
                 ...prev,
-                certificateDate: `AWARDED ${month} ${selectedYear}`,
+                certificateDate: `Awarded ${month} ${selectedYear}`,
               }));
             }}
             className="border p-2 flex-1"
           >
             {[
-              "JANUARY",
-              "FEBRUARY",
-              "MARCH",
-              "APRIL",
-              "MAY",
-              "JUNE",
-              "JULY",
-              "AUGUST",
-              "SEPTEMBER",
-              "OCTOBER",
-              "NOVEMBER",
-              "DECEMBER",
+              "January",
+              "February",
+              "March",
+              "April",
+              "May",
+              "June",
+              "July",
+              "August",
+              "September",
+              "October",
+              "November",
+              "December",
             ].map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -235,7 +233,7 @@ export default function CertificateForm({
               setSelectedYear(year);
               setFormData((prev) => ({
                 ...prev,
-                certificateDate: `AWARDED ${selectedMonth} ${year}`,
+                certificateDate: `Awarded ${selectedMonth} ${year}`,
               }));
             }}
             className="border p-2 flex-1"

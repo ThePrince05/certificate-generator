@@ -16,9 +16,3 @@ export const bodyFont = Cinzel({
   weight: ["400", "700"], // regular + bold
 });
 
-// ✒️ Signature Font (local Great Vibes)
-export const signatureFont = localFont({
-  src: "../../assets/fonts/GreatVibes-Regular-signature.ttf",
-  variable: "--font-signature",
-  weight: "400",
-});

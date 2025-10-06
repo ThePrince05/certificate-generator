@@ -7,7 +7,6 @@ export interface PDFOffsets {
   subheading?: number;
   pak?: number;
   name?: number;
-  nameLetter?: number; // ✅ NEW offset for small letters
   date?: number;
   signature?: number;
   signatory?: number;
@@ -17,7 +16,6 @@ const applyOffsets = (offsets?: PDFOffsets) => {
   if (!offsets) return () => {};
 
   const originalPositions: Record<string, string> = {};
-  const originalTransforms: string[] = [];
 
   const apply = (id: string, offset?: number) => {
     const el = document.getElementById(id);
@@ -36,35 +34,12 @@ const applyOffsets = (offsets?: PDFOffsets) => {
   apply("signature-text", offsets.signature);
   apply("signatory-text", offsets.signatory);
 
-  // ✅ Handle individual letter offset (for name small letters)
-  if (offsets.nameLetter) {
-    const letterSpans = document.querySelectorAll("#name-text span:nth-child(2)");
-    letterSpans.forEach((span, i) => {
-      const el = span as HTMLElement;
-      originalTransforms[i] = el.style.transform;
-      const currentY = parseInt(
-        el.style.transform.replace(/[^-0-9]/g, "") || "0",
-        10
-      );
-     el.style.transform = `translateY(${currentY + (offsets.nameLetter ?? 0)}px)`;
-    });
-  }
-
   // return reset function
   return () => {
     // restore top positions
     for (const id in originalPositions) {
       const el = document.getElementById(id);
       if (el) el.style.top = originalPositions[id];
-    }
-
-    // restore name letter transforms
-    if (offsets.nameLetter) {
-      const letterSpans = document.querySelectorAll("#name-text span:nth-child(2)");
-      letterSpans.forEach((span, i) => {
-        const el = span as HTMLElement;
-        el.style.transform = originalTransforms[i] || "";
-      });
     }
   };
 };
@@ -77,7 +52,7 @@ export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
 
   await document.fonts.ready;
 
-  const scale = 2;
+  const scale = 4;
   const canvas = await html2canvas(certificateElement, { scale });
   const imgData = canvas.toDataURL("image/png");
 
@@ -104,7 +79,7 @@ export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
 
   await document.fonts.ready;
 
-  const scale = 2;
+  const scale = 3;
   const canvas = await html2canvas(certificateElement, { scale });
   const imgData = canvas.toDataURL("image/jpeg", 1.0); // full quality JPEG
 

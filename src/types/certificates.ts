@@ -13,6 +13,8 @@ export type CertificateData = {
   pakText: string;
   name: string;
   certificateDate?: string;
+  signature?: string; // optional now
+  signatory?: string;
 } & {
   [K in `${CertificateFields}_invalid`]?: boolean;
 };

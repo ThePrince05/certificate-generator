@@ -29,7 +29,7 @@ const getCertificateDate = () => {
   const today = new Date();
   const month = today.toLocaleString("en-GB", { month: "long" });
   const year = today.getFullYear();
-  return `AWARDED ${month.toUpperCase()} ${year}`;
+  return `Awarded ${month} ${year}`;
 };
 
 
@@ -122,7 +122,7 @@ const handleBatchDownloadPDF = async () => {
         name={item.name}
         certificateDate={item.certificateDate || getCertificateDate()}
         pakText={item.pakText}
-        pdfOffsets={{ heading: -30, subheading: -15, pak: -8, name: -10, nameLetter: 1, date: -2, signature: 8, signatory: -2 }}
+        pdfOffsets={{ heading: -30, subheading: -15, pak: -8, name: -10, date: -2, signature: 8, signatory: -2 }}
       />
     );
 
@@ -130,15 +130,15 @@ const handleBatchDownloadPDF = async () => {
       await new Promise((res) => setTimeout(res, 200));
       const certificateElement = container.querySelector("#certificate") as HTMLElement;
       if (certificateElement) {
-        const canvas = await html2canvas(certificateElement, { scale: 2 });
+        const canvas = await html2canvas(certificateElement, { scale: 4 });
         const imgData = canvas.toDataURL("image/png");
 
-        const pdf = new jsPDF({
-          orientation: "landscape",
-          unit: "px",
-          format: [canvas.width, canvas.height],
-        });
-        pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "px",
+      format: [8382, 6706], // match exact image dimensions
+    });
+    pdf.addImage(imgData, "PNG", 0, 0, 8382, 6706);
 
         zip.file(`${item.name || "certificate"}-${i + 1}.pdf`, pdf.output("arraybuffer"));
       }
@@ -180,14 +180,14 @@ const handleBatchDownloadJPEG = async () => {
           name={item.name}
           certificateDate={item.certificateDate || getCertificateDate()} // <-- CSV value preferred
           pakText={item.pakText}
-          pdfOffsets={{ heading: -30, subheading: -15, pak: -8, name: -10, nameLetter: 1, date: -2, signature: 8, signatory: -2 }}
+          pdfOffsets={{ heading: -30, subheading: -15, pak: -8, name: -10, date: -2, signature: 8, signatory: -2 }}
         />
       );
 
       await new Promise((res) => setTimeout(res, 200));
       const certificateElement = container.querySelector("#certificate") as HTMLElement;
       if (certificateElement) {
-        const canvas = await html2canvas(certificateElement, { scale: 2 });
+        const canvas = await html2canvas(certificateElement, { scale: 4 });
         const imgData = canvas.toDataURL("image/jpeg", 0.9);
 
         const res = await fetch(imgData);
@@ -335,7 +335,6 @@ const handleBatchDownloadJPEG = async () => {
                   subheading: -14,
                   pak: -15,
                   name: -18,
-                  nameLetter: 2,
                   date: -10,
                   signature: -20,
                   signatory: -8,
@@ -353,7 +352,6 @@ const handleBatchDownloadJPEG = async () => {
                   subheading: -14,
                   pak: -15,
                   name: -18,
-                  nameLetter: 2,
                   date: -10,
                   signature: -20,
                   signatory: -8,
