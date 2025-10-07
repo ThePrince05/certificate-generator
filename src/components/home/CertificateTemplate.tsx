@@ -4,7 +4,7 @@ import { headingFont, bodyFont } from "../../app/utils/fonts";
 interface PDFOffsets {
   initiative?: number;
   category?: number;
-  textfield?: number;
+  textField?: number;
   recipientName?: number;
   certificateDate?: number;
   signature?: number;
@@ -100,7 +100,7 @@ export default function CertificateTemplate({
           style={{
             position: "absolute",
             top: 170 + offset("category"),
-            left: 0,
+            left: "20px",
             width: "800px",
             fontSize: "20px",
             lineHeight: 1.3,
@@ -120,7 +120,7 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 208 + offset("textfield"),
+            top: 208 + offset("textField"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "650px",

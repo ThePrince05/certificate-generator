@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 export interface TemplateGroup {
@@ -21,7 +21,7 @@ interface TemplateContextType {
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
 
 export const TemplateProvider = ({ children }: { children: ReactNode }) => {
-  const [groups, setGroupsState] = useState<TemplateGroup[]>([
+  const defaultGroups: TemplateGroup[] = [
     {
       id: uuidv4(),
       initiative: "Planned Acts of Kindness",
@@ -36,14 +36,33 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
       textField:
         "I hereby pledge I am committed to the Collaborative Sustainability initiatives of One Planet - One People & I Volunteer to actively work for the betterment of Kids, People & The Planet.",
     },
-  ]);
+  ];
+
+  const [groups, setGroupsState] = useState<TemplateGroup[]>(defaultGroups);
+
+  // 🧩 Load from localStorage once (on first mount)
+  useEffect(() => {
+    const saved = localStorage.getItem("templateGroups");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setGroupsState(parsed);
+      } catch (err) {
+        console.error("Failed to load saved groups:", err);
+      }
+    }
+  }, []);
+
+  // 💾 Save to localStorage whenever groups change
+  useEffect(() => {
+    localStorage.setItem("templateGroups", JSON.stringify(groups));
+  }, [groups]);
 
   const addGroup = (group: TemplateGroup) => setGroupsState((prev) => [...prev, group]);
   const updateGroup = (id: string, updated: TemplateGroup) =>
     setGroupsState((prev) => prev.map((g) => (g.id === id ? updated : g)));
   const deleteGroup = (id: string) =>
     setGroupsState((prev) => prev.filter((g) => g.id !== id));
-
   const setGroups = (groups: TemplateGroup[]) => setGroupsState(groups);
 
   return (

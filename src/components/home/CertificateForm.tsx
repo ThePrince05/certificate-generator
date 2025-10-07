@@ -129,7 +129,7 @@ export default function CertificateForm({
       <div>
         <input
           name="category"
-          placeholder="Category (e.g., Best Performer)"
+          placeholder="Category"
           value={formData.category}
           onChange={handleChange}
           required

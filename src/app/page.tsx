@@ -114,15 +114,15 @@ export default function Home() {
          <CertificateTemplate
   initiative={item.initiative}
   category={item.category}
-  textfield={item.textField} // lowercase t
+  textfield={item.textField} 
   recipientName={item.recipientName}
   certificateDate={item.certificateDate || getCertificateDate()} // match interface
   pdfOffsets={{
     initiative: -30,
     category: -15,
-    textfield: -8, // lowercase t
+    textField: -8,
     recipientName: -10,
-    certificateDate: -2, // rename from certificateDate → awardedDate
+    certificateDate: -2,
     signature: 8,
     signatory: -2,
   }}
@@ -185,7 +185,7 @@ export default function Home() {
             pdfOffsets={{
               initiative: -30,
               category: -15,
-              textfield: -8,
+              textField: -8,
               recipientName: -10,
               certificateDate: -2,
               signature: 8,
@@ -350,7 +350,7 @@ export default function Home() {
                 generatePDF({
                   initiative: -30,
                   category: -14,
-                  textfield: -15,
+                  textField: -15,
                   recipientName: -18,
                   certificateDate: -10,
                   signature: -20,
@@ -366,7 +366,7 @@ export default function Home() {
                 generateJPEG({
                   initiative: -30,
                   category: -14,
-                  textfield: -15,
+                  textField: -15,
                   recipientName: -18,
                   certificateDate: -10,
                   signature: -20,

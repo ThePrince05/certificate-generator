@@ -5,7 +5,7 @@ import jsPDF from "jspdf";
 export interface PDFOffsets {
   initiative?: number;
   category?: number;
-  textfield?: number;
+  textField?: number;
   recipientName?: number;
   certificateDate?: number;
   signature?: number;
@@ -28,7 +28,7 @@ const applyOffsets = (offsets?: PDFOffsets) => {
 
   apply("initiative-text", offsets.initiative);
   apply("category-text", offsets.category);
-  apply("textfield-text", offsets.textfield);
+  apply("textField-text", offsets.textField);
   apply("recipientName-text", offsets.recipientName);
   apply("certificateDate-text", offsets.certificateDate);
   apply("signature-text", offsets.signature);
