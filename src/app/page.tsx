@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CertificateForm from "../components/home/CertificateForm";
 import CertificateTemplate from "../components/home/CertificateTemplate";
 import { generatePDF, generateJPEG } from "./utils/generatePDF";
 import { useOrganization } from "./context/OrganizationContext";
+import { useRouter } from "next/navigation";
 
 import Papa from "papaparse";
 import JSZip from "jszip";
@@ -43,19 +44,22 @@ export default function Home() {
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-
   const { selectedOrg } = useOrganization();
+  const router = useRouter();
 
-  // 🔒 Guard clause for when no organization is selected
+  
+  // 🔄 Auto-redirect to select-organization if none selected
+  useEffect(() => {
+    if (!selectedOrg) {
+      router.push("/select-organization");
+    }
+  }, [selectedOrg, router]);
+
+  // Show loading while redirecting
   if (!selectedOrg) {
     return (
       <div className="text-center p-10">
-        <h1 className="text-4xl font-bold mb-6">Custom Certificate Program</h1>
-        <h2 className="text-2xl font-semibold mb-4">
-          <a href="/select-organization" className="text-blue-600 underline">
-            Select an organization
-          </a>
-        </h2>
+        <p className="text-gray-600">Redirecting to organization selection...</p>
       </div>
     );
   }
