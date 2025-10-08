@@ -3,9 +3,9 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 export interface PDFOffsets {
-  initiative?: number;
-  category?: number;
-  textField?: number;
+  organization?: number;
+  programName?: number;     // renamed from category
+  achievementText?: number; // renamed from textField
   recipientName?: number;
   certificateDate?: number;
   signature?: number;
@@ -26,9 +26,9 @@ const applyOffsets = (offsets?: PDFOffsets) => {
     }
   };
 
-  apply("initiative-text", offsets.initiative);
-  apply("category-text", offsets.category);
-  apply("textField-text", offsets.textField);
+  apply("organization-text", offsets.organization);
+  apply("programName-text", offsets.programName);
+  apply("achievement-text", offsets.achievementText);
   apply("recipientName-text", offsets.recipientName);
   apply("certificateDate-text", offsets.certificateDate);
   apply("signature-text", offsets.signature);
@@ -66,7 +66,7 @@ export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
   pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
   pdf.save("certificate.pdf");
 
-  resetOffsets(); // restore original positions
+  resetOffsets();
 };
 
 export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
@@ -78,12 +78,12 @@ export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
 
   const scale = 3;
   const canvas = await html2canvas(certificateElement, { scale });
-  const imgData = canvas.toDataURL("image/jpeg", 1.0); // full quality JPEG
+  const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
   const link = document.createElement("a");
   link.href = imgData;
   link.download = "certificate.jpeg";
   link.click();
 
-  resetOffsets(); // restore original positions
+  resetOffsets();
 };

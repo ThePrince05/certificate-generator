@@ -22,9 +22,9 @@ import {
 
 // Max lengths for validation
 const MAX_LENGTHS: Record<CertificateFields, number> = {
-  initiative: 25,
-  category: 54,
-  textField: 188,
+  organization: 25,
+  programName: 54,
+  achievementText: 188,
   recipientName: 15,
   certificateDate: 22,
 };
@@ -47,15 +47,13 @@ export default function Home() {
   const { selectedOrg } = useOrganization();
   const router = useRouter();
 
-  
-  // 🔄 Auto-redirect to select-organization if none selected
+  // Redirect if no organization selected
   useEffect(() => {
     if (!selectedOrg) {
       router.push("/select-organization");
     }
   }, [selectedOrg, router]);
 
-  // Show loading while redirecting
   if (!selectedOrg) {
     return (
       <div className="text-center p-10">
@@ -64,7 +62,7 @@ export default function Home() {
     );
   }
 
-  // ✅ Validation function
+  // Validate batch
   const validateBatch = (data: CertificateData[]) => {
     const invalidRows: string[] = [];
     const validated: CertificateData[] = data.map((item, index) => {
@@ -85,7 +83,6 @@ export default function Home() {
     return { validated, invalidRows };
   };
 
-  // ✅ CSV Upload
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,27 +111,25 @@ export default function Home() {
     return invalidRows.length === 0;
   };
 
-  // ✅ Shared render helper for CertificateTemplate
   const renderCertificate = (item: CertificateData) => (
-  <CertificateTemplate
-    initiative={item.initiative}
-    category={item.category}
-    textfield={item.textField}
-    recipientName={item.recipientName}
-    certificateDate={item.certificateDate || getCertificateDate()}
-    templateUrl={selectedOrg.templateUrl}  // ✅ Added this line
-    pdfOffsets={{
-      initiative: -30,
-      category: -15,
-      textField: -8,
-      recipientName: -10,
-      certificateDate: -2,
-      signature: 8,
-      signatory: -2,
-    }}
-  />
-);
-
+    <CertificateTemplate
+      organization={item.organization}
+      programName={item.programName}
+      achievementText={item.achievementText}
+      recipientName={item.recipientName}
+      certificateDate={item.certificateDate || getCertificateDate()}
+      templateUrl={selectedOrg.templateUrl}
+      pdfOffsets={{
+        organization: -30,
+        programName: -15,
+        achievementText: -8,
+        recipientName: -10,
+        certificateDate: -2,
+        signature: 8,
+        signatory: -2,
+      }}
+    />
+  );
 
   // ---- Batch PDF Download ----
   const handleBatchDownloadPDF = async () => {
@@ -224,23 +219,26 @@ export default function Home() {
     }
   };
 
-  // ✅ Main UI
   return (
     <div className="space-y-8 p-8">
-      <h1 className="text-4xl font-bold text-center">
-        {selectedOrg.name} 
-      </h1>
-  <div className="flex justify-center mb-6">
-    <button
-  onClick={() => router.push("/select-organization")}
-  className="fixed top-6 left-6 px-3 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
->
-  ← Back
-</button>
+      <h1 className="text-4xl font-bold text-center">{selectedOrg.name}</h1>
 
-  </div>
+      <div className="flex justify-center mb-6">
+        <button
+          onClick={() => router.push("/select-organization")}
+          className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
+        >
+          ← Back
+        </button>
+      </div>
 
-      <CertificateForm onSubmit={(data: CertificateData) => setFormData(data)} />
+     <CertificateForm
+  initialValues={{
+    organization: selectedOrg.name, // pre-fill organization field
+  }}
+  onSubmit={(data: CertificateData) => setFormData(data)}
+/>
+
 
       {/* CSV upload + buttons */}
       <div className="flex justify-center my-6">
@@ -286,9 +284,9 @@ export default function Home() {
             <button
               onClick={() =>
                 generatePDF({
-                  initiative: -30,
-                  category: -14,
-                  textField: -15,
+                  organization: -30,
+                  programName: -14,
+                  achievementText: -15,
                   recipientName: -18,
                   certificateDate: -10,
                   signature: -20,
@@ -302,9 +300,9 @@ export default function Home() {
             <button
               onClick={() =>
                 generateJPEG({
-                  initiative: -30,
-                  category: -14,
-                  textField: -15,
+                  organization: -30,
+                  programName: -14,
+                  achievementText: -15,
                   recipientName: -18,
                   certificateDate: -10,
                   signature: -20,

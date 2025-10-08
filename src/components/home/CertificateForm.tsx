@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTemplates } from "../../app/context/TemplateContext";
+import { CleanCertificateData } from "../../types/certificates";
 
 interface FormFields {
-  initiative: string;
-  category: string;
-  textField: string;
+  organization: string;  
+  programName: string;
+  achievementText: string;
   recipientName: string;
   certificateDate: string;
   signature?: string;
@@ -15,28 +16,39 @@ interface FormFields {
 }
 
 const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
-  initiative: 25,
-  category: 54,
-  textField: 188,
+  programName: 54,
+  achievementText: 188,
   recipientName: 15,
   certificateDate: 22,
 };
 
 export default function CertificateForm({
+  initialValues,
   onSubmit,
 }: {
+  initialValues?: Partial<CleanCertificateData>;
   onSubmit: (data: FormFields) => void;
 }) {
   const router = useRouter();
   const { groups } = useTemplates();
 
-  const [formData, setFormData] = useState<FormFields>({
-    initiative: "",
-    category: "",
-    textField: "",
-    recipientName: "",
-    certificateDate: "",
-  });
+ const [formData, setFormData] = useState<FormFields>({
+  organization: initialValues?.organization || "",
+  programName: "", // start empty
+  achievementText: "",
+  recipientName: "",
+  certificateDate: "",
+});
+
+useEffect(() => {
+  if (groups.length && !formData.programName) {
+    setFormData((prev) => ({
+      ...prev,
+      programName: groups[0].programName,
+      achievementText: groups[0].achievementText,
+    }));
+  }
+}, [groups]);
 
   const [isEditingDate, setIsEditingDate] = useState(false);
   const today = new Date();
@@ -52,15 +64,14 @@ export default function CertificateForm({
     }));
   }, [selectedMonth, selectedYear]);
 
-  const handleInitiativeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newInitiative = e.target.value;
-    const defaults = groups.find((g) => g.initiative === newInitiative);
+  const handleProgramSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newProgram = e.target.value;
+    const defaults = groups.find((g) => g.programName === newProgram);
 
     setFormData((prev) => ({
       ...prev,
-      initiative: newInitiative,
-      category: defaults ? defaults.category : prev.category,
-      textField: defaults ? defaults.textField : prev.textField,
+      programName: newProgram,
+      achievementText: defaults ? defaults.achievementText : prev.achievementText,
     }));
   };
 
@@ -80,7 +91,6 @@ export default function CertificateForm({
     e.preventDefault();
     for (const key in MAX_LENGTHS) {
       const field = key as keyof FormFields;
-      if (field === "initiative") continue;
       const max = MAX_LENGTHS[field];
       if (max && (formData[field] || "").length > max) {
         alert(`"${field}" exceeds the maximum of ${max} characters.`);
@@ -102,55 +112,41 @@ export default function CertificateForm({
   };
 
   return (
-    
     <form
       onSubmit={handleSubmit}
       className="space-y-4 max-w-md mx-auto p-4 border rounded shadow"
     >
-      {/* Initiative dropdown */}
+      {/* Program Name dropdown */}
       <div>
-        <label className="block font-semibold mb-1">Initiative</label>
+        <label className="block font-semibold mb-1">Program Name</label>
         <select
-          name="initiative"
-          value={formData.initiative}
-          onChange={handleInitiativeSelect}
+          name="programName"
+          value={formData.programName}
+          onChange={handleProgramSelect}
           required
           className="border p-2 w-full"
         >
-          <option value="">-- Select Initiative --</option>
           {groups.map((g) => (
-            <option key={g.initiative} value={g.initiative}>
-              {g.initiative}
+            <option key={g.id} value={g.programName}>
+              {g.programName}
             </option>
           ))}
         </select>
+        {renderCounter("programName")}
       </div>
 
-      {/* Category */}
-      <div>
-        <input
-          name="category"
-          placeholder="Category"
-          value={formData.category}
-          onChange={handleChange}
-          required
-          className="border p-2 w-full mb-2"
-        />
-        {renderCounter("category")}
-      </div>
-
-      {/* Text Field */}
+      {/* Achievement Text */}
       <div>
         <textarea
-          name="textField"
-          placeholder="Enter main certificate text here"
-          value={formData.textField}
+          name="achievementText"
+          placeholder="Enter achievement text here"
+          value={formData.achievementText}
           onChange={handleChange}
           required
           className="border p-2 w-full resize-none"
           rows={4}
         />
-        {renderCounter("textField")}
+        {renderCounter("achievementText")}
       </div>
 
       {/* Recipient Name */}

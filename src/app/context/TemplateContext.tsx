@@ -5,9 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export interface TemplateGroup {
   id: string;
-  initiative: string;
-  category: string;
-  textField: string;
+  programName: string;
+  achievementText: string;
 }
 
 interface TemplateContextType {
@@ -24,23 +23,21 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
   const defaultGroups: TemplateGroup[] = [
     {
       id: uuidv4(),
-      initiative: "Planned Acts of Kindness",
-      category: "Karma Club Member",
-      textField:
+      programName: "Karma Club Member",
+      achievementText:
         "I Hereby Make a PAK to Treat Others with Respect & Kindness and to Go Through Life from this Day Forward Acting Towards Others as I Wish to Be Treated Myself.",
     },
     {
       id: uuidv4(),
-      initiative: "One Planet - One People",
-      category: "Global Ambassador",
-      textField:
+      programName: "Global Ambassador",
+      achievementText:
         "I hereby pledge I am committed to the Collaborative Sustainability initiatives of One Planet - One People & I Volunteer to actively work for the betterment of Kids, People & The Planet.",
     },
   ];
 
   const [groups, setGroupsState] = useState<TemplateGroup[]>(defaultGroups);
 
-  // 🧩 Load from localStorage once (on first mount)
+  // Load saved groups from localStorage once
   useEffect(() => {
     const saved = localStorage.getItem("templateGroups");
     if (saved) {
@@ -53,7 +50,7 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // 💾 Save to localStorage whenever groups change
+  // Save to localStorage whenever groups change
   useEffect(() => {
     localStorage.setItem("templateGroups", JSON.stringify(groups));
   }, [groups]);

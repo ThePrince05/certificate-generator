@@ -6,20 +6,20 @@ import { useTemplates } from "../context/TemplateContext";
 import { v4 as uuidv4 } from "uuid";
 
 const MAX_LENGTHS = {
-  initiative: 25,
-  category: 54,
-  textField: 188,
+  programName: 54,
+  achievementText: 188,
 };
+
 
 export default function TemplateGroupsPage() {
   const router = useRouter();
   const { groups, addGroup, updateGroup, deleteGroup, setGroups } = useTemplates();
 
-  const [newGroup, setNewGroup] = useState({
-    initiative: "",
-    category: "",
-    textField: "",
-  });
+const [newGroup, setNewGroup] = useState({
+  programName: "",
+  achievementText: "",
+});
+
 
   const hasLoaded = useRef(false);
 
@@ -49,12 +49,12 @@ export default function TemplateGroupsPage() {
     }
   }, [groups]);
 
-  const handleAddGroup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroup.initiative.trim()) return alert("Initiative is required.");
-    addGroup({ ...newGroup, id: uuidv4() });
-    setNewGroup({ initiative: "", category: "", textField: "" });
-  };
+const handleAddGroup = (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!newGroup.programName.trim()) return alert("Program Name is required.");
+  addGroup({ ...newGroup, id: uuidv4() });
+  setNewGroup({ programName: "", achievementText: "" });
+};
 
   const renderCounter = (field: keyof typeof newGroup, value: string) => {
     const max = MAX_LENGTHS[field];
@@ -74,53 +74,37 @@ export default function TemplateGroupsPage() {
         </h1>
         <form onSubmit={handleAddGroup} className="space-y-4">
           <div>
-            <input
-              type="text"
-              placeholder="Initiative"
-              value={newGroup.initiative}
-              onChange={(e) =>
-                setNewGroup((prev) => ({
-                  ...prev,
-                  initiative: e.target.value.slice(0, MAX_LENGTHS.initiative),
-                }))
-              }
-              className="border p-3 w-full rounded mb-2"
-              required
-            />
-            {renderCounter("initiative", newGroup.initiative)}
-          </div>
+        <input
+          type="text"
+          placeholder="Program Name"
+          value={newGroup.programName}
+          onChange={(e) =>
+            setNewGroup((prev) => ({
+              ...prev,
+              programName: e.target.value.slice(0, MAX_LENGTHS.programName),
+            }))
+          }
+          className="border p-3 w-full rounded mb-2"
+          required
+        />
+        {renderCounter("programName", newGroup.programName)}
+      </div>
 
-          <div>
-            <input
-              type="text"
-              placeholder="Category"
-              value={newGroup.category}
-              onChange={(e) =>
-                setNewGroup((prev) => ({
-                  ...prev,
-                  category: e.target.value.slice(0, MAX_LENGTHS.category),
-                }))
-              }
-              className="border p-3 w-full rounded mb-2"
-            />
-            {renderCounter("category", newGroup.category)}
-          </div>
-
-          <div>
-            <textarea
-              placeholder="Text Field"
-              value={newGroup.textField}
-              onChange={(e) =>
-                setNewGroup((prev) => ({
-                  ...prev,
-                  textField: e.target.value.slice(0, MAX_LENGTHS.textField),
-                }))
-              }
-              className="border p-3 w-full rounded resize-none"
-              rows={4}
-            />
-            {renderCounter("textField", newGroup.textField)}
-          </div>
+      <div>
+        <textarea
+          placeholder="Achievement Text"
+          value={newGroup.achievementText}
+          onChange={(e) =>
+            setNewGroup((prev) => ({
+              ...prev,
+              achievementText: e.target.value.slice(0, MAX_LENGTHS.achievementText),
+            }))
+          }
+          className="border p-3 w-full rounded resize-none"
+          rows={4}
+        />
+        {renderCounter("achievementText", newGroup.achievementText)}
+      </div>
 
           <div className="flex items-center gap-3 mt-4">
             <button
@@ -155,43 +139,35 @@ export default function TemplateGroupsPage() {
           </p>
         ) : (
           <div className="space-y-4">
-            {groups.map((group) => (
-              <div
-                key={group.id}
-                className="border p-4 rounded shadow-sm bg-white"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold">{group.initiative}</h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        const initiative = prompt("Edit initiative:", group.initiative);
-                        if (!initiative) return;
-                        const category =
-                          prompt("Edit category:", group.category) || "";
-                        const textField =
-                          prompt("Edit text field:", group.textField) || "";
-                        updateGroup(group.id, { ...group, initiative, category, textField });
-                      }}
-                      className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 border rounded transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteGroup(group.id)}
-                      className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border rounded transition"
-                    >
-                      Delete
-                    </button>
-                  </div>
+           {groups.map((group) => (
+            <div key={group.id} className="border p-4 rounded shadow-sm bg-white">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-bold">{group.programName}</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const programName = prompt("Edit program name:", group.programName);
+                      if (!programName) return;
+                      const achievementText = prompt("Edit achievement text:", group.achievementText) || "";
+                      updateGroup(group.id, { ...group, programName, achievementText });
+                    }}
+                    className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 border rounded transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteGroup(group.id)}
+                    className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border rounded transition"
+                  >
+                    Delete
+                  </button>
                 </div>
-
-                {group.category && (
-                  <p className="text-sm font-medium text-gray-700 mb-1">{group.category}</p>
-                )}
-                <p className="text-sm text-gray-600 whitespace-pre-line">{group.textField}</p>
               </div>
-            ))}
+
+              <p className="text-sm text-gray-600 whitespace-pre-line">{group.achievementText}</p>
+            </div>
+          ))}
+
           </div>
         )}
       </section>

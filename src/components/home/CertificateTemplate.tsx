@@ -2,9 +2,9 @@
 import { headingFont, bodyFont } from "../../app/utils/fonts";
 
 interface PDFOffsets {
-  initiative?: number;
-  category?: number;
-  textField?: number;
+  organization?: number;
+  programName?: number;
+  achievementText?: number;
   recipientName?: number;
   certificateDate?: number;
   signature?: number;
@@ -12,9 +12,9 @@ interface PDFOffsets {
 }
 
 interface CertificateProps {
-  initiative: string;
-  category: string;
-  textfield: string;
+  organization: string;
+  programName: string;
+  achievementText: string;
   recipientName: string;
   certificateDate: string;
   templateUrl?: string;
@@ -26,9 +26,9 @@ const SIGNATURE_PATH = "/signature.png";
 const SIGNATORY_NAME = "Authorized By Lyle Benjamin, PAK Founder";
 
 export default function CertificateTemplate({
-  initiative,
-  category,
-  textfield,
+  organization,
+  programName,
+  achievementText,
   recipientName,
   certificateDate,
   templateUrl,
@@ -73,13 +73,13 @@ export default function CertificateTemplate({
           }}
         />
 
-        {/* Initiative (Heading) */}
+        {/* Organization (Heading) */}
         <h1
-          id="initiative-text"
+          id="organization-text"
           className={headingFont.className}
           style={{
             position: "absolute",
-            top: 90 + offset("initiative"),
+            top: 110 + offset("organization"),
             left: "20px",
             width: "800px",
             padding: "0 20px",
@@ -90,16 +90,16 @@ export default function CertificateTemplate({
             wordBreak: "break-word",
           }}
         >
-          {initiative}
+          {organization}
         </h1>
 
         {/* Category (Subheading) */}
         <h2
-          id="category-text"
+          id="programName-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 170 + offset("category"),
+            top: 170 + offset("programName"),
             left: "20px",
             width: "800px",
             fontSize: "20px",
@@ -109,18 +109,18 @@ export default function CertificateTemplate({
             fontWeight: 700,
           }}
         >
-          {category.replace(/\w\S*/g, (txt) => 
+          {programName.replace(/\w\S*/g, (txt) =>
             txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
           )}
         </h2>
 
-        {/* Textfield (PAK Paragraph) */}
+        {/* Achievement Text */}
         <p
-          id="textfield-text"
+          id="achievement-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 208 + offset("textField"),
+            top: 208 + offset("achievementText"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "650px",
@@ -130,7 +130,7 @@ export default function CertificateTemplate({
             color: mainColor,
           }}
         >
-          {textfield}
+          {achievementText}
         </p>
 
         {/* Recipient Name */}
@@ -153,9 +153,9 @@ export default function CertificateTemplate({
           {recipientName}
         </p>
 
-        {/* Awarded Date */}
+        {/* Certificate Date */}
         <p
-          id="awardedDate-text"
+          id="certificateDate-text"
           className={bodyFont.className}
           style={{
             position: "absolute",
@@ -173,7 +173,7 @@ export default function CertificateTemplate({
 
         {/* Signature */}
         <div
-          id="signature"
+          id="signature-text"
           style={{ 
             position: "absolute",
             top: 448 + offset("signature"),
