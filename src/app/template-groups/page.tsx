@@ -6,8 +6,8 @@ import { useTemplates } from "../context/TemplateContext";
 import { v4 as uuidv4 } from "uuid";
 
 const MAX_LENGTHS = {
-  programName: 54,
-  achievementText: 188,
+  programName: 58,
+  achievementText: 636,
 };
 
 

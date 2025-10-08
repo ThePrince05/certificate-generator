@@ -154,7 +154,7 @@ export default function Home() {
 
         const certificateEl = container.querySelector("#certificate") as HTMLElement;
         if (certificateEl) {
-          const canvas = await html2canvas(certificateEl, { scale: 4 });
+          const canvas = await html2canvas(certificateEl, { scale: 2 });
           const imgData = canvas.toDataURL("image/png");
 
           const pdf = new jsPDF({
@@ -201,7 +201,7 @@ export default function Home() {
 
         const certificateEl = container.querySelector("#certificate") as HTMLElement;
         if (certificateEl) {
-          const canvas = await html2canvas(certificateEl, { scale: 4 });
+          const canvas = await html2canvas(certificateEl, { scale: 2 });
           const imgData = canvas.toDataURL("image/jpeg", 0.9);
           const res = await fetch(imgData);
           const blob = await res.blob();
@@ -221,8 +221,17 @@ export default function Home() {
 
   return (
     <div className="space-y-8 p-8">
-      <h1 className="text-4xl font-bold text-center">{selectedOrg.name}</h1>
+     <div className="text-center mb-2">
+        {/* Big main heading */}
+        <h1 className="text-4xl font-extrabold mb-2">
+          Custom Certificate Program
+        </h1>
 
+        {/* Smaller subheading showing organization name */}
+        <h2 className="text-2xl font-semibold text-gray-700">
+          {selectedOrg.name}
+        </h2>
+      </div>
       <div className="flex justify-center mb-6">
         <button
           onClick={() => router.push("/select-organization")}
@@ -287,9 +296,9 @@ export default function Home() {
                   organization: -30,
                   programName: -14,
                   achievementText: -15,
-                  recipientName: -18,
+                  recipientName: -16,
                   certificateDate: -10,
-                  signature: -20,
+                  signature: 0,
                   signatory: -8,
                 })
               }
@@ -303,9 +312,9 @@ export default function Home() {
                   organization: -30,
                   programName: -14,
                   achievementText: -15,
-                  recipientName: -18,
+                  recipientName: -16,
                   certificateDate: -10,
-                  signature: -20,
+                  signature: 0,
                   signatory: -8,
                 })
               }

@@ -50,7 +50,7 @@ export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
   const resetOffsets = applyOffsets(pdfOffsets);
   await document.fonts.ready;
 
-  const scale = 4;
+  const scale = 2;
   const canvas = await html2canvas(certificateElement, { scale });
   const imgData = canvas.toDataURL("image/png");
 
@@ -76,7 +76,7 @@ export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
   const resetOffsets = applyOffsets(pdfOffsets);
   await document.fonts.ready;
 
-  const scale = 3;
+  const scale = 2;
   const canvas = await html2canvas(certificateElement, { scale });
   const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
