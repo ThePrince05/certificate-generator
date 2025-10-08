@@ -77,7 +77,7 @@ export default function CertificateTemplate({
           className={headingFont.className}
           style={{
             position: "absolute",
-            top: 120 + offset("organization"),
+            top: 90 + offset("organization"),
             left: "20px",
             width: "800px",
             padding: "0 20px",
@@ -97,7 +97,7 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 178 + offset("programName"),
+            top: 170 + offset("programName"),
             left: "20px",
             width: "800px",
             fontSize: "20px",
@@ -137,7 +137,7 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 345 + offset("recipientName"),
+            top: 335 + offset("recipientName"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "auto",
@@ -174,7 +174,7 @@ export default function CertificateTemplate({
           id="signature-text"
           style={{ 
             position: "absolute",
-            top: 440 + offset("signature"),
+            top: 448 + offset("signature"),
             left: "44%",
             transform: "translateX(-10%)",
           }}

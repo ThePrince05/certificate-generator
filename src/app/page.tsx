@@ -84,23 +84,29 @@ export default function Home() {
   };
 
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rawData = results.data as CertificateData[];
-        const { validated, invalidRows } = validateBatch(rawData);
-        setBatchCertificates(rawData);
-        setValidatedBatch(validated);
-        const errors = invalidRows.length ? invalidRows.join("\n") : null;
-        setValidationErrors(errors);
-        if (errors) setBatchWarning(errors);
-      },
-    });
-  };
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      const rawData = (results.data as CertificateData[]).map((item) => ({
+        ...item,
+        organization: selectedOrg.name, // automatically fill organization
+      }));
+
+      const { validated, invalidRows } = validateBatch(rawData);
+      setBatchCertificates(rawData);
+      setValidatedBatch(validated);
+
+      const errors = invalidRows.length ? invalidRows.join("\n") : null;
+      setValidationErrors(errors);
+      if (errors) setBatchWarning(errors);
+    },
+  });
+};
+
 
   const validateBeforeDownload = (data: CertificateData[]) => {
     const { validated, invalidRows } = validateBatch(data);
@@ -290,51 +296,57 @@ export default function Home() {
       {validatedBatch.length > 0 && (
         <div className="overflow-auto max-w-5xl mx-auto mt-4">
           <table className="min-w-full border border-black border-collapse">
-            <thead>
-              <tr className="bg-gray-200">
-                {Object.keys(MAX_LENGTHS).map((key) => (
-                  <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
-                    {key.toUpperCase()}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {validatedBatch.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-gray-50">
-                  {Object.keys(MAX_LENGTHS).map((fieldKey) => {
-                    const field = fieldKey as CertificateFields;
-                    const value = row[field] || "";
-                    const isInvalid = row[`${field}_invalid`] ?? false;
+           <thead>
+  <tr className="bg-gray-200">
+    {Object.keys(MAX_LENGTHS)
+      .filter((key) => key !== "organization") // remove organization
+      .map((key) => (
+        <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
+          {key.toUpperCase()}
+        </th>
+      ))}
+  </tr>
+</thead>
 
-                    return (
-                      <td
-                        key={fieldKey}
-                        className={`border px-2 py-1 ${
-                          isInvalid ? "bg-red-100 border-2 border-red-500" : "border-black"
-                        }`}
-                      >
-                        <input
-                          value={value}
-                          onChange={(e) => {
-                            const newData = [...validatedBatch];
-                            newData[rowIndex][field] = e.target.value;
-                            const { validated, invalidRows } = validateBatch(newData);
-                            setValidatedBatch(validated);
-                            setValidationErrors(
-                              invalidRows.length ? invalidRows.join("\n") : null
-                            );
-                          }}
-                          className={`w-full px-2 py-1 rounded focus:outline-none ${
-                            isInvalid ? "bg-red-100" : "bg-white"
-                          }`}
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
+<tbody>
+  {validatedBatch.map((row, rowIndex) => (
+    <tr key={rowIndex} className="hover:bg-gray-50">
+      {Object.keys(MAX_LENGTHS)
+        .filter((key) => key !== "organization") // remove organization
+        .map((fieldKey) => {
+          const field = fieldKey as CertificateFields;
+          const value = row[field] || "";
+          const isInvalid = row[`${field}_invalid`] ?? false;
+
+          return (
+            <td
+              key={fieldKey}
+              className={`border px-2 py-1 ${
+                isInvalid ? "bg-red-100 border-2 border-red-500" : "border-black"
+              }`}
+            >
+              <input
+                value={value}
+                onChange={(e) => {
+                  const newData = [...validatedBatch];
+                  newData[rowIndex][field] = e.target.value;
+                  const { validated, invalidRows } = validateBatch(newData);
+                  setValidatedBatch(validated);
+                  setValidationErrors(
+                    invalidRows.length ? invalidRows.join("\n") : null
+                  );
+                }}
+                className={`w-full px-2 py-1 rounded focus:outline-none ${
+                  isInvalid ? "bg-red-100" : "bg-white"
+                }`}
+              />
+            </td>
+          );
+        })}
+    </tr>
+  ))}
+</tbody>
+
           </table>
 
           {validationErrors && (

@@ -40,15 +40,6 @@ export default function CertificateForm({
   certificateDate: "",
 });
 
-useEffect(() => {
-  if (groups.length && !formData.programName) {
-    setFormData((prev) => ({
-      ...prev,
-      programName: groups[0].programName,
-      achievementText: groups[0].achievementText,
-    }));
-  }
-}, [groups]);
 
   const [isEditingDate, setIsEditingDate] = useState(false);
   const today = new Date();
@@ -116,24 +107,26 @@ useEffect(() => {
       onSubmit={handleSubmit}
       className="space-y-4 max-w-md mx-auto p-4 border rounded shadow"
     >
-      {/* Program Name dropdown */}
-      <div>
-        <label className="block font-semibold mb-1">Program Name</label>
-        <select
-          name="programName"
-          value={formData.programName}
-          onChange={handleProgramSelect}
-          required
-          className="border p-2 w-full mb-2"
-        >
-          {groups.map((g) => (
-            <option key={g.id} value={g.programName}>
-              {g.programName}
-            </option>
-          ))}
-        </select>
-        {renderCounter("programName")}
-      </div>
+     {/* Program Name dropdown */}
+    <div>
+      <label className="block font-semibold mb-1">Program Name</label>
+      <select
+        name="programName"
+        value={formData.programName}
+        onChange={handleProgramSelect}
+        required
+        className="border p-2 w-full mb-1"
+      >
+        <option value="">-- Select Program --</option> {/* 👈 new default option */}
+
+        {groups.map((g) => (
+          <option key={g.id} value={g.programName}>
+            {g.programName}
+          </option>
+        ))}
+      </select>
+    </div>
+
 
       {/* Achievement Text */}
       <div>
