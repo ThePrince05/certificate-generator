@@ -117,7 +117,7 @@ export default function CertificateForm({
         required
         className="border p-2 w-full mb-1"
       >
-        <option value="">-- Select Program --</option> {/* 👈 new default option */}
+        <option value="" disabled>-- Select Program --</option> {/* 👈 new default option */}
 
         {groups.map((g) => (
           <option key={g.id} value={g.programName}>

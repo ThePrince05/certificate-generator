@@ -31,10 +31,11 @@ export default function SelectOrganizationPage() {
   const router = useRouter();
 
   // ✅ Typed function argument
-  const handleSelect = (org: Organization) => {
-    selectOrg(org);
-    router.push("/"); // go to certificate generator
-  };
+ const handleSelect = (org: Organization) => {
+  selectOrg(org);
+  router.push("/generate"); // go to mode selection
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 pt-16">
