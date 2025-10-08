@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useOrganization } from "../context/OrganizationContext";
 
+// ✅ Properly typed organization interface
 interface Organization {
   id: string;
   name: string;
@@ -29,6 +30,7 @@ export default function SelectOrganizationPage() {
   const { selectOrg } = useOrganization();
   const router = useRouter();
 
+  // ✅ Typed function argument
   const handleSelect = (org: Organization) => {
     selectOrg(org);
     router.push("/"); // go to certificate generator
@@ -49,7 +51,7 @@ export default function SelectOrganizationPage() {
 
         {/* Organization grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {organizations.map((org) => (
+          {organizations.map((org: Organization) => (
             <div
               key={org.id}
               onClick={() => handleSelect(org)}
