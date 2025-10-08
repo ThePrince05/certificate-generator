@@ -19,6 +19,7 @@ interface CertificateProps {
   certificateDate: string;
   templateUrl?: string;
   pdfOffsets?: PDFOffsets;
+  isPreview?: boolean; // new
 }
 
 // ✅ constants (instead of props)
@@ -33,11 +34,12 @@ export default function CertificateTemplate({
   certificateDate,
   templateUrl,
   pdfOffsets,
+  isPreview = false, // default false
 }: CertificateProps) {
   const mainColor = "#695511"; // main font color
 
-  // Safely get optional offsets
-  const offset = (key: keyof PDFOffsets) => pdfOffsets?.[key] ?? 0;
+  // Safely get optional offsets, ignore if preview
+  const offset = (key: keyof PDFOffsets) => (isPreview ? 0 : pdfOffsets?.[key] ?? 0);
 
   return (
     <div
@@ -66,14 +68,10 @@ export default function CertificateTemplate({
         <img
           src={templateUrl}
           alt="Certificate Template"
-          style={{
-            width: "100%",
-            height: "auto",
-            display: "block",
-          }}
+          style={{ width: "100%", height: "auto", display: "block" }}
         />
 
-        {/* Organization (Heading) */}
+        {/* Organization */}
         <h1
           id="organization-text"
           className={headingFont.className}
@@ -93,7 +91,7 @@ export default function CertificateTemplate({
           {organization}
         </h1>
 
-        {/* Category (Subheading) */}
+        {/* Program Name */}
         <h2
           id="programName-text"
           className={bodyFont.className}

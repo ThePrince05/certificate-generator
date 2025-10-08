@@ -111,25 +111,27 @@ export default function Home() {
     return invalidRows.length === 0;
   };
 
-  const renderCertificate = (item: CertificateData) => (
-    <CertificateTemplate
-      organization={item.organization}
-      programName={item.programName}
-      achievementText={item.achievementText}
-      recipientName={item.recipientName}
-      certificateDate={item.certificateDate || getCertificateDate()}
-      templateUrl={selectedOrg.templateUrl}
-      pdfOffsets={{
-        organization: -30,
-        programName: -15,
-        achievementText: -8,
-        recipientName: -10,
-        certificateDate: -2,
-        signature: 8,
-        signatory: -2,
-      }}
-    />
-  );
+ const renderCertificate = (item: CertificateData, isPreview = false) => (
+  <CertificateTemplate
+    organization={item.organization}
+    programName={item.programName}
+    achievementText={item.achievementText}
+    recipientName={item.recipientName}
+    certificateDate={item.certificateDate || getCertificateDate()}
+    templateUrl={selectedOrg.templateUrl}
+    pdfOffsets={{
+      organization: -30,
+      programName: -15,
+      achievementText: -8,
+      recipientName: -10,
+      certificateDate: -2,
+      signature: 8,
+      signatory: -2,
+    }}
+    isPreview={isPreview} // <-- pass it here
+  />
+);
+
 
   // ---- Batch PDF Download ----
   const handleBatchDownloadPDF = async () => {
@@ -223,7 +225,7 @@ export default function Home() {
     <div className="space-y-8 p-8">
      <div className="text-center mb-2">
         {/* Big main heading */}
-        <h1 className="text-4xl font-extrabold mb-2">
+        <h1 className="text-4xl font-extrabold mb-4">
           Custom Certificate Program
         </h1>
 
@@ -284,47 +286,123 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Single Certificate Preview */}
-      {formData && (
-        <>
-          {renderCertificate(formData)}
+ {/* Batch Preview Table */}
+      {validatedBatch.length > 0 && (
+        <div className="overflow-auto max-w-5xl mx-auto mt-4">
+          <table className="min-w-full border border-black border-collapse">
+            <thead>
+              <tr className="bg-gray-200">
+                {Object.keys(MAX_LENGTHS).map((key) => (
+                  <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
+                    {key.toUpperCase()}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {validatedBatch.map((row, rowIndex) => (
+                <tr key={rowIndex} className="hover:bg-gray-50">
+                  {Object.keys(MAX_LENGTHS).map((fieldKey) => {
+                    const field = fieldKey as CertificateFields;
+                    const value = row[field] || "";
+                    const isInvalid = row[`${field}_invalid`] ?? false;
 
-          <div className="flex justify-center gap-4 mt-4">
+                    return (
+                      <td
+                        key={fieldKey}
+                        className={`border px-2 py-1 ${
+                          isInvalid ? "bg-red-100 border-2 border-red-500" : "border-black"
+                        }`}
+                      >
+                        <input
+                          value={value}
+                          onChange={(e) => {
+                            const newData = [...validatedBatch];
+                            newData[rowIndex][field] = e.target.value;
+                            const { validated, invalidRows } = validateBatch(newData);
+                            setValidatedBatch(validated);
+                            setValidationErrors(
+                              invalidRows.length ? invalidRows.join("\n") : null
+                            );
+                          }}
+                          className={`w-full px-2 py-1 rounded focus:outline-none ${
+                            isInvalid ? "bg-red-100" : "bg-white"
+                          }`}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {validationErrors && (
             <button
-              onClick={() =>
-                generatePDF({
-                  organization: -30,
-                  programName: -14,
-                  achievementText: -15,
-                  recipientName: -16,
-                  certificateDate: -10,
-                  signature: 0,
-                  signatory: -8,
-                })
-              }
-              className="bg-green-500 text-white px-4 py-2 rounded"
+              onClick={() => setBatchWarning(validationErrors)}
+              className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
             >
-              Download PDF
+              Show Errors
             </button>
-            <button
-              onClick={() =>
-                generateJPEG({
-                  organization: -30,
-                  programName: -14,
-                  achievementText: -15,
-                  recipientName: -16,
-                  certificateDate: -10,
-                  signature: 0,
-                  signatory: -8,
-                })
-              }
-              className="bg-yellow-500 text-white px-4 py-2 rounded"
-            >
-              Download JPEG
-            </button>
-          </div>
-        </>
+          )}
+        </div>
       )}
+
+       {batchWarning && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 max-w-lg w-full bg-red-600 text-white p-4 rounded shadow-lg z-50 animate-fade-in">
+          <strong className="block mb-2">CSV Errors:</strong>
+          <pre className="whitespace-pre-wrap text-sm">{batchWarning}</pre>
+          <button
+            onClick={() => setBatchWarning(null)}
+            className="mt-3 px-3 py-1 bg-white text-red-600 rounded hover:bg-gray-100 transition"
+          >
+            Close
+          </button>
+        </div>
+      )}
+
+     {/* Single Certificate Preview */}
+{formData && (
+  <>
+    {renderCertificate(formData, true)} {/* preview ignores offsets */}
+
+    <div className="flex justify-center gap-4 mt-4">
+      <button
+        onClick={() =>
+          generatePDF({
+            organization: -30,
+            programName: -14,
+            achievementText: -15,
+            recipientName: -16,
+            certificateDate: -10,
+            signature: 0,
+            signatory: -8,
+          })
+        }
+        className="bg-green-500 text-white px-4 py-2 rounded"
+      >
+        Download PDF
+      </button>
+      <button
+        onClick={() =>
+          generateJPEG({
+            organization: -30,
+            programName: -14,
+            achievementText: -15,
+            recipientName: -16,
+            certificateDate: -10,
+            signature: 0,
+            signatory: -8,
+          })
+        }
+        className="bg-yellow-500 text-white px-4 py-2 rounded"
+      >
+        Download JPEG
+      </button>
+    </div>
+  </>
+)}
+
     </div>
   );
 }

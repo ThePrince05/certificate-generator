@@ -40,14 +40,14 @@ export default function SelectOrganizationPage() {
     <div className="min-h-screen bg-gray-50 p-6 pt-16">
       <div className="max-w-4xl mx-auto text-center">
         {/* 🔹 Top title */}
-        <h1 className="text-4xl font-extrabold mb-2">
+        <h1 className="text-4xl font-extrabold mb-4">
           Custom Certificate Program
         </h1>
 
         {/* 🔹 Subtitle */}
-        <p className="text-gray-600 text-lg mb-10">
+         <h2 className="text-2xl font-semibold text-gray-700 mb-10">
           Select an organization to begin generating certificates.
-        </p>
+        </h2>
 
         {/* Organization grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -124,7 +124,7 @@ useEffect(() => {
           value={formData.programName}
           onChange={handleProgramSelect}
           required
-          className="border p-2 w-full"
+          className="border p-2 w-full mb-2"
         >
           {groups.map((g) => (
             <option key={g.id} value={g.programName}>
