@@ -4,6 +4,7 @@ import { useState } from "react";
 import CertificateForm from "../components/home/CertificateForm";
 import CertificateTemplate from "../components/home/CertificateTemplate";
 import { generatePDF, generateJPEG } from "./utils/generatePDF";
+import { useOrganization } from "./context/OrganizationContext";
 
 import Papa from "papaparse";
 import JSZip from "jszip";
@@ -43,7 +44,23 @@ export default function Home() {
   const [validationErrors, setValidationErrors] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Validation
+  const { selectedOrg } = useOrganization();
+
+  // 🔒 Guard clause for when no organization is selected
+  if (!selectedOrg) {
+    return (
+      <div className="text-center p-10">
+        <h1 className="text-4xl font-bold mb-6">Custom Certificate Program</h1>
+        <h2 className="text-2xl font-semibold mb-4">
+          <a href="/select-organization" className="text-blue-600 underline">
+            Select an organization
+          </a>
+        </h2>
+      </div>
+    );
+  }
+
+  // ✅ Validation function
   const validateBatch = (data: CertificateData[]) => {
     const invalidRows: string[] = [];
     const validated: CertificateData[] = data.map((item, index) => {
@@ -64,7 +81,7 @@ export default function Home() {
     return { validated, invalidRows };
   };
 
-  // CSV Upload
+  // ✅ CSV Upload
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -93,6 +110,26 @@ export default function Home() {
     return invalidRows.length === 0;
   };
 
+  // ✅ Shared render helper for CertificateTemplate
+  const renderCertificate = (item: CertificateData) => (
+    <CertificateTemplate
+      initiative={item.initiative}
+      category={item.category}
+      textfield={item.textField}
+      recipientName={item.recipientName}
+      certificateDate={item.certificateDate || getCertificateDate()}
+      pdfOffsets={{
+        initiative: -30,
+        category: -15,
+        textField: -8,
+        recipientName: -10,
+        certificateDate: -2,
+        signature: 8,
+        signatory: -2,
+      }}
+    />
+  );
+
   // ---- Batch PDF Download ----
   const handleBatchDownloadPDF = async () => {
     if (!validatedBatch.length) return;
@@ -110,25 +147,7 @@ export default function Home() {
         document.body.appendChild(container);
 
         const root = ReactDOM.createRoot(container);
-        root.render(
-         <CertificateTemplate
-  initiative={item.initiative}
-  category={item.category}
-  textfield={item.textField} 
-  recipientName={item.recipientName}
-  certificateDate={item.certificateDate || getCertificateDate()} // match interface
-  pdfOffsets={{
-    initiative: -30,
-    category: -15,
-    textField: -8,
-    recipientName: -10,
-    certificateDate: -2,
-    signature: 8,
-    signatory: -2,
-  }}
-/>
-
-        );
+        root.render(renderCertificate(item));
 
         await new Promise((res) => setTimeout(res, 200));
 
@@ -152,7 +171,7 @@ export default function Home() {
       }
 
       const blob = await zip.generateAsync({ type: "blob" });
-      saveAs(blob, "certificates.zip");
+      saveAs(blob, `${selectedOrg.name}-certificates.zip`);
     } finally {
       setIsDownloading(false);
     }
@@ -175,24 +194,7 @@ export default function Home() {
         document.body.appendChild(container);
 
         const root = ReactDOM.createRoot(container);
-        root.render(
-          <CertificateTemplate
-            initiative={item.initiative}
-            category={item.category}
-            recipientName={item.recipientName}
-            certificateDate={item.certificateDate || getCertificateDate()}
-            textfield={item.textField}
-            pdfOffsets={{
-              initiative: -30,
-              category: -15,
-              textField: -8,
-              recipientName: -10,
-              certificateDate: -2,
-              signature: 8,
-              signatory: -2,
-            }}
-          />
-        );
+        root.render(renderCertificate(item));
 
         await new Promise((res) => setTimeout(res, 200));
 
@@ -210,15 +212,18 @@ export default function Home() {
       }
 
       const zipBlob = await zip.generateAsync({ type: "blob" });
-      saveAs(zipBlob, "certificates-jpeg.zip");
+      saveAs(zipBlob, `${selectedOrg.name}-certificates-jpeg.zip`);
     } finally {
       setIsDownloading(false);
     }
   };
 
+  // ✅ Main UI
   return (
     <div className="space-y-8 p-8">
-      <h1 className="text-4xl font-bold text-center">Custom Certificate Program</h1>
+      <h1 className="text-4xl font-bold text-center">
+        {selectedOrg.name} Certificate Program
+      </h1>
 
       <CertificateForm onSubmit={(data: CertificateData) => setFormData(data)} />
 
@@ -257,92 +262,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Batch Preview Table */}
-      {validatedBatch.length > 0 && (
-        <div className="overflow-auto max-w-5xl mx-auto mt-4">
-          <table className="min-w-full border border-black border-collapse">
-            <thead>
-              <tr className="bg-gray-200">
-                {Object.keys(MAX_LENGTHS).map((key) => (
-                  <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
-                    {key.toUpperCase()}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {validatedBatch.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-gray-50">
-                  {Object.keys(MAX_LENGTHS).map((fieldKey) => {
-                    const field = fieldKey as CertificateFields;
-                    const value = row[field] || "";
-                    const isInvalid = row[`${field}_invalid`] ?? false;
-
-                    return (
-                      <td
-                        key={fieldKey}
-                        className={`border px-2 py-1 ${
-                          isInvalid ? "bg-red-100 border-2 border-red-500" : "border-black"
-                        }`}
-                      >
-                        <input
-                          value={value}
-                          onChange={(e) => {
-                            const newData = [...validatedBatch];
-                            newData[rowIndex][field] = e.target.value;
-                            const { validated, invalidRows } = validateBatch(newData);
-                            setValidatedBatch(validated);
-                            setValidationErrors(
-                              invalidRows.length ? invalidRows.join("\n") : null
-                            );
-                          }}
-                          className={`w-full px-2 py-1 rounded focus:outline-none ${
-                            isInvalid ? "bg-red-100" : "bg-white"
-                          }`}
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {validationErrors && (
-            <button
-              onClick={() => setBatchWarning(validationErrors)}
-              className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Show Errors
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Error Popup */}
-      {batchWarning && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 max-w-lg w-full bg-red-600 text-white p-4 rounded shadow-lg z-50 animate-fade-in">
-          <strong className="block mb-2">CSV Errors:</strong>
-          <pre className="whitespace-pre-wrap text-sm">{batchWarning}</pre>
-          <button
-            onClick={() => setBatchWarning(null)}
-            className="mt-3 px-3 py-1 bg-white text-red-600 rounded hover:bg-gray-100 transition"
-          >
-            Close
-          </button>
-        </div>
-      )}
-
       {/* Single Certificate Preview */}
       {formData && (
         <>
-        <CertificateTemplate
-  initiative={formData.initiative}
-  category={formData.category}
-  textfield={formData.textField} // lowercase t
-  recipientName={formData.recipientName}
-  certificateDate={getCertificateDate()} // rename certificateDate → awardedDate
-/>
+          {renderCertificate(formData)}
 
           <div className="flex justify-center gap-4 mt-4">
             <button

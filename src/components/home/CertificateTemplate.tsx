@@ -31,7 +31,7 @@ export default function CertificateTemplate({
   textfield,
   recipientName,
   certificateDate,
-  templateUrl = "/templates/certificate-template.jpg",
+  templateUrl = "/templates/one-planet one-people/certificate-template.jpg",
   pdfOffsets,
 }: CertificateProps) {
   const mainColor = "#695511"; // main font color
