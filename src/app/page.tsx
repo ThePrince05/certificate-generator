@@ -116,23 +116,25 @@ export default function Home() {
 
   // ✅ Shared render helper for CertificateTemplate
   const renderCertificate = (item: CertificateData) => (
-    <CertificateTemplate
-      initiative={item.initiative}
-      category={item.category}
-      textfield={item.textField}
-      recipientName={item.recipientName}
-      certificateDate={item.certificateDate || getCertificateDate()}
-      pdfOffsets={{
-        initiative: -30,
-        category: -15,
-        textField: -8,
-        recipientName: -10,
-        certificateDate: -2,
-        signature: 8,
-        signatory: -2,
-      }}
-    />
-  );
+  <CertificateTemplate
+    initiative={item.initiative}
+    category={item.category}
+    textfield={item.textField}
+    recipientName={item.recipientName}
+    certificateDate={item.certificateDate || getCertificateDate()}
+    templateUrl={selectedOrg.templateUrl}  // ✅ Added this line
+    pdfOffsets={{
+      initiative: -30,
+      category: -15,
+      textField: -8,
+      recipientName: -10,
+      certificateDate: -2,
+      signature: 8,
+      signatory: -2,
+    }}
+  />
+);
+
 
   // ---- Batch PDF Download ----
   const handleBatchDownloadPDF = async () => {
@@ -226,8 +228,17 @@ export default function Home() {
   return (
     <div className="space-y-8 p-8">
       <h1 className="text-4xl font-bold text-center">
-        {selectedOrg.name} Certificate Program
+        {selectedOrg.name} 
       </h1>
+  <div className="flex justify-center mb-6">
+    <button
+  onClick={() => router.push("/select-organization")}
+  className="fixed top-6 left-6 px-3 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
+>
+  ← Back
+</button>
+
+  </div>
 
       <CertificateForm onSubmit={(data: CertificateData) => setFormData(data)} />
 
