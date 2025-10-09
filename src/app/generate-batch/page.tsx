@@ -18,7 +18,7 @@ import { CertificateData, CertificateFields } from "@/types/certificates";
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   organization: 25,
   programName: 54,
-  achievementText: 200,
+  achievementText: 315,
   recipientName: 15,
   certificateDate: 22,
 };
@@ -93,11 +93,11 @@ export default function GenerateBatch() {
       pdfOffsets={{
         organization: -30,
         programName: -15,
-        achievementText: -8,
-        recipientName: -10,
-        certificateDate: -2,
-        signature: 8,
-        signatory: -2,
+        achievementText: -18,
+        recipientName: -16,
+        certificateDate: -8,
+        signature: 1,
+        signatory: -10,
       }}
     />
   );

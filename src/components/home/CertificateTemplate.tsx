@@ -42,28 +42,29 @@ export default function CertificateTemplate({
   const offset = (key: keyof PDFOffsets) => (isPreview ? 0 : pdfOffsets?.[key] ?? 0);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#f3f4f6",
-        overflow: "auto",
-      }}
-    >
-      <div
-        id="certificate"
-        style={{
-          width: "838px",
-          height: "auto",
-          position: "relative",
-          flexShrink: 0,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          color: mainColor,
-        }}
-      >
+   <div
+  style={{
+    width: "100%",
+    minHeight: "100vh",
+    backgroundColor: "#fff",
+    overflowX: "auto",
+    overflowY: "auto",
+    padding: "1rem 0",
+    WebkitOverflowScrolling: "touch", // momentum scroll on iOS
+    touchAction: "pan-x",             // allow horizontal pan
+  }}
+>
+     <div
+    id="certificate"
+    style={{
+      width: "838px",
+      height: "auto",
+      position: "relative",
+      flexShrink: 0,
+      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      color: mainColor,
+    }}
+  >
         {/* Background image */}
         <img
           src={templateUrl}
@@ -97,7 +98,7 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 170 + offset("programName"),
+            top: 163 + offset("programName"),
             left: "20px",
             width: "800px",
             fontSize: "20px",
@@ -118,12 +119,12 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 208 + offset("achievementText"),
+            top: 200 + offset("achievementText"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "650px",
             fontSize: "21px",
-            lineHeight: 1.4,
+            lineHeight: 1.0,
             textAlign: "center",
             color: mainColor,
           }}
