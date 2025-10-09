@@ -17,8 +17,8 @@ import { CertificateData, CertificateFields } from "@/types/certificates";
 // Max lengths for validation
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   organization: 25,
-  programName: 54,
-  achievementText: 315,
+  programName: 65,
+  achievementText: 300,
   recipientName: 15,
   certificateDate: 22,
 };

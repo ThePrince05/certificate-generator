@@ -94,24 +94,25 @@ export default function CertificateTemplate({
 
         {/* Program Name */}
         <h2
-          id="programName-text"
-          className={bodyFont.className}
-          style={{
-            position: "absolute",
-            top: 163 + offset("programName"),
-            left: "20px",
-            width: "800px",
-            fontSize: "20px",
-            lineHeight: 1.3,
-            textAlign: "center",
-            color: mainColor,
-            fontWeight: 700,
-          }}
-        >
-          {programName.replace(/\w\S*/g, (txt) =>
-            txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-          )}
-        </h2>
+        id="programName-text"
+        className={bodyFont.className}
+        style={{
+          position: "absolute",
+          top: 163 + offset("programName"),
+          left: "20px",
+          width: "800px",
+          fontSize: programName.length > 54 ? "17px" : "20px", // dynamic font size
+          lineHeight: 1.3,
+          textAlign: "center",
+          color: mainColor,
+          fontWeight: 700,
+        }}
+      >
+        {programName.replace(/\w\S*/g, (txt) =>
+          txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+        )}
+      </h2>
+
 
         {/* Achievement Text */}
         <p

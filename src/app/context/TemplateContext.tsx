@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
+import Papa from "papaparse";
 
 export interface TemplateGroup {
   id: string;
@@ -15,38 +16,42 @@ interface TemplateContextType {
   updateGroup: (id: string, updated: TemplateGroup, orgId: string) => void;
   deleteGroup: (id: string, orgId: string) => void;
   setGroups: (groups: TemplateGroup[], orgId: string) => void;
-  loadGroups: (orgId: string) => void;
+  loadGroups: (orgId: string) => Promise<void>;
 }
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
 
-const ORG_DEFAULTS: Record<string, TemplateGroup[]> = {
-  "opop": [
-    {
-      id: uuidv4(),
-      programName: "Global Ambassador",
-      achievementText:
-        "I hereby pledge I am committed to the Collaborative Sustainability initiatives of One Planet - One People & I Volunteer to actively work for the betterment of Kids, People & The Planet.",
-    },
-    {
-      id: uuidv4(),
-      programName: "Sustainability Champion",
-      achievementText: "Recognizing commitment to environmental and social initiatives.",
-    },
-  ],
-  "pak": [
-    {
-      id: uuidv4(),
-      programName: "Karma Club Member",
-      achievementText:
-        "I Hereby Make a PAK to Treat Others with Respect & Kindness and to Go Through Life from this Day Forward Acting Towards Others as I Wish to Be Treated Myself.",
-    },
-    {
-      id: uuidv4(),
-      programName: "Kindness Ambassador",
-      achievementText: "Awarded for outstanding contributions to Planned Acts of Kindness programs.",
-    },
-  ],
+const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
+  const fileMap: Record<string, string> = {
+    opop: "/data/opop.csv",
+    pak: "/data/pak.csv",
+  };
+
+  const url = fileMap[orgId];
+  if (!url) return [];
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return [];
+
+    const csvText = await response.text();
+
+    const parsed = Papa.parse<{ programName: string; achievementText: string }>(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      delimiter: ";",
+    });
+
+    return parsed.data
+      .filter((row) => row.programName && row.achievementText)
+      .map((row) => ({
+        id: uuidv4(),
+        programName: row.programName.trim(),
+        achievementText: row.achievementText.trim(),
+      }));
+  } catch {
+    return [];
+  }
 };
 
 export const TemplateProvider = ({ children }: { children: ReactNode }) => {
@@ -57,32 +62,20 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     const parsed: Record<string, TemplateGroup[]> = saved ? JSON.parse(saved) : {};
     parsed[orgId] = groups;
     localStorage.setItem("templateGroupsByOrg", JSON.stringify(parsed));
-    console.log("[TemplateContext] Saved groups for org:", orgId, groups);
   }, []);
 
-  const loadGroups = useCallback((orgId: string) => {
-    console.log("[TemplateContext] loadGroups called for org:", orgId);
-
+  const loadGroups = useCallback(async (orgId: string) => {
     const saved = localStorage.getItem("templateGroupsByOrg");
     const parsed: Record<string, TemplateGroup[]> = saved ? JSON.parse(saved) : {};
-    console.log("[TemplateContext] localStorage keys:", Object.keys(parsed));
-
     let groupsForOrg = parsed[orgId] || [];
+
     if (groupsForOrg.length === 0) {
-      console.log("[TemplateContext] No saved groups, using defaults...");
-      groupsForOrg = (ORG_DEFAULTS[orgId] || []).map((g) => ({ ...g, id: uuidv4() }));
+      groupsForOrg = await fetchGroupsFromCSV(orgId);
       parsed[orgId] = groupsForOrg;
       localStorage.setItem("templateGroupsByOrg", JSON.stringify(parsed));
-      console.log("[TemplateContext] Default groups loaded for org:", orgId, groupsForOrg);
     }
 
-    setGroupsState((prev) => {
-      const prevStr = JSON.stringify(prev);
-      const newStr = JSON.stringify(groupsForOrg);
-      if (prevStr === newStr) return prev; // prevents double updates
-      console.log("[TemplateContext] Setting groupsState:", groupsForOrg);
-      return groupsForOrg;
-    });
+    setGroupsState(groupsForOrg);
   }, []);
 
   const addGroup = useCallback(
@@ -90,7 +83,6 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
       setGroupsState((prev) => {
         const updated = [...prev, group];
         saveGroups(updated, orgId);
-        console.log("[TemplateContext] Added group:", group);
         return updated;
       });
     },
@@ -102,7 +94,6 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
       setGroupsState((prev) => {
         const updated = prev.map((g) => (g.id === id ? updatedGroup : g));
         saveGroups(updated, orgId);
-        console.log("[TemplateContext] Updated group:", updatedGroup);
         return updated;
       });
     },
@@ -114,7 +105,6 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
       setGroupsState((prev) => {
         const updated = prev.filter((g) => g.id !== id);
         saveGroups(updated, orgId);
-        console.log("[TemplateContext] Deleted group id:", id);
         return updated;
       });
     },
@@ -125,7 +115,6 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     (newGroups: TemplateGroup[], orgId: string) => {
       setGroupsState(() => {
         saveGroups(newGroups, orgId);
-        console.log("[TemplateContext] setGroups called:", newGroups);
         return newGroups;
       });
     },
