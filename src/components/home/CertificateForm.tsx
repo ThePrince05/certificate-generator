@@ -17,7 +17,7 @@ interface FormFields {
 
 const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
   programName: 58,
-  achievementText: 636,
+  achievementText: 200,
   recipientName: 15,
   certificateDate: 22,
 };

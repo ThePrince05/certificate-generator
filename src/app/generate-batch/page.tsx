@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import CertificateForm from "@/components/home/CertificateForm";
 import CertificateTemplate from "@/components/home/CertificateTemplate";
 import { useOrganization } from "../context/OrganizationContext";
@@ -17,7 +18,7 @@ import { CertificateData, CertificateFields } from "@/types/certificates";
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   organization: 25,
   programName: 54,
-  achievementText: 188,
+  achievementText: 200,
   recipientName: 15,
   certificateDate: 22,
 };
@@ -176,7 +177,15 @@ export default function GenerateBatch() {
 
 
   return (
-    <div className="p-8 space-y-8">
+  <AnimatePresence mode="wait">
+    <motion.div
+      key="generate-batch"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="p-8 space-y-8"
+    >
       {/* Top header */}
       <div className="text-center mb-2">
         <h1 className="text-4xl font-extrabold mb-4">Generate Batch Certificates</h1>
@@ -184,46 +193,44 @@ export default function GenerateBatch() {
       </div>
 
       {/* Back button */}
-       <button
+      <button
         onClick={() => router.push("/generate")}
         className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
       >
         ← Change Generation
       </button>
 
-      {/* CSV upload */}
-     {/* CSV upload + download buttons */}
-<div className="flex justify-center my-6">
-  <div className="p-6 border rounded shadow bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-center gap-4">
-    <label className="font-semibold">Upload CSV for Batch</label>
-    <input
-      type="file"
-      accept=".csv"
-      onChange={handleCSVUpload}
-      className="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-    />
-    {validatedBatch.length > 0 && (
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={handleBatchDownloadPDF}
-          disabled={isDownloading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded shadow transition-all"
-        >
-          {isDownloading ? "Downloading..." : `Download PDF (${validatedBatch.length})`}
-        </button>
+      {/* CSV Upload + Download Buttons */}
+      <div className="flex justify-center my-6">
+        <div className="p-6 border rounded shadow bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-center gap-4">
+          <label className="font-semibold">Upload CSV for Batch</label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleCSVUpload}
+            className="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {validatedBatch.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleBatchDownloadPDF}
+                disabled={isDownloading}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded shadow transition-all"
+              >
+                {isDownloading ? "Downloading..." : `Download PDF (${validatedBatch.length})`}
+              </button>
 
-        <button
-          onClick={handleBatchDownloadJPEG}
-          disabled={isDownloading}
-          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-5 py-2 rounded shadow transition-all"
-        >
-          {isDownloading ? "Downloading..." : `Download JPEG (${validatedBatch.length})`}
-        </button>
+              <button
+                onClick={handleBatchDownloadJPEG}
+                disabled={isDownloading}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-5 py-2 rounded shadow transition-all"
+              >
+                {isDownloading ? "Downloading..." : `Download JPEG (${validatedBatch.length})`}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    )}
-  </div>
-</div>
-
 
       {/* Batch Table */}
       {validatedBatch.length > 0 && (
@@ -277,21 +284,23 @@ export default function GenerateBatch() {
               ))}
             </tbody>
           </table>
-
-          {batchWarning && (
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 max-w-lg w-full bg-red-600 text-white p-4 rounded shadow-lg z-50 animate-fade-in">
-              <strong className="block mb-2">CSV Errors:</strong>
-              <pre className="whitespace-pre-wrap text-sm">{batchWarning}</pre>
-              <button
-                onClick={() => setBatchWarning(null)}
-                className="mt-3 px-3 py-1 bg-white text-red-600 rounded hover:bg-gray-100 transition"
-              >
-                Close
-              </button>
-            </div>
-          )}
         </div>
       )}
-    </div>
-  );
+
+      {/* Batch Warning */}
+      {batchWarning && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 max-w-lg w-full bg-red-600 text-white p-4 rounded shadow-lg z-50 animate-fade-in">
+          <strong className="block mb-2">CSV Errors:</strong>
+          <pre className="whitespace-pre-wrap text-sm">{batchWarning}</pre>
+          <button
+            onClick={() => setBatchWarning(null)}
+            className="mt-3 px-3 py-1 bg-white text-red-600 rounded hover:bg-gray-100 transition"
+          >
+            Close
+          </button>
+        </div>
+      )}
+    </motion.div>
+  </AnimatePresence>
+);
 }
