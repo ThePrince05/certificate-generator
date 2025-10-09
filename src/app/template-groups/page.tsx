@@ -6,7 +6,7 @@ import { useTemplates, TemplateGroup } from "../context/TemplateContext";
 import { useOrganization } from "../context/OrganizationContext";
 import { v4 as uuidv4 } from "uuid";
 
-const MAX_LENGTHS = { programName: 58, achievementText: 200 };
+const MAX_LENGTHS = { programName: 58, achievementText: 636 };
 
 export default function TemplateGroupsPage() {
   const router = useRouter();

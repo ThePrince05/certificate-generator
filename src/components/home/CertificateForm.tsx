@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTemplates } from "../../app/context/TemplateContext";
 import { CleanCertificateData } from "../../types/certificates";
+import Select from "react-select";
 
 interface FormFields {
   organization: string;  
@@ -17,7 +18,7 @@ interface FormFields {
 
 const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
   programName: 58,
-  achievementText: 200,
+  achievementText: 636,
   recipientName: 15,
   certificateDate: 22,
 };
@@ -40,7 +41,6 @@ export default function CertificateForm({
     certificateDate: "",
   });
 
-
   const [isEditingDate, setIsEditingDate] = useState(false);
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
@@ -55,11 +55,16 @@ export default function CertificateForm({
     }));
   }, [selectedMonth, selectedYear]);
 
-  const handleProgramSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newProgram = e.target.value;
-    const defaults = groups.find((g) => g.programName === newProgram);
+  const programOptions = groups.map(g => ({
+    value: g.programName,
+    label: g.programName,
+  }));
 
-    setFormData((prev) => ({
+  const handleProgramSelect = (selected: { value: string; label: string } | null) => {
+    const newProgram = selected?.value || "";
+    const defaults = groups.find(g => g.programName === newProgram);
+
+    setFormData(prev => ({
       ...prev,
       programName: newProgram,
       achievementText: defaults ? defaults.achievementText : prev.achievementText,
@@ -105,25 +110,19 @@ export default function CertificateForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 max-w-md mx-auto p-4 border rounded shadow"
+      className="space-y-4 w-full border rounded shadow p-6"
     >
-      {/* Program Name dropdown */}
+
+      {/* Program Name autocomplete */}
       <div>
         <label className="block font-semibold mb-1">Program Name</label>
-        <select
-          name="programName"
-          value={formData.programName}
+        <Select
+          options={programOptions}
+          value={programOptions.find(o => o.value === formData.programName)}
           onChange={handleProgramSelect}
-          required
-          className="border p-2 w-full mb-1"
-        >
-          <option value="" disabled>-- Select Program --</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.programName}>
-              {g.programName}
-            </option>
-          ))}
-        </select>
+          placeholder="-- Select Program --"
+          isClearable
+        />
       </div>
 
       {/* Achievement Text */}
