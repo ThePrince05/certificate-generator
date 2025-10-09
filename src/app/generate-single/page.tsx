@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "../context/OrganizationContext";
+import { useTemplates } from "../context/TemplateContext";
 import CertificateForm from "@/components/home/CertificateForm";
 import CertificateTemplate from "@/components/home/CertificateTemplate";
 import { generatePDF, generateJPEG } from "../utils/generatePDF";
@@ -10,10 +11,10 @@ import { CleanCertificateData } from "@/types/certificates";
 
 export default function GenerateSingle() {
   const { selectedOrg } = useOrganization();
+  const { loadGroups, groups } = useTemplates();
   const router = useRouter();
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
 
-  // Auto-generate "Awarded <Month> <Year>"
   const getCertificateDate = () => {
     const today = new Date();
     const month = today.toLocaleString("en-GB", { month: "long" });
@@ -22,11 +23,14 @@ export default function GenerateSingle() {
   };
 
   useEffect(() => {
-    if (!selectedOrg) router.push("/select-organization");
-  }, [selectedOrg, router]);
+    if (!selectedOrg) {
+      router.push("/generate");
+      return;
+    }
+    loadGroups(selectedOrg.id);
+  }, [selectedOrg, router, loadGroups]);
 
-  if (!selectedOrg)
-    return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
+  if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
 
   return (
     <div className="p-8 space-y-8">
@@ -52,12 +56,12 @@ export default function GenerateSingle() {
 
       {formData && (
         <div className="mt-6 text-center">
-         <CertificateTemplate
-        {...formData}
-        templateUrl={selectedOrg.templateUrl}
-        isPreview
-        certificateDate={formData.certificateDate ?? getCertificateDate()}
-        />
+          <CertificateTemplate
+            {...formData}
+            templateUrl={selectedOrg.templateUrl}
+            isPreview
+            certificateDate={formData.certificateDate ?? getCertificateDate()}
+          />
 
           <div className="flex justify-center gap-4 mt-4">
             <button

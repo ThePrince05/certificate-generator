@@ -32,13 +32,13 @@ export default function CertificateForm({
   const router = useRouter();
   const { groups } = useTemplates();
 
- const [formData, setFormData] = useState<FormFields>({
-  organization: initialValues?.organization || "",
-  programName: "", // start empty
-  achievementText: "",
-  recipientName: "",
-  certificateDate: "",
-});
+  const [formData, setFormData] = useState<FormFields>({
+    organization: initialValues?.organization || "",
+    programName: "",
+    achievementText: "",
+    recipientName: "",
+    certificateDate: "",
+  });
 
 
   const [isEditingDate, setIsEditingDate] = useState(false);
@@ -107,26 +107,24 @@ export default function CertificateForm({
       onSubmit={handleSubmit}
       className="space-y-4 max-w-md mx-auto p-4 border rounded shadow"
     >
-     {/* Program Name dropdown */}
-    <div>
-      <label className="block font-semibold mb-1">Program Name</label>
-      <select
-        name="programName"
-        value={formData.programName}
-        onChange={handleProgramSelect}
-        required
-        className="border p-2 w-full mb-1"
-      >
-        <option value="" disabled>-- Select Program --</option> {/* 👈 new default option */}
-
-        {groups.map((g) => (
-          <option key={g.id} value={g.programName}>
-            {g.programName}
-          </option>
-        ))}
-      </select>
-    </div>
-
+      {/* Program Name dropdown */}
+      <div>
+        <label className="block font-semibold mb-1">Program Name</label>
+        <select
+          name="programName"
+          value={formData.programName}
+          onChange={handleProgramSelect}
+          required
+          className="border p-2 w-full mb-1"
+        >
+          <option value="" disabled>-- Select Program --</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.programName}>
+              {g.programName}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Achievement Text */}
       <div>
@@ -185,9 +183,7 @@ export default function CertificateForm({
               "January", "February", "March", "April", "May", "June",
               "July", "August", "September", "October", "November", "December",
             ].map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
+              <option key={m} value={m}>{m}</option>
             ))}
           </select>
 
@@ -197,11 +193,7 @@ export default function CertificateForm({
             className="border p-2 flex-1"
           >
             {Array.from({ length: 21 }, (_, i) => today.getFullYear() - i).map(
-              (y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              )
+              (y) => <option key={y} value={y}>{y}</option>
             )}
           </select>
         </div>

@@ -20,9 +20,8 @@ interface TemplateContextType {
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
 
-// Default templates per organization
 const ORG_DEFAULTS: Record<string, TemplateGroup[]> = {
-  "one-planet-one-people": [
+  "opop": [
     {
       id: uuidv4(),
       programName: "Global Ambassador",
@@ -35,7 +34,7 @@ const ORG_DEFAULTS: Record<string, TemplateGroup[]> = {
       achievementText: "Recognizing commitment to environmental and social initiatives.",
     },
   ],
-  "planned-acts-of-kindness": [
+  "pak": [
     {
       id: uuidv4(),
       programName: "Karma Club Member",
@@ -53,46 +52,45 @@ const ORG_DEFAULTS: Record<string, TemplateGroup[]> = {
 export const TemplateProvider = ({ children }: { children: ReactNode }) => {
   const [groups, setGroupsState] = useState<TemplateGroup[]>([]);
 
-  // Save groups to localStorage
   const saveGroups = useCallback((groups: TemplateGroup[], orgId: string) => {
     const saved = localStorage.getItem("templateGroupsByOrg");
     const parsed: Record<string, TemplateGroup[]> = saved ? JSON.parse(saved) : {};
     parsed[orgId] = groups;
     localStorage.setItem("templateGroupsByOrg", JSON.stringify(parsed));
+    console.log("[TemplateContext] Saved groups for org:", orgId, groups);
   }, []);
 
-  // Load groups for an organization
   const loadGroups = useCallback((orgId: string) => {
-  console.log("[TemplateContext] loadGroups called for org:", orgId);
+    console.log("[TemplateContext] loadGroups called for org:", orgId);
 
-  const saved = localStorage.getItem("templateGroupsByOrg");
-  const parsed: Record<string, TemplateGroup[]> = saved ? JSON.parse(saved) : {};
+    const saved = localStorage.getItem("templateGroupsByOrg");
+    const parsed: Record<string, TemplateGroup[]> = saved ? JSON.parse(saved) : {};
+    console.log("[TemplateContext] localStorage keys:", Object.keys(parsed));
 
-  let groupsForOrg = parsed[orgId] || [];
+    let groupsForOrg = parsed[orgId] || [];
+    if (groupsForOrg.length === 0) {
+      console.log("[TemplateContext] No saved groups, using defaults...");
+      groupsForOrg = (ORG_DEFAULTS[orgId] || []).map((g) => ({ ...g, id: uuidv4() }));
+      parsed[orgId] = groupsForOrg;
+      localStorage.setItem("templateGroupsByOrg", JSON.stringify(parsed));
+      console.log("[TemplateContext] Default groups loaded for org:", orgId, groupsForOrg);
+    }
 
-  if (groupsForOrg.length === 0) {
-    console.log("[TemplateContext] No saved groups, using defaults (or empty if none)");
-    groupsForOrg = (ORG_DEFAULTS[orgId] || []).map((g) => ({ ...g, id: uuidv4() }));
-    parsed[orgId] = groupsForOrg;
-    localStorage.setItem("templateGroupsByOrg", JSON.stringify(parsed));
-  }
-
-  // Only update state if it's actually different
-  setGroupsState((prev) => {
-    const prevStr = JSON.stringify(prev);
-    const newStr = JSON.stringify(groupsForOrg);
-    if (prevStr === newStr) return prev; // prevents double updates
-    console.log("[TemplateContext] Setting groupsState:", groupsForOrg);
-    return groupsForOrg;
-  });
-}, []);
-
+    setGroupsState((prev) => {
+      const prevStr = JSON.stringify(prev);
+      const newStr = JSON.stringify(groupsForOrg);
+      if (prevStr === newStr) return prev; // prevents double updates
+      console.log("[TemplateContext] Setting groupsState:", groupsForOrg);
+      return groupsForOrg;
+    });
+  }, []);
 
   const addGroup = useCallback(
     (group: TemplateGroup, orgId: string) => {
       setGroupsState((prev) => {
         const updated = [...prev, group];
         saveGroups(updated, orgId);
+        console.log("[TemplateContext] Added group:", group);
         return updated;
       });
     },
@@ -104,6 +102,7 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
       setGroupsState((prev) => {
         const updated = prev.map((g) => (g.id === id ? updatedGroup : g));
         saveGroups(updated, orgId);
+        console.log("[TemplateContext] Updated group:", updatedGroup);
         return updated;
       });
     },
@@ -115,6 +114,7 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
       setGroupsState((prev) => {
         const updated = prev.filter((g) => g.id !== id);
         saveGroups(updated, orgId);
+        console.log("[TemplateContext] Deleted group id:", id);
         return updated;
       });
     },
@@ -125,6 +125,7 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     (newGroups: TemplateGroup[], orgId: string) => {
       setGroupsState(() => {
         saveGroups(newGroups, orgId);
+        console.log("[TemplateContext] setGroups called:", newGroups);
         return newGroups;
       });
     },
