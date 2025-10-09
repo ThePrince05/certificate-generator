@@ -7,7 +7,10 @@ export const headingFont = localFont({
   src: "../../assets/fonts/Kingthings-foundation-heading.ttf",
   variable: "--font-heading",
   weight: "400",
+  style: "normal",
+  display: "swap",
 });
+
 
 // 🪶 Body Font (Google Cinzel)
 export const bodyFont = Cinzel({

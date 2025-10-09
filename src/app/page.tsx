@@ -7,7 +7,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    const timer = setTimeout(() => router.push("/select-organization"), 1000);
+    const timer = setTimeout(() => router.push("/generate"), 1000);
     return () => clearTimeout(timer);
   }, [router]);
 
