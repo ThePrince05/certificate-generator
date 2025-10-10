@@ -30,12 +30,17 @@ const getCertificateDate = () => {
   return `Awarded ${month} ${year}`;
 };
 
+// Build a union type for the validation keys: e.g. "organization_invalid" | "programName_invalid" | ...
+type ValidationKey = `${keyof CertificateData}_invalid`;
+
+// Certificate data extended with optional validation flags
+type CertificateDataWithValidation = CertificateData & Partial<Record<ValidationKey, boolean>>;
+
 export default function GenerateBatch() {
   const { selectedOrg } = useOrganization();
   const router = useRouter();
 
-  const [validatedBatch, setValidatedBatch] = useState<CertificateData[]>([]);
-  const [validationErrors, setValidationErrors] = useState<string | null>(null);
+  const [validatedBatch, setValidatedBatch] = useState<CertificateDataWithValidation[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -45,21 +50,29 @@ export default function GenerateBatch() {
 
   if (!selectedOrg) return <p className="p-8 text-center">Redirecting...</p>;
 
-  const validateBatch = (data: CertificateData[]) => {
+  const validateBatch = (
+    data: CertificateData[]
+  ): { validated: CertificateDataWithValidation[]; invalidRows: string[] } => {
     const invalidRows: string[] = [];
-    const validated = data.map((item, index) => {
-      const newItem: CertificateData = { ...item };
+
+    const validated: CertificateDataWithValidation[] = data.map((item, index) => {
+      const newItem: CertificateDataWithValidation = { ...item };
+
       (Object.keys(MAX_LENGTHS) as CertificateFields[]).forEach((key) => {
         const value = (item[key] ?? "").toString().trim();
+        const invalidKey = `${key}_invalid` as ValidationKey;
+
         if (value.length > MAX_LENGTHS[key]) {
-          (newItem as any)[`${key}_invalid`] = true;
+          newItem[invalidKey] = true;
           invalidRows.push(`Row ${index + 1}: "${key}" exceeds ${MAX_LENGTHS[key]} chars`);
         } else {
-          (newItem as any)[`${key}_invalid`] = false;
+          newItem[invalidKey] = false;
         }
       });
+
       return newItem;
     });
+
     return { validated, invalidRows };
   };
 
@@ -75,16 +88,15 @@ export default function GenerateBatch() {
           ...item,
           organization: selectedOrg.name,
         }));
+
         const { validated, invalidRows } = validateBatch(rawData);
         setValidatedBatch(validated);
-        const errors = invalidRows.length ? invalidRows.join("\n") : null;
-        setValidationErrors(errors);
-        if (errors) setBatchWarning(errors);
+        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
       },
     });
   };
 
-  const renderCertificate = (item: CertificateData) => (
+  const renderCertificate = (item: CertificateDataWithValidation) => (
     <CertificateTemplate
       {...item}
       templateUrl={selectedOrg.templateUrl}
@@ -100,10 +112,64 @@ export default function GenerateBatch() {
       }}
     />
   );
+  const hasInvalidRows = (batch: CertificateDataWithValidation[]) =>
+  batch.some((row) =>
+    (Object.keys(MAX_LENGTHS) as CertificateFields[]).some(
+      (key) => row[`${key}_invalid` as ValidationKey]
+    )
+  );
+const handleBatchDownloadPDF = async () => {
+  if (!validatedBatch.length) return;
 
-  const handleBatchDownloadPDF = async () => {
-    if (!validatedBatch.length) return;
-    setIsDownloading(true);
+  if (hasInvalidRows(validatedBatch)) {
+    alert("Some fields are invalid. Please fix them before downloading.");
+    return;
+  }
+
+  setIsDownloading(true);
+  const zip = new JSZip();
+  for (let i = 0; i < validatedBatch.length; i++) {
+    const item = validatedBatch[i];
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    document.body.appendChild(container);
+
+    const root = ReactDOM.createRoot(container);
+    root.render(renderCertificate(item));
+    await new Promise((res) => setTimeout(res, 300));
+
+    const el = container.querySelector("#certificate") as HTMLElement;
+    if (el) {
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [canvas.width, canvas.height] });
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      zip.file(`${(item.recipientName || "certificate").replace(/\s+/g, "_")}-${i + 1}.pdf`, pdf.output("arraybuffer"));
+    }
+
+    root.unmount();
+    document.body.removeChild(container);
+  }
+
+  const blob = await zip.generateAsync({ type: "blob" });
+  saveAs(blob, `${selectedOrg.name}-certificates.zip`);
+  setIsDownloading(false);
+};
+
+
+  const handleBatchDownloadJPEG = async () => {
+  if (!validatedBatch.length) return;
+
+  // Block download if there are invalid fields
+  if (hasInvalidRows(validatedBatch)) {
+    alert("Some fields are invalid. Please fix them before downloading.");
+    return;
+  }
+
+  setIsDownloading(true);
+
+  try {
     const zip = new JSZip();
 
     for (let i = 0; i < validatedBatch.length; i++) {
@@ -117,69 +183,28 @@ export default function GenerateBatch() {
       root.render(renderCertificate(item));
       await new Promise((res) => setTimeout(res, 300));
 
-      const el = container.querySelector("#certificate") as HTMLElement;
-      if (el) {
-        const canvas = await html2canvas(el, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL("image/png");
-        // Use size of canvas for PDF instead of hard-coded huge numbers
-        const pdf = new jsPDF({
-          orientation: "landscape",
-          unit: "px",
-          format: [canvas.width, canvas.height],
-        });
-        pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-        zip.file(`${(item.recipientName || "certificate").replace(/\s+/g, "_")}-${i + 1}.pdf`, pdf.output("arraybuffer"));
+      const certificateEl = container.querySelector("#certificate") as HTMLElement;
+      if (certificateEl) {
+        const canvas = await html2canvas(certificateEl, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL("image/jpeg", 0.9);
+        const res = await fetch(imgData);
+        const blob = await res.blob();
+        zip.file(`${(item.recipientName || "certificate").replace(/\s+/g, "_")}-${i + 1}.jpg`, blob);
       }
 
       root.unmount();
       document.body.removeChild(container);
     }
 
-    const blob = await zip.generateAsync({ type: "blob" });
-    saveAs(blob, `${selectedOrg.name}-certificates.zip`);
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    saveAs(zipBlob, `${selectedOrg.name}-certificates-jpeg.zip`);
+  } finally {
     setIsDownloading(false);
-  };
+  }
+};
 
-  const handleBatchDownloadJPEG = async () => {
-    if (!validatedBatch.length) return;
-    setIsDownloading(true);
 
-    try {
-      const zip = new JSZip();
-
-      for (let i = 0; i < validatedBatch.length; i++) {
-        const item = validatedBatch[i];
-        const container = document.createElement("div");
-        container.style.position = "absolute";
-        container.style.left = "-9999px";
-        document.body.appendChild(container);
-
-        const root = ReactDOM.createRoot(container);
-        root.render(renderCertificate(item));
-
-        await new Promise((res) => setTimeout(res, 300));
-
-        const certificateEl = container.querySelector("#certificate") as HTMLElement;
-        if (certificateEl) {
-          const canvas = await html2canvas(certificateEl, { scale: 2, useCORS: true });
-          const imgData = canvas.toDataURL("image/jpeg", 0.9);
-          const res = await fetch(imgData);
-          const blob = await res.blob();
-          zip.file(`${(item.recipientName || "certificate").replace(/\s+/g, "_")}-${i + 1}.jpg`, blob);
-        }
-
-        root.unmount();
-        document.body.removeChild(container);
-      }
-
-      const zipBlob = await zip.generateAsync({ type: "blob" });
-      saveAs(zipBlob, `${selectedOrg.name}-certificates-jpeg.zip`);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  // render table for desktop and cards for mobile
+  // Table for desktop
   const TableView = () => (
     <div className="overflow-auto max-w-5xl mx-auto mt-4 hidden sm:block">
       <table className="min-w-full border border-black border-collapse">
@@ -201,8 +226,8 @@ export default function GenerateBatch() {
                 .filter((key) => key !== "organization")
                 .map((fieldKey) => {
                   const field = fieldKey as CertificateFields;
-                  const value = row[field] || "";
-                  const isInvalid = (row as any)[`${field}_invalid`] ?? false;
+                  const value = (row[field] ?? "") as string;
+                  const isInvalid = (row[`${field}_invalid` as ValidationKey] ?? false) as boolean;
 
                   return (
                     <td
@@ -213,10 +238,10 @@ export default function GenerateBatch() {
                         value={value}
                         onChange={(e) => {
                           const newData = [...validatedBatch];
-                          newData[rowIndex][field] = e.target.value;
-                          const { validated, invalidRows } = validateBatch(newData);
+                          (newData[rowIndex] as CertificateDataWithValidation)[field] = e.target.value;
+                          const { validated, invalidRows } = validateBatch(newData as CertificateData[]);
                           setValidatedBatch(validated);
-                          setValidationErrors(invalidRows.length ? invalidRows.join("\n") : null);
+                          setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
                         }}
                         className={`w-full px-2 py-1 rounded focus:outline-none ${isInvalid ? "bg-red-100" : "bg-white"}`}
                       />
@@ -230,6 +255,7 @@ export default function GenerateBatch() {
     </div>
   );
 
+  // Card view for mobile
   const CardView = () => (
     <div className="sm:hidden max-w-3xl mx-auto mt-4 space-y-3">
       {validatedBatch.map((row, rowIndex) => (
@@ -244,8 +270,8 @@ export default function GenerateBatch() {
               .filter((key) => key !== "organization")
               .map((fieldKey) => {
                 const field = fieldKey as CertificateFields;
-                const value = row[field] || "";
-                const isInvalid = (row as any)[`${field}_invalid`] ?? false;
+                const value = (row[field] ?? "") as string;
+                const isInvalid = (row[`${field}_invalid` as ValidationKey] ?? false) as boolean;
                 return (
                   <div key={fieldKey}>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">{field.toUpperCase()}</label>
@@ -253,10 +279,10 @@ export default function GenerateBatch() {
                       value={value}
                       onChange={(e) => {
                         const newData = [...validatedBatch];
-                        newData[rowIndex][field] = e.target.value;
-                        const { validated, invalidRows } = validateBatch(newData);
+                        (newData[rowIndex] as CertificateDataWithValidation)[field] = e.target.value;
+                        const { validated, invalidRows } = validateBatch(newData as CertificateData[]);
                         setValidatedBatch(validated);
-                        setValidationErrors(invalidRows.length ? invalidRows.join("\n") : null);
+                        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
                       }}
                       className={`w-full px-2 py-2 rounded border focus:outline-none ${isInvalid ? "bg-red-100 border-red-400" : "bg-white border-gray-200"}`}
                     />
@@ -285,7 +311,7 @@ export default function GenerateBatch() {
           <h2 className="text-lg md:text-2xl font-semibold text-gray-700">{selectedOrg.name}</h2>
         </div>
 
-        {/* Desktop fixed back button: visible only on md+ */}
+        {/* Desktop fixed back button */}
         <button
           onClick={() => router.push("/generate")}
           className="hidden md:inline-flex fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
@@ -330,7 +356,7 @@ export default function GenerateBatch() {
           </div>
         </div>
 
-        {/* Mobile in-flow back button (visible only on small screens) */}
+        {/* Mobile back button */}
         <div className="px-4 block md:hidden">
           <button
             onClick={() => router.push("/generate")}
