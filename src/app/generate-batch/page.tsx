@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import CertificateForm from "@/components/home/CertificateForm";
 import CertificateTemplate from "@/components/home/CertificateTemplate";
 import { useOrganization } from "../context/OrganizationContext";
 import Papa from "papaparse";
