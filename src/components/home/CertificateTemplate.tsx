@@ -98,7 +98,7 @@ export default function CertificateTemplate({
         className={bodyFont.className}
         style={{
           position: "absolute",
-          top: 163 + offset("programName"),
+          top: 165 + offset("programName"),
           left: "20px",
           width: "800px",
           fontSize: programName.length > 54 ? "17px" : "20px", // dynamic font size
