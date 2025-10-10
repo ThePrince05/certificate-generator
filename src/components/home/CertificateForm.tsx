@@ -7,7 +7,7 @@ import { CleanCertificateData } from "../../types/certificates";
 import Select from "react-select";
 
 interface FormFields {
-  organization: string;  
+  organization: string;
   programName: string;
   achievementText: string;
   recipientName: string;
@@ -55,16 +55,16 @@ export default function CertificateForm({
     }));
   }, [selectedMonth, selectedYear]);
 
-  const programOptions = groups.map(g => ({
+  const programOptions = groups.map((g) => ({
     value: g.programName,
     label: g.programName,
   }));
 
   const handleProgramSelect = (selected: { value: string; label: string } | null) => {
     const newProgram = selected?.value || "";
-    const defaults = groups.find(g => g.programName === newProgram);
+    const defaults = groups.find((g) => g.programName === newProgram);
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       programName: newProgram,
       achievementText: defaults ? defaults.achievementText : prev.achievementText,
@@ -99,7 +99,7 @@ export default function CertificateForm({
   const renderCounter = (fieldName: keyof FormFields) => {
     const max = MAX_LENGTHS[fieldName];
     if (!max) return null;
-    const current = (formData[fieldName]?.length ?? 0);
+    const current = formData[fieldName]?.length ?? 0;
     return (
       <p className="text-xs text-gray-500 text-right">
         {current}/{max} characters
@@ -112,13 +112,12 @@ export default function CertificateForm({
       onSubmit={handleSubmit}
       className="space-y-4 w-full border rounded shadow p-6"
     >
-
       {/* Program Name autocomplete */}
       <div>
         <label className="block font-semibold mb-1">Program Name</label>
         <Select
           options={programOptions}
-          value={programOptions.find(o => o.value === formData.programName)}
+          value={programOptions.find((o) => o.value === formData.programName)}
           onChange={handleProgramSelect}
           placeholder="-- Select Program --"
           isClearable
@@ -152,18 +151,18 @@ export default function CertificateForm({
         {renderCounter("recipientName")}
       </div>
 
-      {/* Certificate Date */}
-      <div className="flex items-center gap-2">
+      {/* Certificate Date - responsive: stacks on small screens */}
+      <div className="flex flex-col sm:flex-row items-center gap-2">
         <input
           name="certificateDate"
           placeholder="Certificate Date"
           value={formData.certificateDate}
           readOnly
-          className="border p-2 flex-1"
+          className="border p-2 flex-1 min-w-0" // min-w-0 to allow shrinking on tiny screens
         />
         <button
           type="button"
-          className="bg-gray-100 text-gray-800 px-4 py-2 rounded border hover:bg-gray-200 transition"
+          className="bg-gray-100 text-gray-800 px-4 py-2 rounded border hover:bg-gray-200 transition w-full sm:w-auto"
           onClick={() => setIsEditingDate((prev) => !prev)}
         >
           Edit
@@ -176,11 +175,11 @@ export default function CertificateForm({
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border p-2 flex-1"
+            className="border p-2 flex-1 min-w-0"
           >
             {[
-              "January", "February", "March", "April", "May", "June",
-              "July", "August", "September", "October", "November", "December",
+              "January","February","March","April","May","June",
+              "July","August","September","October","November","December",
             ].map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
@@ -189,7 +188,7 @@ export default function CertificateForm({
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="border p-2 flex-1"
+            className="border p-2 flex-1 min-w-0"
           >
             {Array.from({ length: 21 }, (_, i) => today.getFullYear() - i).map(
               (y) => <option key={y} value={y}>{y}</option>
@@ -198,21 +197,20 @@ export default function CertificateForm({
         </div>
       )}
 
-      {/* Buttons */}
-      <div className="flex items-center gap-3 mt-4 w-full">
+      {/* Buttons (responsive) */}
+      <div className="flex flex-col sm:flex-row items-center gap-3 mt-4 w-full">
         <button
           type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+          className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
         >
           Generate Certificate
         </button>
 
-        <div className="flex-1" />
-
+        {/* push Manage Template to the right on sm+ */}
         <button
           type="button"
           onClick={() => router.push("/template-groups")}
-          className="bg-gray-100 text-gray-800 px-4 py-2 rounded border hover:bg-gray-200 transition"
+          className="w-full sm:ml-auto sm:w-auto bg-gray-100 text-gray-800 px-4 py-2 rounded border hover:bg-gray-200 transition"
         >
           Manage Template
         </button>
