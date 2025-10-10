@@ -88,7 +88,7 @@ return (
               <button
                 onClick={() =>
                   generatePDF({
-                    organization: -30,
+                    organization: -28,
                     programName: -14,
                     achievementText: -15,
                     recipientName: -16,
@@ -104,7 +104,7 @@ return (
               <button
                 onClick={() =>
                   generateJPEG({
-                    organization: -30,
+                    organization: -28,
                     programName: -14,
                     achievementText: -15,
                     recipientName: -16,
