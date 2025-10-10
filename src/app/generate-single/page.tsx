@@ -10,11 +10,33 @@ import { generatePDF, generateJPEG } from "../utils/generatePDF";
 import { CleanCertificateData } from "@/types/certificates";
 import { motion, AnimatePresence } from "framer-motion";
 
+/**
+ * Returns true when the viewport is desktop width or larger.
+ * Tailwind 'lg' breakpoint == 1024px.
+ */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)"); // Tailwind 'lg'
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => setIsDesktop(e.matches);
+    onChange(mq); // set initial
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener(onChange);
+    };
+  }, []);
+  return isDesktop;
+}
+
 export default function GenerateSingle() {
   const { selectedOrg } = useOrganization();
-  const { loadGroups, groups } = useTemplates();
+  const { loadGroups } = useTemplates();
   const router = useRouter();
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
+  const [forcePreview, setForcePreview] = useState(false); // user override
+  const isDesktop = useIsDesktop();
 
   const getCertificateDate = () => {
     const today = new Date();
@@ -33,95 +55,135 @@ export default function GenerateSingle() {
 
   if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
 
-return (
-  <AnimatePresence mode="wait">
-    <motion.div
-      key="generate-batch"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-      className="p-8 space-y-8"
-    >
-      {/* Page-level container: full width (not constrained to max-w-3xl) */}
-      <div className="p-6 space-y-8">
-        <button
-          onClick={() => router.push("/generate")}
-          className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
-        >
-          ← Change Generation
-        </button>
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key="generate-batch"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.4 }}
+        className="p-8 space-y-8"
+      >
+        <div className="p-6 space-y-8">
+          <button
+            onClick={() => router.push("/generate")}
+            className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
+          >
+            ← Change Generation
+          </button>
 
-        {/* Constrained area (matches template-groups) */}
-        <div className="max-w-3xl mx-auto space-y-8">
-          <h1 className="text-4xl font-bold text-center mb-4">
-            Generate Single Certificate
-          </h1>
+          <div className="max-w-3xl mx-auto space-y-8">
+            <h1 className="text-4xl font-bold text-center mb-4">Generate Single Certificate</h1>
 
-          <h2 className="text-2xl text-center text-gray-600 mb-8">
-            {selectedOrg.name}
-          </h2>
+            <h2 className="text-2xl text-center text-gray-600 mb-8">{selectedOrg.name}</h2>
 
-          <CertificateForm
-            initialValues={{ organization: selectedOrg.name }}
-            onSubmit={(data) => setFormData(data)}
-          />
-        </div>
-
-        {/* Certificate preview area — full width and center the preview.
-            Allow horizontal scrolling on small screens so the preview is not constrained. */}
-        {formData && (
-          <div className="mt-6 text-center space-y-4">
-            <div className="w-full flex justify-center overflow-x-auto py-4">
-              {/* Prevent shrinking so template keeps its own width (if it's fixed) */}
-              <div className="flex-shrink-0">
-                <CertificateTemplate
-                  {...formData}
-                  templateUrl={selectedOrg.templateUrl}
-                  isPreview
-                  certificateDate={formData.certificateDate ?? getCertificateDate()}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() =>
-                  generatePDF({
-                    organization: -30,
-                    programName: -14,
-                    achievementText: -15,
-                    recipientName: -16,
-                    certificateDate: -10,
-                    signatory: -10,
-                  })
-                }
-                className="bg-green-500 text-white px-4 py-2 rounded"
-              >
-                Download PDF
-              </button>
-
-              <button
-                onClick={() =>
-                  generateJPEG({
-                    organization: -30,
-                    programName: -14,
-                    achievementText: -15,
-                    recipientName: -16,
-                    certificateDate: -10,
-                    signatory: -10,
-                  })
-                }
-                className="bg-yellow-500 text-white px-4 py-2 rounded"
-              >
-                Download JPEG
-              </button>
-            </div>
+            <CertificateForm initialValues={{ organization: selectedOrg.name }} onSubmit={(data) => setFormData(data)} />
           </div>
-        )}
-      </div>
-    </motion.div>
-  </AnimatePresence>
-);
 
+          {/* Preview area: only mount CertificateTemplate on desktop (>=1024px) unless user forces it */}
+          {formData && (
+            <div className="mt-6 text-center space-y-4">
+              {!isDesktop && !forcePreview ? (
+                <>
+                  <p className="text-sm text-gray-500">
+                    Preview is disabled on small/tablet screens to improve performance and prevent layout or PDF offset issues.
+                  </p>
+
+                  <div className="flex justify-center gap-4">
+                    <button
+                      onClick={() =>
+                        generatePDF({
+                          organization: -30,
+                          programName: -14,
+                          achievementText: -15,
+                          recipientName: -16,
+                          certificateDate: -10,
+                          signatory: -10,
+                        })
+                      }
+                      className="bg-green-500 text-white px-4 py-2 rounded"
+                    >
+                      Download PDF
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        generateJPEG({
+                          organization: -30,
+                          programName: -14,
+                          achievementText: -15,
+                          recipientName: -16,
+                          certificateDate: -10,
+                          signatory: -10,
+                        })
+                      }
+                      className="bg-yellow-500 text-white px-4 py-2 rounded"
+                    >
+                      Download JPEG
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setForcePreview(true)}
+                    className="mt-2 text-sm underline text-blue-600"
+                    aria-label="Show preview on smaller screen"
+                  >
+                    Show preview anyway
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="w-full flex justify-center overflow-x-auto py-4">
+                    <div className="flex-shrink-0">
+                      <CertificateTemplate
+                        {...formData}
+                        templateUrl={selectedOrg.templateUrl}
+                        isPreview
+                        certificateDate={formData.certificateDate ?? getCertificateDate()}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-4">
+                    <button
+                      onClick={() =>
+                        generatePDF({
+                          organization: -30,
+                          programName: -14,
+                          achievementText: -15,
+                          recipientName: -16,
+                          certificateDate: -10,
+                          signatory: -10,
+                        })
+                      }
+                      className="bg-green-500 text-white px-4 py-2 rounded"
+                    >
+                      Download PDF
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        generateJPEG({
+                          organization: -30,
+                          programName: -14,
+                          achievementText: -15,
+                          recipientName: -16,
+                          certificateDate: -10,
+                          signatory: -10,
+                        })
+                      }
+                      className="bg-yellow-500 text-white px-4 py-2 rounded"
+                    >
+                      Download JPEG
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
 }
