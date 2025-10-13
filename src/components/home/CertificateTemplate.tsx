@@ -1,4 +1,5 @@
 "use client";
+import { main } from "framer-motion/client";
 import { headingFont, bodyFont } from "../../app/utils/fonts";
 
 interface PDFOffsets {
@@ -78,7 +79,7 @@ export default function CertificateTemplate({
           className={headingFont.className}
           style={{
             position: "absolute",
-            top: 90 + offset("organization"),
+            top: 80 + offset("organization"),
             left: "20px",
             width: "800px",
             padding: "0 20px",
@@ -92,26 +93,45 @@ export default function CertificateTemplate({
           {organization}
         </h1>
 
+        {/* ✅ Field of Interest (Consent Field) */}
+        <p
+          id="fieldOfInterest-text"
+          className={bodyFont.className}
+          style={{
+            position: "absolute",
+            top: 150 + offset("organization"), // slightly below heading
+            left: "20px",
+            width: "800px",
+            fontSize: "25px",
+            lineHeight: 1.2,
+            textAlign: "center",
+            color: mainColor,
+            fontWeight: 600,
+          }}
+        >
+      A.I Assisted App Development
+        </p>
+
         {/* Program Name */}
         <h2
-        id="programName-text"
-        className={bodyFont.className}
-        style={{
-          position: "absolute",
-          top: 165 + offset("programName"),
-          left: "20px",
-          width: "800px",
-          fontSize: programName.length > 54 ? "17px" : "20px", // dynamic font size
-          lineHeight: 1.3,
-          textAlign: "center",
-          color: mainColor,
-          fontWeight: 700,
-        }}
-      >
-        {programName.replace(/\w\S*/g, (txt) =>
-          txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-        )}
-      </h2>
+          id="programName-text"
+          className={bodyFont.className}
+          style={{
+            position: "absolute",
+            top: 185 + offset("programName"), // adjusted down slightly
+            left: "20px",
+            width: "800px",
+            fontSize: programName.length > 54 ? "18px" : "18px",
+            lineHeight: 1.3,
+            textAlign: "center",
+            color: mainColor,
+            fontWeight: 600,
+          }}
+        >
+          {programName.replace(/\w\S*/g, (txt) =>
+            txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+          )}
+        </h2>
 
 
         {/* Achievement Text */}
@@ -120,12 +140,12 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 200 + offset("achievementText"),
+            top: 215 + offset("achievementText"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "650px",
-            fontSize: "21px",
-            lineHeight: 1.0,
+            fontSize: "18px",
+            lineHeight: 1.2,
             textAlign: "center",
             color: mainColor,
           }}
@@ -163,7 +183,7 @@ export default function CertificateTemplate({
             left: "15px",
             width: "800px",
             textAlign: "center",
-            fontSize: "18px",
+            fontSize: "20px",
             lineHeight: 1.2,
             color: mainColor,
           }}

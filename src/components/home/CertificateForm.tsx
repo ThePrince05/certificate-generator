@@ -119,7 +119,7 @@ export default function CertificateForm({
           options={programOptions}
           value={programOptions.find((o) => o.value === formData.programName)}
           onChange={handleProgramSelect}
-          placeholder="-- Select Program --"
+          placeholder="-- Type to search or select a program --"
           isClearable
         />
       </div>

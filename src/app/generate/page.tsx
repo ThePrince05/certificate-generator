@@ -6,16 +6,16 @@ import type { Organization } from "../context/OrganizationContext";
 import { useOrganization } from "../context/OrganizationContext";
 
 const organizations: Organization[] = [
+   {
+    id: "opop",
+    name: "One Planet-One People",
+    logoUrl: "/images/one-planet-one-people/logo.png",
+    templateUrl: "/templates/one-planet-one-people/certificate-template.jpg",
+  },
   {
     id: "pak",
     name: "Planned Acts of Kindness",
     logoUrl: "/images/planned-acts-of-kindness/logo.png",
-    templateUrl: "/templates/planned-acts-of-kindness/certificate-template.jpg",
-  },
-  {
-    id: "opop",
-    name: "One Planet One People",
-    logoUrl: "/images/one-planet-one-people/logo.png",
     templateUrl: "/templates/one-planet-one-people/certificate-template.jpg",
   },
 ];
@@ -78,24 +78,29 @@ export default function GeneratePage() {
             className="max-w-3xl mx-auto text-center"
           >
             <h1 className="text-4xl font-bold mb-8">
-              Generate Certificates for {selectedOrg.name}
+              {selectedOrg.name} Certificates
             </h1>
 
-            <div className="flex flex-col md:flex-row justify-center gap-6 mb-6">
-              <button
-                className="px-8 py-4 bg-green-600 text-white rounded-lg border-2 border-green-700 hover:bg-green-700 shadow-md transition"
-                onClick={() => router.push("/generate-single")}
-              >
-                Single Certificate
-              </button>
+          <div className="flex flex-col md:flex-row justify-center gap-6 mb-6">
+            <button
+              className="px-8 py-4 bg-green-600 text-white rounded-lg border-2 border-green-700 hover:bg-green-700 shadow-md transition"
+              onClick={() => {
+                setTimeout(() => router.push("/generate-single"), 0);
+              }}
+            >
+              Single Certificate
+            </button>
 
-              <button
-                className="px-8 py-4 bg-blue-600 text-white rounded-lg border-2 border-blue-700 hover:bg-blue-700 shadow-md transition"
-                onClick={() => router.push("/generate-batch")}
-              >
-                Batch Certificates
-              </button>
-            </div>
+            <button
+              className="px-8 py-4 bg-blue-600 text-white rounded-lg border-2 border-blue-700 hover:bg-blue-700 shadow-md transition"
+              onClick={() => {
+                setTimeout(() => router.push("/generate-batch"), 0);
+              }}
+            >
+              Batch Certificates
+            </button>
+          </div>
+
 
             <button
               onClick={handleBack}
