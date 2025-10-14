@@ -25,28 +25,35 @@ export default function GeneratePage() {
   const { selectedOrg, selectOrg, clearOrg } = useOrganization();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const step = searchParams.get("step") || (selectedOrg ? "type" : "org");
 
-useEffect(() => {
-  // Prefetch routes as before
-  router.prefetch("/generate-single");
-  router.prefetch("/generate-batch");
+  useEffect(() => {
+    // Prefetch related routes for smoother transitions
+    router.prefetch("/generate-single");
+    router.prefetch("/generate-batch");
 
-  // Run once on mount: if Home asked for a reset, clear and remove the flag
-  const shouldReset = sessionStorage.getItem("resetOrgOnNextGenerate");
-  if (shouldReset) {
+    const shouldReset = sessionStorage.getItem("resetOrgOnNextGenerate");
+    if (shouldReset) {
+      clearOrg();
+      sessionStorage.removeItem("resetOrgOnNextGenerate");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSelect = (org: Organization) => {
+    selectOrg(org);
+    router.replace("/generate?step=type");
+  };
+
+  const handleBack = () => {
     clearOrg();
-    sessionStorage.removeItem("resetOrgOnNextGenerate");
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []); // run only once on mount
-
-  const handleSelect = (org: Organization) => selectOrg(org);
-  const handleBack = () => clearOrg();
+    router.replace("/generate?step=org");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 pt-16">
       <AnimatePresence mode="wait">
-        {!selectedOrg ? (
+        {step === "org" || !selectedOrg ? (
           <motion.div
             key="select"
             initial={{ opacity: 0, y: 20 }}

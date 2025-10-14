@@ -246,6 +246,20 @@ const filteredProgramOptions = useMemo(() => {
     );
   };
 
+const filteredCategories = useMemo(() => {
+  if (!groups || groups.length === 0) return [];
+
+  // Only keep categories that have at least one program
+  const categoryMap: Record<string, boolean> = {};
+  groups.forEach((g) => {
+    if (g.category && g.programName) {
+      categoryMap[g.category.trim()] = true;
+    }
+  });
+
+  return Object.keys(categoryMap);
+}, [groups]);
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -254,19 +268,20 @@ const filteredProgramOptions = useMemo(() => {
       {/* Category */}
       <div>
         <label className="block font-semibold mb-1">Category</label>
-        <Select
-          options={[
-            { value: "", label: "-- Search or Select a Category --" },
-            ...CATEGORIES.map((c) => ({ value: c, label: c })),
-          ]}
-          value={
-            selectedCategory
-              ? { value: selectedCategory, label: selectedCategory }
-              : { value: "", label: "-- Search or Select a Category --" }
-          }
-          onChange={(selected) => setSelectedCategory(selected?.value || "")}
-          isClearable={false}
-        />
+      <Select
+    options={[
+      { value: "", label: "-- Search or Select a Category --" },
+      ...filteredCategories.map((c) => ({ value: c, label: c })),
+    ]}
+    value={
+      selectedCategory
+        ? { value: selectedCategory, label: selectedCategory }
+        : { value: "", label: "-- Search or Select a Category --" }
+    }
+    onChange={(selected) => setSelectedCategory(selected?.value || "")}
+    isClearable={false}
+  />
+
       </div>
 
       {/* Program Name */}

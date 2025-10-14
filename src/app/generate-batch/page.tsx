@@ -17,10 +17,13 @@ import { CertificateData, CertificateFields } from "@/types/certificates";
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   organization: 25,
   programName: 65,
+  fieldOfInterest: 50,
   achievementText: 300,
   recipientName: 15,
   certificateDate: 22,
+   // choose a sensible max length   // if required    // if required
 };
+
 
 // Auto-generate "Awarded <Month> <Year>"
 const getCertificateDate = () => {
