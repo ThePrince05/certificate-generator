@@ -1,5 +1,5 @@
 "use client";
-
+import Select from "react-select";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTemplates, TemplateGroup } from "../context/TemplateContext";
@@ -17,8 +17,8 @@ export default function TemplateGroupsPage() {
   const [newGroup, setNewGroup] = useState({
     programName: "",
     achievementText: "",
-    category: "General",
-    fieldOfInterest: "Unspecified",
+    category: "",
+    fieldOfInterest: "",
   });
 
   useEffect(() => {
@@ -56,8 +56,8 @@ export default function TemplateGroupsPage() {
     setNewGroup({
       programName: "",
       achievementText: "",
-      category: "General",
-      fieldOfInterest: "Unspecified",
+      category: "",
+      fieldOfInterest: "",
     });
   };
 
@@ -71,6 +71,55 @@ export default function TemplateGroupsPage() {
       )
     );
   };
+
+  // top of the file
+const FIELD_OF_INTEREST_OPTIONS = [
+  "AI Based Communication and Journalism",
+  "AI Assisted Business Development Managers",
+  "HR Recruiter - HR Specialist (AI Assisted)",
+  "AI Public Relations / Publicist",
+  "AI Based Project Management Volunteer",
+  "Web Development Volunteer or Intern",
+  "AI Assisted Research Specialist or Research Manager",
+  "AI Based Human Resources Recruitment, On-Boarding & Management",
+  "Military & Service Veteran Volunteers",
+  "AI BASED Video Editor/Producer",
+  "PUBLICIST - BOOKS, AUTHOR",
+  "AI BASED Graphic Designer/Illustrator/Editor",
+  "AI Assisted Applications Developer",
+  "AI Assisted WORD PRESS WEBSITE DEVELOPER",
+  "Product Development Engineer",
+  "(UNSDG) Project Management Volunteer",
+  "AI Based Database Management Volunteer or Intern",
+  "Retired Volunteers for CSR, HR, PR & Social Responsibility Entrepreneurship",
+  "AI Based Business/Marketing Management Specialist",
+  "AI Based Social Media Volunteer or Intern",
+  "AI Assisted Marketing Manager",
+  "AI Assisted PHP Developer",
+  "AI Assisted Meeting & Event Planning",
+  "TEDx Coach & Coordinator",
+  "AI Based Business Development Management",
+  "AI Assisted Grant Writing",
+  "Publicist for Ground-Breaking CSR, HR & PR Programs",
+  "AI Assisted Volunteer Coordinator",
+  "AI Assisted Product Development Engineer",
+];
+
+const CATEGORIES = [
+   "Architecture & Design",
+  "Business & Finance",
+  "Creative & Media",
+  "Education",
+  "Engineering & Product",
+  "Entrepreneurship",
+  "Human Services",
+  "Marketing & Communications",
+  "Professional Services",
+  "Social Impact & Policy",
+  "Technology & Digital",
+  ];
+
+
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -114,30 +163,46 @@ export default function TemplateGroupsPage() {
           </div>
 
           {/* Optional dropdowns for category and fieldOfInterest */}
-          <div className="flex gap-4">
-            <select
-              value={newGroup.category}
-              onChange={(e) => setNewGroup((prev) => ({ ...prev, category: e.target.value }))}
-              className="border p-3 rounded w-1/2"
-            >
-              <option>General</option>
-              <option>Education</option>
-              <option>Training</option>
-              <option>Certification</option>
-            </select>
-
-            <select
-              value={newGroup.fieldOfInterest}
-              onChange={(e) => setNewGroup((prev) => ({ ...prev, fieldOfInterest: e.target.value }))}
-              className="border p-3 rounded w-1/2"
-            >
-              <option>Unspecified</option>
-              <option>Technology</option>
-              <option>Health</option>
-              <option>Business</option>
-              <option>Arts</option>
-            </select>
+         <div className="flex gap-4">
+          <div className="w-1/2">
+            <label className="block font-semibold mb-1">Category</label>
+            <Select
+              options={[
+                { value: "", label: "-- Search or Select a Category --" }, // placeholder
+                ...CATEGORIES.map((c) => ({ value: c, label: c })),
+              ]}
+              value={
+                newGroup.category
+                  ? { value: newGroup.category, label: newGroup.category }
+                  : { value: "", label: "-- Search or Select a Category --" } // show placeholder if empty
+              }
+              onChange={(selected) =>
+                setNewGroup((prev) => ({ ...prev, category: selected?.value || "" }))
+              }
+              isClearable={false}
+            />
           </div>
+
+          <div className="w-1/2">
+            <label className="block font-semibold mb-1">Field of Interest</label>
+            <Select
+              options={[
+                { value: "", label: "--  Search or Select Field of Interest --" }, // placeholder
+                ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
+              ]}
+              value={
+                newGroup.fieldOfInterest
+                  ? { value: newGroup.fieldOfInterest, label: newGroup.fieldOfInterest }
+                  : { value: "", label: "-- Search or Select Field of Interest --" } // show placeholder if empty
+              }
+              onChange={(selected) =>
+                setNewGroup((prev) => ({ ...prev, fieldOfInterest: selected?.value || "" }))
+              }
+              isClearable={false}
+            />
+          </div>
+        </div>
+
 
           <div className="flex items-center gap-3 mt-4">
             <button

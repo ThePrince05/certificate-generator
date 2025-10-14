@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTemplates } from "../../app/context/TemplateContext";
 import { CleanCertificateData } from "../../types/certificates";
@@ -85,6 +85,7 @@ export default function CertificateForm({
     today.toLocaleString("en-GB", { month: "long" })
   );
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   const [formData, setFormData] = useState<FormFields>({
     organization: initialValues?.organization || "",
@@ -95,9 +96,7 @@ export default function CertificateForm({
     fieldOfInterest: "",
   });
 
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  
-  // Update certificateDate whenever month or year changes
+  // --- keep certificate date synced with dropdowns ---
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
@@ -105,14 +104,26 @@ export default function CertificateForm({
     }));
   }, [selectedMonth, selectedYear]);
 
-  const programOptions = groups.map((g) => ({
-    value: g.programName,
-    label: g.programName,
-  }));
+  // --- derive program options safely ---
+  const programOptions = useMemo(() => {
+    console.group("🧭 Deriving Program Options");
+    console.log("Groups:", groups);
+    const opts = (groups || []).map((g) => ({
+      value: g.programName,
+      label: g.programName,
+    }));
+    console.log("Derived programOptions:", opts);
+    console.groupEnd();
+    return opts;
+  }, [groups]);
 
+  // --- handle program selection ---
   const handleProgramSelect = (selected: { value: string; label: string } | null) => {
     const newProgram = selected?.value || "";
+    console.log("➡️ Program selected:", newProgram);
+
     const defaults = groups.find((g) => g.programName === newProgram);
+    if (!defaults) console.warn("⚠️ No group found for selected program.");
 
     setFormData((prev) => ({
       ...prev,
@@ -121,16 +132,72 @@ export default function CertificateForm({
     }));
   };
 
+  // --- filtered program options with category filtering + debug ---
+const filteredProgramOptions = useMemo(() => {
+  console.group("🔍 Filtering Program Options");
+  console.log("programOptions:", programOptions);
+  console.log("selectedCategory:", selectedCategory);
+
+  const selected = (selectedCategory || "").trim().toLowerCase();
+
+  const filtered = programOptions.filter((p) => {
+    const group = groups.find((g) => g.programName === p.value);
+    if (!group) {
+      console.warn("⚠️ Group not found for program:", p.value);
+      return false;
+    }
+
+    const groupCategory = (group.category || "").trim().toLowerCase();
+    const match = selected === "" || groupCategory === selected;
+
+    console.log(
+      `Program: ${p.value}, Group Category: ${group.category}, Matches?`,
+      match
+    );
+    return match;
+  });
+
+  console.groupEnd();
+  return filtered;
+}, [programOptions, groups, selectedCategory]);
+
+
+  // --- prevent clearing before groups are loaded ---
   useEffect(() => {
-  if (selectedMonth && selectedYear) {
-    setFormData((prev) => ({
-      ...prev,
-      certificateDate: `Awarded ${selectedMonth} ${selectedYear}`,
-    }));
-  }
-}, [selectedMonth, selectedYear]);
+    console.group("📝 Category Change Check");
+    console.log("selectedCategory:", selectedCategory);
+    console.log("current programName:", formData.programName);
+    console.log("groups length:", groups?.length || 0);
 
+    if (!groups || groups.length === 0) {
+      console.log("⏳ Groups not loaded yet — skipping clear logic.");
+      console.groupEnd();
+      return;
+    }
 
+    const selectedProgramGroup = groups.find(
+      (g) => g.programName === formData.programName
+    );
+
+    if (
+      formData.programName &&
+      (!selectedProgramGroup ||
+        selectedProgramGroup.category !== selectedCategory)
+    ) {
+      console.warn("⚠️ Clearing programName + achievementText due to category mismatch.");
+      setFormData((prev) => ({
+        ...prev,
+        programName: "",
+        achievementText: "",
+      }));
+    } else {
+      console.log("✅ Program still valid for category — keeping selection.");
+    }
+
+    console.groupEnd();
+  }, [selectedCategory, groups]);
+
+  // --- handlers for text and dropdown fields ---
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -150,6 +217,7 @@ export default function CertificateForm({
     }));
   };
 
+  // --- form submission ---
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     for (const key in MAX_LENGTHS) {
@@ -178,69 +246,65 @@ export default function CertificateForm({
     );
   };
 
-  const filteredProgramOptions = programOptions.filter((p) => {
-  const group = groups.find((g) => g.programName === p.value);
-  return selectedCategory === "" || group?.category === selectedCategory;
-
-  
-});
-
   return (
     <form
       onSubmit={handleSubmit}
       className="space-y-4 w-full border rounded shadow p-6"
     >
+      {/* Category */}
+      <div>
+        <label className="block font-semibold mb-1">Category</label>
+        <Select
+          options={[
+            { value: "", label: "-- Search or Select a Category --" },
+            ...CATEGORIES.map((c) => ({ value: c, label: c })),
+          ]}
+          value={
+            selectedCategory
+              ? { value: selectedCategory, label: selectedCategory }
+              : { value: "", label: "-- Search or Select a Category --" }
+          }
+          onChange={(selected) => setSelectedCategory(selected?.value || "")}
+          isClearable={false}
+        />
+      </div>
 
-
-    {/* Category Dropdown */}
-    <div>
-      <label className="block font-semibold mb-1">Category</label>
-      <Select
-        options={[
-          { value: "", label: "-- Type to search or select a category --" },
-          ...CATEGORIES.map((c) => ({ value: c, label: c })),
-        ]}
-        value={
-          selectedCategory
-            ? { value: selectedCategory, label: selectedCategory }
-            : { value: "", label: "-- Type to search or select a category --" }
-        }
-        onChange={(selected) => setSelectedCategory(selected?.value || "")}
-        isClearable={false}
-      />
-    </div>
-
-
-      {/* Program Name autocomplete */}
+      {/* Program Name */}
       <div>
         <label className="block font-semibold mb-1">Program Name</label>
-       <Select
+        <Select
           options={[
-            { value: "", label: "-- Select Program Name --" },
+            { value: "", label: "-- Search or Select Program Name --" },
             ...filteredProgramOptions,
           ]}
           value={
             formData.programName
               ? { value: formData.programName, label: formData.programName }
-              : { value: "", label: "-- Select Program Name --" }
+              : { value: "", label: "-- Search or Select Program Name --" }
           }
           onChange={handleProgramSelect}
           isClearable={false}
+          isLoading={!groups || groups.length === 0}
+          noOptionsMessage={() =>
+            !groups || groups.length === 0
+              ? "Loading programs..."
+              : "No programs match this category"
+          }
         />
       </div>
 
-      {/* Field of Interest Dropdown */}
+      {/* Field of Interest */}
       <div>
         <label className="block font-semibold mb-1">Field of Interest</label>
         <Select
           options={[
-            { value: "", label: "-- Select Field of Interest --" },
+            { value: "", label: "-- Search or Select Field of Interest --" },
             ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
           ]}
           value={
             formData.fieldOfInterest
               ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
-              : { value: "", label: "-- Select Field of Interest --" }
+              : { value: "", label: "-- Search or Select Field of Interest --" }
           }
           onChange={handleFieldOfInterestChange}
           isClearable={false}
@@ -262,7 +326,7 @@ export default function CertificateForm({
         {renderCounter("achievementText")}
       </div>
 
-      {/* Recipient Name */}
+      {/* Recipient */}
       <div>
         <input
           name="recipientName"
@@ -275,10 +339,8 @@ export default function CertificateForm({
         {renderCounter("recipientName")}
       </div>
 
-
-      {/* Certificate Date Selection */}
+      {/* Date Selection */}
       <div className="flex flex-col sm:flex-row items-center gap-2">
-        {/* Month Dropdown */}
         <select
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
@@ -294,10 +356,9 @@ export default function CertificateForm({
           ))}
         </select>
 
-        {/* Year Dropdown */}
         <select
           value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
           className="border p-2 flex-1 min-w-0"
           required
         >
@@ -307,7 +368,6 @@ export default function CertificateForm({
           ))}
         </select>
       </div>
-
 
       {/* Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-3 mt-4 w-full">

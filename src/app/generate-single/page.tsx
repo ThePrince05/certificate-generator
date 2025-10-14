@@ -32,7 +32,7 @@ function useIsDesktop() {
 
 export default function GenerateSingle() {
   const { selectedOrg } = useOrganization();
-  const { loadGroups } = useTemplates();
+  const { groups, loadGroups } = useTemplates();
   const router = useRouter();
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
   const [forcePreview, setForcePreview] = useState(false); // user override
@@ -52,6 +52,15 @@ export default function GenerateSingle() {
     }
     loadGroups(selectedOrg.id);
   }, [selectedOrg, router, loadGroups]);
+
+useEffect(() => {
+  if (!selectedOrg) return;
+  loadGroups(selectedOrg.id).then(() => {
+    console.log("✅ Groups loaded for org", selectedOrg.name, groups);
+  });
+}, [selectedOrg?.id]);
+
+
 
   if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
 
