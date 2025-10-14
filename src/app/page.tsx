@@ -7,13 +7,17 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    // mark that we want generate to reset (one-time)
+    sessionStorage.setItem("resetOrgOnNextGenerate", "1");
     const timer = setTimeout(() => router.push("/generate"), 1000);
     return () => clearTimeout(timer);
   }, [router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <h1 className="text-3xl font-bold text-center">Welcome to Certificate Generator!</h1>
+      <h1 className="text-3xl font-bold text-center">
+        Welcome to Certificate Generator!
+      </h1>
     </div>
   );
 }

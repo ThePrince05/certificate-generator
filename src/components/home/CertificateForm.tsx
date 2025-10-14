@@ -12,6 +12,7 @@ interface FormFields {
   achievementText: string;
   recipientName: string;
   certificateDate: string;
+  fieldOfInterest: string;
   signature?: string;
   signatory?: string;
 }
@@ -23,6 +24,52 @@ const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
   certificateDate: 22,
 };
 
+const FIELD_OF_INTEREST_OPTIONS = [
+  "AI Based Communication and Journalism",
+  "AI Assisted Business Development Managers",
+  "HR Recruiter - HR Specialist (AI Assisted)",
+  "AI Public Relations / Publicist",
+  "AI Based Project Management Volunteer",
+  "Web Development Volunteer or Intern",
+  "AI Assisted Research Specialist or Research Manager",
+  "AI Based Human Resources Recruitment, On-Boarding & Management",
+  "Military & Service Veteran Volunteers",
+  "AI BASED Video Editor/Producer",
+  "PUBLICIST - BOOKS, AUTHOR",
+  "AI BASED Graphic Designer/Illustrator/Editor",
+  "AI Assisted Applications Developer",
+  "AI Assisted WORD PRESS WEBSITE DEVELOPER",
+  "Product Development Engineer",
+  "(UNSDG) Project Management Volunteer",
+  "AI Based Database Management Volunteer or Intern",
+  "Retired Volunteers for CSR, HR, PR & Social Responsibility Entrepreneurship",
+  "AI Based Business/Marketing Management Specialist",
+  "AI Based Social Media Volunteer or Intern",
+  "AI Assisted Marketing Manager",
+  "AI Assisted PHP Developer",
+  "AI Assisted Meeting & Event Planning",
+  "TEDx Coach & Coordinator",
+  "AI Based Business Development Management",
+  "AI Assisted Grant Writing",
+  "Publicist for Ground-Breaking CSR, HR & PR Programs",
+  "AI Assisted Volunteer Coordinator",
+  "AI Assisted Product Development Engineer",
+];
+
+const CATEGORIES = [
+  "Architecture & Design",
+  "Business & Finance",
+  "Creative & Media",
+  "Education",
+  "Engineering & Product",
+  "Entrepreneurship",
+  "Human Services",
+  "Marketing & Communications",
+  "Professional Services",
+  "Social Impact & Policy",
+  "Technology & Digital",
+];
+
 export default function CertificateForm({
   initialValues,
   onSubmit,
@@ -33,21 +80,24 @@ export default function CertificateForm({
   const router = useRouter();
   const { groups } = useTemplates();
 
-  const [formData, setFormData] = useState<FormFields>({
-    organization: initialValues?.organization || "",
-    programName: "",
-    achievementText: "",
-    recipientName: "",
-    certificateDate: "",
-  });
-
-  const [isEditingDate, setIsEditingDate] = useState(false);
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
     today.toLocaleString("en-GB", { month: "long" })
   );
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
+  const [formData, setFormData] = useState<FormFields>({
+    organization: initialValues?.organization || "",
+    programName: "",
+    achievementText: "",
+    recipientName: "",
+    certificateDate: `Awarded ${selectedMonth} ${selectedYear}`,
+    fieldOfInterest: "",
+  });
+
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  
+  // Update certificateDate whenever month or year changes
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
@@ -71,6 +121,16 @@ export default function CertificateForm({
     }));
   };
 
+  useEffect(() => {
+  if (selectedMonth && selectedYear) {
+    setFormData((prev) => ({
+      ...prev,
+      certificateDate: `Awarded ${selectedMonth} ${selectedYear}`,
+    }));
+  }
+}, [selectedMonth, selectedYear]);
+
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -83,6 +143,13 @@ export default function CertificateForm({
     }));
   };
 
+  const handleFieldOfInterestChange = (selected: { value: string; label: string } | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      fieldOfInterest: selected?.value || "",
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     for (const key in MAX_LENGTHS) {
@@ -92,6 +159,10 @@ export default function CertificateForm({
         alert(`"${field}" exceeds the maximum of ${max} characters.`);
         return;
       }
+    }
+    if (!formData.fieldOfInterest) {
+      alert("Please select a Field of Interest.");
+      return;
     }
     onSubmit(formData);
   };
@@ -107,20 +178,73 @@ export default function CertificateForm({
     );
   };
 
+  const filteredProgramOptions = programOptions.filter((p) => {
+  const group = groups.find((g) => g.programName === p.value);
+  return selectedCategory === "" || group?.category === selectedCategory;
+
+  
+});
+
   return (
     <form
       onSubmit={handleSubmit}
       className="space-y-4 w-full border rounded shadow p-6"
     >
+
+
+    {/* Category Dropdown */}
+    <div>
+      <label className="block font-semibold mb-1">Category</label>
+      <Select
+        options={[
+          { value: "", label: "-- Type to search or select a category --" },
+          ...CATEGORIES.map((c) => ({ value: c, label: c })),
+        ]}
+        value={
+          selectedCategory
+            ? { value: selectedCategory, label: selectedCategory }
+            : { value: "", label: "-- Type to search or select a category --" }
+        }
+        onChange={(selected) => setSelectedCategory(selected?.value || "")}
+        isClearable={false}
+      />
+    </div>
+
+
       {/* Program Name autocomplete */}
       <div>
         <label className="block font-semibold mb-1">Program Name</label>
-        <Select
-          options={programOptions}
-          value={programOptions.find((o) => o.value === formData.programName)}
+       <Select
+          options={[
+            { value: "", label: "-- Select Program Name --" },
+            ...filteredProgramOptions,
+          ]}
+          value={
+            formData.programName
+              ? { value: formData.programName, label: formData.programName }
+              : { value: "", label: "-- Select Program Name --" }
+          }
           onChange={handleProgramSelect}
-          placeholder="-- Type to search or select a program --"
-          isClearable
+          isClearable={false}
+        />
+      </div>
+
+      {/* Field of Interest Dropdown */}
+      <div>
+        <label className="block font-semibold mb-1">Field of Interest</label>
+        <Select
+          options={[
+            { value: "", label: "-- Select Field of Interest --" },
+            ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
+          ]}
+          value={
+            formData.fieldOfInterest
+              ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
+              : { value: "", label: "-- Select Field of Interest --" }
+          }
+          onChange={handleFieldOfInterestChange}
+          isClearable={false}
+          required
         />
       </div>
 
@@ -151,53 +275,41 @@ export default function CertificateForm({
         {renderCounter("recipientName")}
       </div>
 
-      {/* Certificate Date - responsive: stacks on small screens */}
+
+      {/* Certificate Date Selection */}
       <div className="flex flex-col sm:flex-row items-center gap-2">
-        <input
-          name="certificateDate"
-          placeholder="Certificate Date"
-          value={formData.certificateDate}
-          readOnly
-          className="border p-2 flex-1 min-w-0" // min-w-0 to allow shrinking on tiny screens
-        />
-        <button
-          type="button"
-          className="bg-gray-100 text-gray-800 px-4 py-2 rounded border hover:bg-gray-200 transition w-full sm:w-auto"
-          onClick={() => setIsEditingDate((prev) => !prev)}
+        {/* Month Dropdown */}
+        <select
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="border p-2 flex-1 min-w-0"
+          required
         >
-          Edit
-        </button>
+          <option value="">-- Select Month --</option>
+          {[
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+          ].map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+
+        {/* Year Dropdown */}
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          className="border p-2 flex-1 min-w-0"
+          required
+        >
+          <option value="">-- Select Year --</option>
+          {Array.from({ length: 21 }, (_, i) => today.getFullYear() - i).map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
       </div>
 
-      {/* Month & Year Dropdowns */}
-      {isEditingDate && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border p-2 flex-1 min-w-0"
-          >
-            {[
-              "January","February","March","April","May","June",
-              "July","August","September","October","November","December",
-            ].map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
 
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="border p-2 flex-1 min-w-0"
-          >
-            {Array.from({ length: 21 }, (_, i) => today.getFullYear() - i).map(
-              (y) => <option key={y} value={y}>{y}</option>
-            )}
-          </select>
-        </div>
-      )}
-
-      {/* Buttons (responsive) */}
+      {/* Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-3 mt-4 w-full">
         <button
           type="submit"
@@ -206,7 +318,6 @@ export default function CertificateForm({
           Generate Certificate
         </button>
 
-        {/* push Manage Template to the right on sm+ */}
         <button
           type="button"
           onClick={() => router.push("/template-groups")}

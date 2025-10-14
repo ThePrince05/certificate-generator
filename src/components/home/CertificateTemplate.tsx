@@ -15,6 +15,7 @@ interface PDFOffsets {
 interface CertificateProps {
   organization: string;
   programName: string;
+  fieldOfInterest: string;
   achievementText: string;
   recipientName: string;
   certificateDate: string;
@@ -27,9 +28,11 @@ interface CertificateProps {
 const SIGNATURE_PATH = "/signature.png"; 
 const SIGNATORY_NAME = "Authorized By Lyle Benjamin, PAK Founder";
 
+
 export default function CertificateTemplate({
   organization,
   programName,
+  fieldOfInterest,
   achievementText,
   recipientName,
   certificateDate,
@@ -41,6 +44,11 @@ export default function CertificateTemplate({
 
   // Safely get optional offsets, ignore if preview
   const offset = (key: keyof PDFOffsets) => (isPreview ? 0 : pdfOffsets?.[key] ?? 0);
+
+  // Remove prefixes like "STEP-33:", "STEP 45:", "STEP:7", etc.
+  const cleanProgramName = programName
+    .replace(/^STEP[-:\s]*\d*[:\s-]*/i, "")
+    .trim();
 
   return (
    <div
@@ -93,46 +101,38 @@ export default function CertificateTemplate({
           {organization}
         </h1>
 
-        {/* ✅ Field of Interest (Consent Field) */}
-        <p
-          id="fieldOfInterest-text"
-          className={bodyFont.className}
-          style={{
-            position: "absolute",
-            top: 150 + offset("organization"), // slightly below heading
-            left: "20px",
-            width: "800px",
-            fontSize: "25px",
-            lineHeight: 1.2,
-            textAlign: "center",
-            color: mainColor,
-            fontWeight: 600,
-          }}
-        >
-      A.I Assisted App Development
-        </p>
+   
 
-        {/* Program Name */}
-        <h2
-          id="programName-text"
-          className={bodyFont.className}
-          style={{
-            position: "absolute",
-            top: 185 + offset("programName"), // adjusted down slightly
-            left: "20px",
-            width: "800px",
-            fontSize: programName.length > 54 ? "18px" : "18px",
-            lineHeight: 1.3,
-            textAlign: "center",
-            color: mainColor,
-            fontWeight: 600,
-          }}
-        >
-          {programName.replace(/\w\S*/g, (txt) =>
-            txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-          )}
-        </h2>
-
+     {/* Program Name with Field of Interest */}
+    <h2
+      id="programName-text"
+      className={bodyFont.className}
+      style={{
+        position: "absolute",
+        top: 155 + offset("programName"),
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "700px",
+        textAlign: "center",
+        color: mainColor,
+        fontWeight: 600,
+        lineHeight: 1.4,
+        fontSize: "20px",
+      }}
+    >
+      {cleanProgramName}
+      <br />
+      <span
+        style={{
+          display: "block",
+          fontSize: "20px",
+          fontWeight: 400,
+          color: "#7a6b3a",
+        }}
+      >
+         {fieldOfInterest}
+      </span>
+    </h2>
 
         {/* Achievement Text */}
         <p

@@ -1,12 +1,13 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import type { Organization } from "../context/OrganizationContext";
 import { useOrganization } from "../context/OrganizationContext";
 
 const organizations: Organization[] = [
-   {
+  {
     id: "opop",
     name: "One Planet-One People",
     logoUrl: "/images/one-planet-one-people/logo.png",
@@ -23,14 +24,24 @@ const organizations: Organization[] = [
 export default function GeneratePage() {
   const { selectedOrg, selectOrg, clearOrg } = useOrganization();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const handleSelect = (org: Organization) => {
-    selectOrg(org);
-  };
+useEffect(() => {
+  // Prefetch routes as before
+  router.prefetch("/generate-single");
+  router.prefetch("/generate-batch");
 
-  const handleBack = () => {
-    clearOrg(); // <- use clearOrg(), not selectOrg(null)
-  };
+  // Run once on mount: if Home asked for a reset, clear and remove the flag
+  const shouldReset = sessionStorage.getItem("resetOrgOnNextGenerate");
+  if (shouldReset) {
+    clearOrg();
+    sessionStorage.removeItem("resetOrgOnNextGenerate");
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // run only once on mount
+
+  const handleSelect = (org: Organization) => selectOrg(org);
+  const handleBack = () => clearOrg();
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 pt-16">
@@ -81,26 +92,21 @@ export default function GeneratePage() {
               {selectedOrg.name} Certificates
             </h1>
 
-          <div className="flex flex-col md:flex-row justify-center gap-6 mb-6">
-            <button
-              className="px-8 py-4 bg-green-600 text-white rounded-lg border-2 border-green-700 hover:bg-green-700 shadow-md transition"
-              onClick={() => {
-                setTimeout(() => router.push("/generate-single"), 0);
-              }}
-            >
-              Single Certificate
-            </button>
+            <div className="flex flex-col md:flex-row justify-center gap-6 mb-6">
+              <button
+                className="px-8 py-4 bg-green-600 text-white rounded-lg border-2 border-green-700 hover:bg-green-700 shadow-md transition"
+                onClick={() => router.push("/generate-single")}
+              >
+                Single Certificate
+              </button>
 
-            <button
-              className="px-8 py-4 bg-blue-600 text-white rounded-lg border-2 border-blue-700 hover:bg-blue-700 shadow-md transition"
-              onClick={() => {
-                setTimeout(() => router.push("/generate-batch"), 0);
-              }}
-            >
-              Batch Certificates
-            </button>
-          </div>
-
+              <button
+                className="px-8 py-4 bg-blue-600 text-white rounded-lg border-2 border-blue-700 hover:bg-blue-700 shadow-md transition"
+                onClick={() => router.push("/generate-batch")}
+              >
+                Batch Certificates
+              </button>
+            </div>
 
             <button
               onClick={handleBack}

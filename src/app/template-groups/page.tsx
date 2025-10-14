@@ -6,20 +6,23 @@ import { useTemplates, TemplateGroup } from "../context/TemplateContext";
 import { useOrganization } from "../context/OrganizationContext";
 import { v4 as uuidv4 } from "uuid";
 
-const MAX_LENGTHS = { programName: 65, achievementText: 300};
+const MAX_LENGTHS = { programName: 65, achievementText: 300 };
 
 export default function TemplateGroupsPage() {
   const router = useRouter();
   const { selectedOrg } = useOrganization();
   const { groups, loadGroups, addGroup, updateGroup, deleteGroup } = useTemplates();
 
-  const [newGroup, setNewGroup] = useState({ programName: "", achievementText: "" });
+  // ✅ Include category and fieldOfInterest with defaults
+  const [newGroup, setNewGroup] = useState({
+    programName: "",
+    achievementText: "",
+    category: "General",
+    fieldOfInterest: "Unspecified",
+  });
 
-  // Load groups whenever the selected organization changes
   useEffect(() => {
-    if (selectedOrg) {
-      loadGroups(selectedOrg.id);
-    }
+    if (selectedOrg) loadGroups(selectedOrg.id);
   }, [selectedOrg, loadGroups]);
 
   if (!selectedOrg) {
@@ -39,16 +42,33 @@ export default function TemplateGroupsPage() {
   const handleAddGroup = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroup.programName.trim()) return alert("Program Name is required.");
-    addGroup({ ...newGroup, id: uuidv4() }, selectedOrg.id);
-    setNewGroup({ programName: "", achievementText: "" });
+
+    // ✅ Pass all required fields for TemplateGroup
+    const group: TemplateGroup = {
+      id: uuidv4(),
+      programName: newGroup.programName.trim(),
+      achievementText: newGroup.achievementText.trim(),
+      category: newGroup.category.trim(),
+      fieldOfInterest: newGroup.fieldOfInterest.trim(),
+    };
+
+    addGroup(group, selectedOrg.id);
+    setNewGroup({
+      programName: "",
+      achievementText: "",
+      category: "General",
+      fieldOfInterest: "Unspecified",
+    });
   };
 
   const renderCounter = (field: keyof typeof newGroup, value: string) => {
-    const max = MAX_LENGTHS[field];
+    const max = MAX_LENGTHS[field as keyof typeof MAX_LENGTHS];
     return (
-      <p className="text-xs text-gray-500 text-right">
-        {value.length}/{max} characters
-      </p>
+      max && (
+        <p className="text-xs text-gray-500 text-right">
+          {value.length}/{max} characters
+        </p>
+      )
     );
   };
 
@@ -93,6 +113,32 @@ export default function TemplateGroupsPage() {
             {renderCounter("achievementText", newGroup.achievementText)}
           </div>
 
+          {/* Optional dropdowns for category and fieldOfInterest */}
+          <div className="flex gap-4">
+            <select
+              value={newGroup.category}
+              onChange={(e) => setNewGroup((prev) => ({ ...prev, category: e.target.value }))}
+              className="border p-3 rounded w-1/2"
+            >
+              <option>General</option>
+              <option>Education</option>
+              <option>Training</option>
+              <option>Certification</option>
+            </select>
+
+            <select
+              value={newGroup.fieldOfInterest}
+              onChange={(e) => setNewGroup((prev) => ({ ...prev, fieldOfInterest: e.target.value }))}
+              className="border p-3 rounded w-1/2"
+            >
+              <option>Unspecified</option>
+              <option>Technology</option>
+              <option>Health</option>
+              <option>Business</option>
+              <option>Arts</option>
+            </select>
+          </div>
+
           <div className="flex items-center gap-3 mt-4">
             <button
               type="submit"
@@ -127,16 +173,19 @@ export default function TemplateGroupsPage() {
             {groups.map((group) => (
               <div key={group.id} className="border p-4 rounded shadow-sm bg-white">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold">{group.programName}</h3>
+                  <div>
+                    <h3 className="font-bold">{group.programName}</h3>
+                    <p className="text-xs text-gray-500">
+                      {group.category} · {group.fieldOfInterest}
+                    </p>
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
                         const programName = prompt("Edit program name:", group.programName);
                         if (!programName) return;
-                        const achievementText = prompt(
-                          "Edit achievement text:",
-                          group.achievementText
-                        ) || "";
+                        const achievementText =
+                          prompt("Edit achievement text:", group.achievementText) || "";
                         updateGroup(
                           group.id,
                           { ...group, programName, achievementText },
@@ -156,7 +205,9 @@ export default function TemplateGroupsPage() {
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-600 whitespace-pre-line">{group.achievementText}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-line">
+                  {group.achievementText}
+                </p>
               </div>
             ))}
           </div>

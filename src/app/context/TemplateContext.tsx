@@ -8,6 +8,8 @@ export interface TemplateGroup {
   id: string;
   programName: string;
   achievementText: string;
+  category: string;
+  fieldOfInterest: string; // ✅ Added field
 }
 
 interface TemplateContextType {
@@ -36,7 +38,13 @@ const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
 
     const csvText = await response.text();
 
-    const parsed = Papa.parse<{ programName: string; achievementText: string }>(csvText, {
+    // ✅ Include 'fieldOfInterest' and 'category' if present in CSV
+    const parsed = Papa.parse<{
+      programName: string;
+      achievementText: string;
+      category?: string;
+      fieldOfInterest?: string;
+    }>(csvText, {
       header: true,
       skipEmptyLines: true,
       delimiter: ";",
@@ -48,6 +56,8 @@ const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
         id: uuidv4(),
         programName: row.programName.trim(),
         achievementText: row.achievementText.trim(),
+        category: row.category?.trim() || "General",
+        fieldOfInterest: row.fieldOfInterest?.trim() || "Unspecified", // ✅ Default if missing
       }));
   } catch {
     return [];
