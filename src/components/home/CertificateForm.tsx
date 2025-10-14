@@ -8,6 +8,7 @@ import Select from "react-select";
 
 interface FormFields {
   organization: string;
+  category: string;
   programName: string;
   achievementText: string;
   recipientName: string;
@@ -89,6 +90,7 @@ export default function CertificateForm({
 
   const [formData, setFormData] = useState<FormFields>({
     organization: initialValues?.organization || "",
+    category: "",
     programName: "",
     achievementText: "",
     recipientName: "",
