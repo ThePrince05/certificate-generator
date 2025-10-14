@@ -1,6 +1,7 @@
 // The fields in a certificate
 export type CertificateFields =
   | "organization"
+  | "category"
   | "programName"
   | "fieldOfInterest"
   | "achievementText"
@@ -10,6 +11,7 @@ export type CertificateFields =
 // Certificate data including optional _invalid flags
 export type CertificateData = {
   organization: string;
+  category: string;
   programName: string;
   fieldOfInterest: string;
   achievementText: string;

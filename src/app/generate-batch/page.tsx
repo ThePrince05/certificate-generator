@@ -16,6 +16,7 @@ import { CertificateData, CertificateFields } from "@/types/certificates";
 // Max lengths for validation
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   organization: 25,
+  category: 30, 
   programName: 65,
   fieldOfInterest: 50,
   achievementText: 300,
@@ -90,6 +91,8 @@ export default function GenerateBatch() {
         const rawData = (results.data as CertificateData[]).map((item) => ({
           ...item,
           organization: selectedOrg.name,
+          category: item.category || "General",           // fallback if missing
+          fieldOfInterest: item.fieldOfInterest || "Unspecified",
         }));
 
         const { validated, invalidRows } = validateBatch(rawData);
