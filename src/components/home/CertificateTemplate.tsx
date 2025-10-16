@@ -87,7 +87,7 @@ export default function CertificateTemplate({
           className={headingFont.className}
           style={{
             position: "absolute",
-            top: 80 + offset("organization"),
+            top: 90 + offset("organization"),
             left: "20px",
             width: "800px",
             padding: "0 20px",
@@ -109,7 +109,7 @@ export default function CertificateTemplate({
       className={bodyFont.className}
       style={{
         position: "absolute",
-        top: 155 + offset("programName"),
+        top: 165 + offset("programName"),
         left: "50%",
         transform: "translateX(-50%)",
         width: "700px",
@@ -120,18 +120,7 @@ export default function CertificateTemplate({
         fontSize: "20px",
       }}
     >
-      {cleanProgramName}
-      <br />
-      <span
-        style={{
-          display: "block",
-          fontSize: "20px",
-          fontWeight: 400,
-          color: "#7a6b3a",
-        }}
-      >
-         {fieldOfInterest}
-      </span>
+      {cleanProgramName} : {fieldOfInterest} 
     </h2>
 
         {/* Achievement Text */}
@@ -140,7 +129,7 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 215 + offset("achievementText"),
+            top: 200 + offset("achievementText"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "650px",

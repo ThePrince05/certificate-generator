@@ -69,6 +69,7 @@ const CATEGORIES = [
   "Professional Services",
   "Social Impact & Policy",
   "Technology & Digital",
+  "Gaming & Development",
 ];
 
 export default function CertificateForm({

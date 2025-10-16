@@ -106,7 +106,7 @@ const FIELD_OF_INTEREST_OPTIONS = [
 ];
 
 const CATEGORIES = [
-   "Architecture & Design",
+  "Architecture & Design",
   "Business & Finance",
   "Creative & Media",
   "Education",
@@ -117,7 +117,8 @@ const CATEGORIES = [
   "Professional Services",
   "Social Impact & Policy",
   "Technology & Digital",
-  ];
+  "Gaming & Development",
+];
 
 
 
