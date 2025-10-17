@@ -1,5 +1,5 @@
 "use client";
-import { main } from "framer-motion/client";
+import { useEffect, useRef, useState } from "react";
 import { headingFont, bodyFont } from "../../app/utils/fonts";
 
 interface PDFOffsets {
@@ -21,13 +21,11 @@ interface CertificateProps {
   certificateDate: string;
   templateUrl?: string;
   pdfOffsets?: PDFOffsets;
-  isPreview?: boolean; // new
+  isPreview?: boolean;
 }
 
-// ✅ constants (instead of props)
-const SIGNATURE_PATH = "/signature.png"; 
+const SIGNATURE_PATH = "/signature.png";
 const SIGNATORY_NAME = "Authorized By Lyle Benjamin, PAK Founder";
-
 
 export default function CertificateTemplate({
   organization,
@@ -38,43 +36,64 @@ export default function CertificateTemplate({
   certificateDate,
   templateUrl,
   pdfOffsets,
-  isPreview = false, // default false
+  isPreview = false,
 }: CertificateProps) {
-  const mainColor = "#695511"; // main font color
+  const mainColor = "#695511";
 
-  // Safely get optional offsets, ignore if preview
-  const offset = (key: keyof PDFOffsets) => (isPreview ? 0 : pdfOffsets?.[key] ?? 0);
+  const offset = (key: keyof PDFOffsets) =>
+    isPreview ? 0 : pdfOffsets?.[key] ?? 0;
 
-  // Remove prefixes like "STEP-33:", "STEP 45:", "STEP:7", etc.
   const cleanProgramName = programName
     .replace(/^STEP[-:\s]*\d*[:\s-]*/i, "")
     .trim();
 
+  const fullProgramText = `${cleanProgramName} : ${fieldOfInterest}`;
+
+  // 🧠 Detect actual line wrapping in the DOM
+  const programRef = useRef<HTMLHeadingElement>(null);
+  const [isTwoLineProgram, setIsTwoLineProgram] = useState(false);
+
+  useEffect(() => {
+    const el = programRef.current;
+    if (!el) return;
+
+    // Compare actual scrollHeight to single-line height
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+    const wraps = el.scrollHeight > lineHeight * 1.5;
+    setIsTwoLineProgram(wraps);
+  }, [fullProgramText]);
+
+  // 🎨 Conditional achievementText formatting
+  const achievementStyle = {
+    top: (isTwoLineProgram ? 225 : 200) + offset("achievementText"),
+    fontSize: isTwoLineProgram ? "18px" : "20px",
+  };
+
   return (
-   <div
-  style={{
-    width: "100%",
-    minHeight: "100vh",
-    backgroundColor: "#fff",
-    overflowX: "auto",
-    overflowY: "auto",
-    padding: "1rem 0",
-    WebkitOverflowScrolling: "touch", // momentum scroll on iOS
-    touchAction: "pan-x",             // allow horizontal pan
-  }}
->
-     <div
-    id="certificate"
-    style={{
-      width: "838px",
-      height: "auto",
-      position: "relative",
-      flexShrink: 0,
-      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-      color: mainColor,
-    }}
-  >
-        {/* Background image */}
+    <div
+      style={{
+        width: "100%",
+        minHeight: "100vh",
+        backgroundColor: "#fff",
+        overflowX: "auto",
+        overflowY: "auto",
+        padding: "1rem 0",
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-x",
+      }}
+    >
+      <div
+        id="certificate"
+        style={{
+          width: "838px",
+          height: "auto",
+          position: "relative",
+          flexShrink: 0,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          color: mainColor,
+        }}
+      >
+        {/* Background */}
         <img
           src={templateUrl}
           alt="Certificate Template"
@@ -101,27 +120,26 @@ export default function CertificateTemplate({
           {organization}
         </h1>
 
-   
-
-     {/* Program Name with Field of Interest */}
-    <h2
-      id="programName-text"
-      className={bodyFont.className}
-      style={{
-        position: "absolute",
-        top: 165 + offset("programName"),
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "700px",
-        textAlign: "center",
-        color: mainColor,
-        fontWeight: 600,
-        lineHeight: 1.4,
-        fontSize: "20px",
-      }}
-    >
-      {cleanProgramName} : {fieldOfInterest} 
-    </h2>
+        {/* Program Name */}
+        <h2
+          ref={programRef}
+          id="programName-text"
+          className={bodyFont.className}
+          style={{
+            position: "absolute",
+            top: 165 + offset("programName"),
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "650px",
+            textAlign: "center",
+            color: mainColor,
+            fontWeight: 600,
+            lineHeight: 1.4,
+            fontSize: "20px",
+          }}
+        >
+          {cleanProgramName} : {fieldOfInterest}
+        </h2>
 
         {/* Achievement Text */}
         <p
@@ -129,14 +147,13 @@ export default function CertificateTemplate({
           className={bodyFont.className}
           style={{
             position: "absolute",
-            top: 200 + offset("achievementText"),
             left: "50%",
             transform: "translateX(-50%)",
             width: "650px",
-            fontSize: "18px",
             lineHeight: 1.2,
             textAlign: "center",
             color: mainColor,
+            ...achievementStyle,
           }}
         >
           {achievementText}
@@ -183,14 +200,18 @@ export default function CertificateTemplate({
         {/* Signature */}
         <div
           id="signature-text"
-          style={{ 
+          style={{
             position: "absolute",
             top: 448 + offset("signature"),
             left: "44%",
             transform: "translateX(-10%)",
           }}
         >
-          <img src={SIGNATURE_PATH} alt="Signature" style={{ width: "400px", height: "auto" }} />
+          <img
+            src={SIGNATURE_PATH}
+            alt="Signature"
+            style={{ width: "400px", height: "auto" }}
+          />
         </div>
 
         {/* Signatory */}

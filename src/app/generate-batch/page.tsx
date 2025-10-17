@@ -19,7 +19,7 @@ const MAX_LENGTHS: Record<CertificateFields, number> = {
   category: 30, 
   programName: 65,
   fieldOfInterest: 50,
-  achievementText: 300,
+  achievementText: 250,
   recipientName: 15,
   certificateDate: 22,
    // choose a sensible max length   // if required    // if required
