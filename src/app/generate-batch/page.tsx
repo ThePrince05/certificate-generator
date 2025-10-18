@@ -82,29 +82,30 @@ export default function GenerateBatch() {
   };
 
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rawData = (results.data as CertificateData[]).map((item) => ({
-          ...item,
-          organization: selectedOrg.name,
-          category: item.category || "General",           // fallback if missing
-          fieldOfInterest: item.fieldOfInterest || "Unspecified",
-        }));
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      const rawData = (results.data as CertificateData[]).map((item) => ({
+        ...item,
+        organization: selectedOrg.name,
+        category: item.category || "General",
+        // Remove fieldOfInterest if category is Gaming & Development
+        fieldOfInterest:
+          item.category === "Gaming & Development" ? "" : item.fieldOfInterest || "Unspecified",
+      }));
 
-        const { validated, invalidRows } = validateBatch(rawData);
-        setValidatedBatch(validated);
-        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
-      },
-    });
-  };
+      const { validated, invalidRows } = validateBatch(rawData);
+      setValidatedBatch(validated);
+      setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
+    },
+  });
+};
 
   const renderCertificate = (item: CertificateDataWithValidation) => {
-  // Use gaming template only for "Gaming & Development"
   const templateUrl =
     item.category === "Gaming & Development"
       ? "/templates/one-planet-one-people-games/certificate-template.jpg"
@@ -124,9 +125,11 @@ export default function GenerateBatch() {
         signature: 1,
         signatory: -10,
       }}
+    
     />
   );
 };
+
 
   const hasInvalidRows = (batch: CertificateDataWithValidation[]) =>
   batch.some((row) =>

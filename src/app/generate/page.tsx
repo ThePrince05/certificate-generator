@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Organization } from "../context/OrganizationContext";
 import { useOrganization } from "../context/OrganizationContext";
 
@@ -26,9 +26,9 @@ export default function GeneratePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const step = searchParams.get("step") || (selectedOrg ? "type" : "org");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Prefetch related routes for smoother transitions
     router.prefetch("/generate-single");
     router.prefetch("/generate-batch");
 
@@ -37,8 +37,13 @@ export default function GeneratePage() {
       clearOrg();
       sessionStorage.removeItem("resetOrgOnNextGenerate");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clearOrg, router]);
+
+  // Wrap navigation to show loading bar
+  const navigateWithLoading = (path: string) => {
+    setLoading(true);
+    router.push(path);
+  };
 
   const handleSelect = (org: Organization) => {
     selectOrg(org);
@@ -52,6 +57,19 @@ export default function GeneratePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 pt-16">
+      {/* Loading Bar */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: "100%" }}
+            exit={{ width: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+            className="fixed top-0 left-0 h-1 bg-green-500 z-50"
+          />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {step === "org" || !selectedOrg ? (
           <motion.div
@@ -102,14 +120,14 @@ export default function GeneratePage() {
             <div className="flex flex-col md:flex-row justify-center gap-6 mb-6">
               <button
                 className="px-8 py-4 bg-green-600 text-white rounded-lg border-2 border-green-700 hover:bg-green-700 shadow-md transition"
-                onClick={() => router.push("/generate-single")}
+                onClick={() => navigateWithLoading("/generate-single")}
               >
                 Single Certificate
               </button>
 
               <button
                 className="px-8 py-4 bg-blue-600 text-white rounded-lg border-2 border-blue-700 hover:bg-blue-700 shadow-md transition"
-                onClick={() => router.push("/generate-batch")}
+                onClick={() => navigateWithLoading("/generate-batch")}
               >
                 Batch Certificates
               </button>
