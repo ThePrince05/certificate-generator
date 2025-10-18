@@ -9,6 +9,7 @@ import CertificateTemplate from "@/components/home/CertificateTemplate";
 import { generatePDF, generateJPEG } from "../utils/generatePDF";
 import { CleanCertificateData } from "@/types/certificates";
 import { motion, AnimatePresence } from "framer-motion";
+import { v4 as uuidv4 } from "uuid";
 
 /** Returns true when viewport is desktop width or larger. Tailwind 'lg' == 1024px. */
 function useIsDesktop() {
@@ -27,13 +28,38 @@ function useIsDesktop() {
   return isDesktop;
 }
 
+type PastCertificate = CleanCertificateData & {
+  id: string;
+  generatedAt: string;
+};
+
 export default function GenerateSingle() {
   const { selectedOrg } = useOrganization();
   const { groups, loadGroups, selectedTemplate } = useTemplates();
   const router = useRouter();
+  const isDesktop = useIsDesktop();
+
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
   const [forcePreview, setForcePreview] = useState(false);
-  const isDesktop = useIsDesktop();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [history, setHistory] = useState<PastCertificate[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("certificateHistory_v1");
+      return raw ? (JSON.parse(raw) as PastCertificate[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveHistory = (items: PastCertificate[]) => {
+    setHistory(items);
+    try {
+      localStorage.setItem("certificateHistory_v1", JSON.stringify(items));
+    } catch (e) {
+      console.warn("Could not save certificate history", e);
+    }
+  };
 
   const getCertificateDate = () => {
     const today = new Date();
@@ -41,6 +67,14 @@ export default function GenerateSingle() {
     const year = today.getFullYear();
     return `Awarded ${month} ${year}`;
   };
+
+  // Filter history by search
+  const filteredHistory = history.filter((h) =>
+    [h.recipientName, h.programName, h.category, h.fieldOfInterest]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     if (!selectedOrg) {
@@ -50,12 +84,44 @@ export default function GenerateSingle() {
     loadGroups(selectedOrg.id);
   }, [selectedOrg, router, loadGroups]);
 
-  useEffect(() => {
-    if (!selectedOrg) return;
-    loadGroups(selectedOrg.id).then(() => {
-      console.log("✅ Groups loaded for org", selectedOrg.name, groups);
-    });
-  }, [selectedOrg?.id]);
+  // Handle new certificate generation
+  const handleGenerate = (data: CleanCertificateData) => {
+    const item: PastCertificate = { ...data, id: uuidv4(), generatedAt: new Date().toISOString() };
+    saveHistory([item, ...history]);
+    setFormData(data);
+  };
+
+  const handleDeleteHistory = (id: string) => {
+    saveHistory(history.filter((h) => h.id !== id));
+  };
+
+  const doDownloadPDF = (item: PastCertificate) => {
+    setFormData(item);
+    setTimeout(() => {
+      generatePDF({
+        organization: -30,
+        programName: -14,
+        achievementText: -15,
+        recipientName: -16,
+        certificateDate: -10,
+        signatory: -10,
+      });
+    }, 250);
+  };
+
+  const doDownloadJPEG = (item: PastCertificate) => {
+    setFormData(item);
+    setTimeout(() => {
+      generateJPEG({
+        organization: -30,
+        programName: -14,
+        achievementText: -15,
+        recipientName: -16,
+        certificateDate: -10,
+        signatory: -10,
+      });
+    }, 250);
+  };
 
   if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
 
@@ -83,7 +149,7 @@ export default function GenerateSingle() {
 
             <CertificateForm
               initialValues={{ organization: selectedOrg.name }}
-              onSubmit={(data) => setFormData(data)}
+              onSubmit={handleGenerate}
             />
           </div>
 
@@ -142,7 +208,7 @@ export default function GenerateSingle() {
                     <div className="flex-shrink-0">
                       <CertificateTemplate
                         {...formData}
-                        templateUrl={selectedTemplate.backgroundUrl} // ✅ dynamic template
+                        templateUrl={selectedTemplate.backgroundUrl}
                         isPreview
                         certificateDate={formData.certificateDate ?? getCertificateDate()}
                       />
@@ -186,6 +252,81 @@ export default function GenerateSingle() {
               )}
             </div>
           )}
+{/* Certificate History */}
+<section className="max-w-3xl mx-auto bg-gray-50 border rounded shadow p-6 mt-8">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-xl font-semibold text-gray-700">Certificate History</h2>
+    {history.length > 0 && (
+      <button
+        onClick={() => saveHistory([])}
+        className="text-sm text-red-600 hover:underline"
+      >
+        Clear all
+      </button>
+    )}
+  </div>
+
+  {/* Search */}
+  {history.length > 0 && (
+    <div className="mb-4">
+      <input
+        type="text"
+        placeholder="Search certificates..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full border rounded p-3"
+      />
+    </div>
+  )}
+
+  {filteredHistory.length === 0 ? (
+    <p className="text-gray-500 text-center py-6">
+      {searchQuery
+        ? `No certificates match "${searchQuery}".`
+        : "No certificates generated yet."}
+    </p>
+  ) : (
+    <div className="space-y-4">
+      {filteredHistory.map((h) => (
+        <div key={h.id} className="border p-4 rounded shadow-sm bg-white">
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <h3 className="font-bold">{h.recipientName || h.programName}</h3>
+              <p className="text-xs text-gray-500">
+                {h.category} · {h.fieldOfInterest} ·{" "}
+                {new Date(h.generatedAt).toLocaleString()}
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => doDownloadPDF(h)}
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition text-sm"
+              >
+                PDF
+              </button>
+              <button
+                onClick={() => doDownloadJPEG(h)}
+                className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition text-sm"
+              >
+                JPEG
+              </button>
+              <button
+                onClick={() => handleDeleteHistory(h.id)}
+                className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border rounded transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-600 whitespace-pre-line">{h.achievementText}</p>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
+
         </div>
       </motion.div>
     </AnimatePresence>
