@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,9 +18,9 @@ import { CertificateData, CertificateFields } from "@/types/certificates";
 const MAX_LENGTHS: Record<CertificateFields, number> = {
   organization: 25,
   category: 30, 
-  programName: 65,
   fieldOfInterest: 50,
-  achievementText: 250,
+  programName: 65,
+  achievementText: 260,
   recipientName: 15,
   certificateDate: 22,
    // choose a sensible max length   // if required    // if required
@@ -102,10 +103,17 @@ export default function GenerateBatch() {
     });
   };
 
-  const renderCertificate = (item: CertificateDataWithValidation) => (
+  const renderCertificate = (item: CertificateDataWithValidation) => {
+  // Use gaming template only for "Gaming & Development"
+  const templateUrl =
+    item.category === "Gaming & Development"
+      ? "/templates/one-planet-one-people-games/certificate-template.jpg"
+      : selectedOrg.templateUrl;
+
+  return (
     <CertificateTemplate
       {...item}
-      templateUrl={selectedOrg.templateUrl}
+      templateUrl={templateUrl}
       certificateDate={item.certificateDate || getCertificateDate()}
       pdfOffsets={{
         organization: -30,
@@ -118,6 +126,8 @@ export default function GenerateBatch() {
       }}
     />
   );
+};
+
   const hasInvalidRows = (batch: CertificateDataWithValidation[]) =>
   batch.some((row) =>
     (Object.keys(MAX_LENGTHS) as CertificateFields[]).some(

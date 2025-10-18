@@ -2,8 +2,8 @@
 export type CertificateFields =
   | "organization"
   | "category"
-  | "programName"
   | "fieldOfInterest"
+  | "programName"
   | "achievementText"
   | "recipientName"
   | "certificateDate";
@@ -12,8 +12,8 @@ export type CertificateFields =
 export type CertificateData = {
   organization: string;
   category: string;
-  programName: string;
   fieldOfInterest: string;
+  programName: string;
   achievementText: string;
   recipientName: string;
   certificateDate?: string;

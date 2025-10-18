@@ -10,16 +10,13 @@ import { generatePDF, generateJPEG } from "../utils/generatePDF";
 import { CleanCertificateData } from "@/types/certificates";
 import { motion, AnimatePresence } from "framer-motion";
 
-/**
- * Returns true when the viewport is desktop width or larger.
- * Tailwind 'lg' breakpoint == 1024px.
- */
+/** Returns true when viewport is desktop width or larger. Tailwind 'lg' == 1024px. */
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)"); // Tailwind 'lg'
+    const mq = window.matchMedia("(min-width: 1024px)");
     const onChange = (e: MediaQueryListEvent | MediaQueryList) => setIsDesktop(e.matches);
-    onChange(mq); // set initial
+    onChange(mq);
     if (mq.addEventListener) mq.addEventListener("change", onChange);
     else mq.addListener(onChange);
     return () => {
@@ -32,10 +29,10 @@ function useIsDesktop() {
 
 export default function GenerateSingle() {
   const { selectedOrg } = useOrganization();
-  const { groups, loadGroups } = useTemplates();
+  const { groups, loadGroups, selectedTemplate } = useTemplates();
   const router = useRouter();
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
-  const [forcePreview, setForcePreview] = useState(false); // user override
+  const [forcePreview, setForcePreview] = useState(false);
   const isDesktop = useIsDesktop();
 
   const getCertificateDate = () => {
@@ -53,21 +50,19 @@ export default function GenerateSingle() {
     loadGroups(selectedOrg.id);
   }, [selectedOrg, router, loadGroups]);
 
-useEffect(() => {
-  if (!selectedOrg) return;
-  loadGroups(selectedOrg.id).then(() => {
-    console.log("✅ Groups loaded for org", selectedOrg.name, groups);
-  });
-}, [selectedOrg?.id]);
-
-
+  useEffect(() => {
+    if (!selectedOrg) return;
+    loadGroups(selectedOrg.id).then(() => {
+      console.log("✅ Groups loaded for org", selectedOrg.name, groups);
+    });
+  }, [selectedOrg?.id]);
 
   if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
 
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key="generate-batch"
+        key="generate-single"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
@@ -84,19 +79,20 @@ useEffect(() => {
 
           <div className="max-w-3xl mx-auto space-y-8">
             <h1 className="text-4xl font-bold text-center mb-4">Generate Single Certificate</h1>
-
             <h2 className="text-2xl text-center text-gray-600 mb-8">{selectedOrg.name}</h2>
 
-            <CertificateForm initialValues={{ organization: selectedOrg.name }} onSubmit={(data) => setFormData(data)} />
+            <CertificateForm
+              initialValues={{ organization: selectedOrg.name }}
+              onSubmit={(data) => setFormData(data)}
+            />
           </div>
 
-          {/* Preview area: only mount CertificateTemplate on desktop (>=1024px) unless user forces it */}
           {formData && (
             <div className="mt-6 text-center space-y-4">
               {!isDesktop && !forcePreview ? (
                 <>
                   <p className="text-sm text-gray-500">
-                    Preview is disabled on small/tablet screens to improve performance and prevent layout or PDF offset issues.
+                    Preview is disabled on small/tablet screens to improve performance and prevent layout issues.
                   </p>
 
                   <div className="flex justify-center gap-4">
@@ -136,7 +132,6 @@ useEffect(() => {
                   <button
                     onClick={() => setForcePreview(true)}
                     className="mt-2 text-sm underline text-blue-600"
-                    aria-label="Show preview on smaller screen"
                   >
                     Show preview anyway
                   </button>
@@ -147,7 +142,7 @@ useEffect(() => {
                     <div className="flex-shrink-0">
                       <CertificateTemplate
                         {...formData}
-                        templateUrl={selectedOrg.templateUrl}
+                        templateUrl={selectedTemplate.backgroundUrl} // ✅ dynamic template
                         isPreview
                         certificateDate={formData.certificateDate ?? getCertificateDate()}
                       />

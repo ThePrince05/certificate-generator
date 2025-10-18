@@ -20,7 +20,7 @@ interface FormFields {
 
 const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
   programName: 65,
-  achievementText: 250,
+  achievementText: 260,
   recipientName: 15,
   certificateDate: 22,
 };
@@ -82,6 +82,7 @@ export default function CertificateForm({
 }) {
   const router = useRouter();
   const { groups } = useTemplates();
+  const { selectedTemplate, setTemplate } = useTemplates();
 
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
@@ -201,6 +202,34 @@ const filteredProgramOptions = useMemo(() => {
     console.groupEnd();
   }, [selectedCategory, groups]);
 
+    // --- clear Field of Interest for Gaming & Development ---
+  useEffect(() => {
+    if (selectedCategory === "Gaming & Development") {
+      setFormData(prev => ({ ...prev, fieldOfInterest: "" }));
+    }
+  }, [selectedCategory]);
+
+// --- change background template when "Gaming & Development" is selected ---
+useEffect(() => {
+  if (!selectedCategory) return;
+
+  if (selectedCategory === "Gaming & Development") {
+    // 🕹️ Switch to your special gaming background
+    setTemplate({
+      backgroundUrl: "/templates/one-planet-one-people-games/certificate-template.jpg",
+      name: "Gaming & Development Template",
+    });
+  } else {
+    // 🎓 Otherwise revert to the default
+    setTemplate({
+      backgroundUrl: "/templates/one-planet-one-people/certificate-template.jpg",
+      name: "Default Template",
+    });
+  }
+}, [selectedCategory, setTemplate]);
+
+
+
   // --- handlers for text and dropdown fields ---
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -221,23 +250,39 @@ const filteredProgramOptions = useMemo(() => {
     }));
   };
 
-  // --- form submission ---
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    for (const key in MAX_LENGTHS) {
-      const field = key as keyof FormFields;
-      const max = MAX_LENGTHS[field];
-      if (max && (formData[field] || "").length > max) {
-        alert(`"${field}" exceeds the maximum of ${max} characters.`);
-        return;
-      }
-    }
-    if (!formData.fieldOfInterest) {
-      alert("Please select a Field of Interest.");
+ // --- form submission ---
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // check max lengths
+  for (const key in MAX_LENGTHS) {
+    const field = key as keyof FormFields;
+    const max = MAX_LENGTHS[field];
+    if (max && (formData[field] || "").length > max) {
+      alert(`"${field}" exceeds the maximum of ${max} characters.`);
       return;
     }
-    onSubmit(formData);
-  };
+  }
+
+  // required fields
+  if (!formData.category) {
+    alert("Please select a Category.");
+    return;
+  }
+
+  // only validate Field of Interest if the dropdown is visible
+  if (selectedCategory !== "Gaming & Development" && !formData.fieldOfInterest) {
+    alert("Please select a Field of Interest.");
+    return;
+  }
+
+  if (!formData.programName) {
+    alert("Please select a Program Name.");
+    return;
+  }
+
+  onSubmit(formData);
+};
 
   const renderCounter = (fieldName: keyof FormFields) => {
     const max = MAX_LENGTHS[fieldName];
@@ -273,20 +318,46 @@ const filteredCategories = useMemo(() => {
       <div>
         <label className="block font-semibold mb-1">Category</label>
       <Select
-    options={[
-      { value: "", label: "-- Search or Select a Category --" },
-      ...filteredCategories.map((c) => ({ value: c, label: c })),
-    ]}
-    value={
-      selectedCategory
-        ? { value: selectedCategory, label: selectedCategory }
-        : { value: "", label: "-- Search or Select a Category --" }
-    }
-    onChange={(selected) => setSelectedCategory(selected?.value || "")}
-    isClearable={false}
-  />
-
+        options={[
+          { value: "", label: "-- Search or Select a Category --" },
+          ...filteredCategories.map((c) => ({ value: c, label: c })),
+        ]}
+        value={
+          selectedCategory
+            ? { value: selectedCategory, label: selectedCategory }
+            : { value: "", label: "-- Search or Select a Category --" }
+        }
+        onChange={(selected) => {
+          const value = selected?.value || "";
+          setSelectedCategory(value);
+          setFormData(prev => ({ ...prev, category: value })); // <-- sync formData
+        }}
+        isClearable={false}
+      />
       </div>
+
+     {/* Field of Interest */}
+    {selectedCategory !== "Gaming & Development" && (
+      <div>
+        <label className="block font-semibold mb-1">Field of Interest</label>
+        <Select
+          options={[
+            { value: "", label: "-- Search or Select Field of Interest --" },
+            ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
+          ]}
+          value={
+            formData.fieldOfInterest
+              ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
+              : { value: "", label: "-- Search or Select Field of Interest --" }
+          }
+          onChange={handleFieldOfInterestChange}
+          isClearable={false}
+          required
+        />
+      </div>
+    )}
+
+
 
       {/* Program Name */}
       <div>
@@ -309,25 +380,6 @@ const filteredCategories = useMemo(() => {
               ? "Loading programs..."
               : "No programs match this category"
           }
-        />
-      </div>
-
-      {/* Field of Interest */}
-      <div>
-        <label className="block font-semibold mb-1">Field of Interest</label>
-        <Select
-          options={[
-            { value: "", label: "-- Search or Select Field of Interest --" },
-            ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
-          ]}
-          value={
-            formData.fieldOfInterest
-              ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
-              : { value: "", label: "-- Search or Select Field of Interest --" }
-          }
-          onChange={handleFieldOfInterestChange}
-          isClearable={false}
-          required
         />
       </div>
 

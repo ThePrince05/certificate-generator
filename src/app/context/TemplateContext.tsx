@@ -12,6 +12,11 @@ export interface TemplateGroup {
   fieldOfInterest: string; // ✅ Added field
 }
 
+interface Template {
+  backgroundUrl: string;
+  name: string;
+}
+
 interface TemplateContextType {
   groups: TemplateGroup[];
   addGroup: (group: TemplateGroup, orgId: string) => void;
@@ -19,6 +24,10 @@ interface TemplateContextType {
   deleteGroup: (id: string, orgId: string) => void;
   setGroups: (groups: TemplateGroup[], orgId: string) => void;
   loadGroups: (orgId: string) => Promise<void>;
+
+   // ✅ Add these for background template switching
+  selectedTemplate: Template;
+  setTemplate: React.Dispatch<React.SetStateAction<Template>>;
 }
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
@@ -66,6 +75,13 @@ const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
 
 export const TemplateProvider = ({ children }: { children: ReactNode }) => {
   const [groups, setGroupsState] = useState<TemplateGroup[]>([]);
+
+
+    // ✅ Add template state
+  const [selectedTemplate, setTemplate] = useState<Template>({
+    backgroundUrl: "/templates/default-template.jpg",
+    name: "Default Template",
+  });
 
   const saveGroups = useCallback((groups: TemplateGroup[], orgId: string) => {
     const saved = localStorage.getItem("templateGroupsByOrg");
@@ -131,9 +147,20 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     [saveGroups]
   );
 
-  return (
+   return (
     <TemplateContext.Provider
-      value={{ groups, addGroup, updateGroup, deleteGroup, setGroups, loadGroups }}
+      value={{
+        groups,
+        addGroup,
+        updateGroup,
+        deleteGroup,
+        setGroups,
+        loadGroups,
+
+        // ✅ Provide template state
+        selectedTemplate,
+        setTemplate,
+      }}
     >
       {children}
     </TemplateContext.Provider>
