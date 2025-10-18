@@ -6,7 +6,7 @@ import { useTemplates, TemplateGroup } from "../context/TemplateContext";
 import { useOrganization } from "../context/OrganizationContext";
 import { v4 as uuidv4 } from "uuid";
 
-const MAX_LENGTHS = { programName: 65, achievementText: 300 };
+const MAX_LENGTHS = { programName: 65, achievementText: 260 };
 
 export default function TemplateGroupsPage() {
   const router = useRouter();
@@ -20,6 +20,9 @@ export default function TemplateGroupsPage() {
     category: "",
     fieldOfInterest: "",
   });
+
+    // New search query state
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (selectedOrg) loadGroups(selectedOrg.id);
@@ -121,11 +124,18 @@ const CATEGORIES = [
 ];
 
 
+ // Filter groups based on search query
+  const filteredGroups = groups.filter((group) =>
+    [group.programName, group.category, group.fieldOfInterest]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="max-w-3xl mx-auto p-6">
       {/* Add New Template Form */}
-      <section className="bg-white border rounded shadow p-6 mb-12">
+      <section className="bg-white border rounded shadow p-6 mb-20">
         <h1 className="text-2xl font-bold text-center mb-6">
           Add New Template Group for {selectedOrg.name}
         </h1>
@@ -163,66 +173,52 @@ const CATEGORIES = [
             {renderCounter("achievementText", newGroup.achievementText)}
           </div>
 
-          {/* Optional dropdowns for category and fieldOfInterest */}
-         <div className="flex gap-4">
-          <div className="w-1/2">
-            <label className="block font-semibold mb-1">Category</label>
-            <Select
-              options={[
-                { value: "", label: "-- Search or Select a Category --" }, // placeholder
-                ...CATEGORIES.map((c) => ({ value: c, label: c })),
-              ]}
-              value={
-                newGroup.category
-                  ? { value: newGroup.category, label: newGroup.category }
-                  : { value: "", label: "-- Search or Select a Category --" } // show placeholder if empty
-              }
-              onChange={(selected) =>
-                setNewGroup((prev) => ({ ...prev, category: selected?.value || "" }))
-              }
-              isClearable={false}
-            />
-          </div>
+          <div className="flex gap-4">
+            <div className="w-1/2">
+              <label className="block font-semibold mb-1">Category</label>
+              <Select
+                options={[{ value: "", label: "-- Search or Select a Category --" }, ...CATEGORIES.map((c) => ({ value: c, label: c }))]}
+                value={newGroup.category ? { value: newGroup.category, label: newGroup.category } : { value: "", label: "-- Search or Select a Category --" }}
+                onChange={(selected) => setNewGroup((prev) => ({ ...prev, category: selected?.value || "" }))}
+                isClearable={false}
+              />
+            </div>
 
-          <div className="w-1/2">
-            <label className="block font-semibold mb-1">Field of Interest</label>
-            <Select
-              options={[
-                { value: "", label: "--  Search or Select Field of Interest --" }, // placeholder
-                ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
-              ]}
-              value={
-                newGroup.fieldOfInterest
-                  ? { value: newGroup.fieldOfInterest, label: newGroup.fieldOfInterest }
-                  : { value: "", label: "-- Search or Select Field of Interest --" } // show placeholder if empty
-              }
-              onChange={(selected) =>
-                setNewGroup((prev) => ({ ...prev, fieldOfInterest: selected?.value || "" }))
-              }
-              isClearable={false}
-            />
+            <div className="w-1/2">
+              <label className="block font-semibold mb-1">Field of Interest</label>
+              <Select
+                options={[{ value: "", label: "-- Search or Select Field of Interest --" }, ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f }))]}
+                value={newGroup.fieldOfInterest ? { value: newGroup.fieldOfInterest, label: newGroup.fieldOfInterest } : { value: "", label: "-- Search or Select Field of Interest --" }}
+                onChange={(selected) => setNewGroup((prev) => ({ ...prev, fieldOfInterest: selected?.value || "" }))}
+                isClearable={false}
+              />
+            </div>
           </div>
-        </div>
-
 
           <div className="flex items-center gap-3 mt-4">
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600 transition"
-            >
+            <button type="submit" className="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600 transition">
               Add Group
             </button>
             <div className="flex-1" />
-            <button
-              type="button"
-              onClick={() => router.push("/generate-single")}
-              className="bg-gray-100 text-gray-800 px-5 py-2 rounded border hover:bg-gray-200 transition"
-            >
+            <button type="button" onClick={() => router.push("/generate-single")} className="bg-gray-100 text-gray-800 px-5 py-2 rounded border hover:bg-gray-200 transition">
               Back
             </button>
           </div>
         </form>
       </section>
+
+      {/* Search Bar */}
+      {groups.length > 0 && (
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search templates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full border rounded p-3"
+          />
+        </div>
+      )}
 
       {/* Existing Templates */}
       <section className="bg-gray-50 border rounded shadow p-6">
@@ -230,13 +226,13 @@ const CATEGORIES = [
           Saved Template Groups
         </h2>
 
-        {groups.length === 0 ? (
+        {filteredGroups.length === 0 ? (
           <p className="text-gray-500 text-center py-6">
-            No template groups yet for {selectedOrg.name}.
+            {searchQuery ? `No template groups match "${searchQuery}".` : `No template groups yet for ${selectedOrg.name}.`}
           </p>
         ) : (
           <div className="space-y-4">
-            {groups.map((group) => (
+            {filteredGroups.map((group) => (
               <div key={group.id} className="border p-4 rounded shadow-sm bg-white">
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -250,30 +246,20 @@ const CATEGORIES = [
                       onClick={() => {
                         const programName = prompt("Edit program name:", group.programName);
                         if (!programName) return;
-                        const achievementText =
-                          prompt("Edit achievement text:", group.achievementText) || "";
-                        updateGroup(
-                          group.id,
-                          { ...group, programName, achievementText },
-                          selectedOrg.id
-                        );
+                        const achievementText = prompt("Edit achievement text:", group.achievementText) || "";
+                        updateGroup(group.id, { ...group, programName, achievementText }, selectedOrg.id);
                       }}
                       className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 border rounded transition"
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => deleteGroup(group.id, selectedOrg.id)}
-                      className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border rounded transition"
-                    >
+                    <button onClick={() => deleteGroup(group.id, selectedOrg.id)} className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border rounded transition">
                       Delete
                     </button>
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-600 whitespace-pre-line">
-                  {group.achievementText}
-                </p>
+                <p className="text-sm text-gray-600 whitespace-pre-line">{group.achievementText}</p>
               </div>
             ))}
           </div>
