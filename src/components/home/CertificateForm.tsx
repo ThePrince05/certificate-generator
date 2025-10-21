@@ -265,10 +265,10 @@ const handleSubmit = (e: React.FormEvent) => {
   }
 
   // required fields
-  if (!formData.category) {
-    alert("Please select a Category.");
-    return;
-  }
+ // if (!formData.category) {
+  //  alert("Please select a Category.");
+    //return;
+ // }
 
   // only validate Field of Interest if the dropdown is visible
   if (selectedCategory !== "Gaming & Development" && !formData.fieldOfInterest) {
@@ -276,10 +276,12 @@ const handleSubmit = (e: React.FormEvent) => {
     return;
   }
 
-  if (!formData.programName) {
-    alert("Please select a Program Name.");
-    return;
-  }
+ // Program Name is optional — no validation needed
+// if (!formData.programName) {
+//   alert("Please select a Program Name.");
+//   return;
+// }
+
 
   onSubmit(formData);
 };

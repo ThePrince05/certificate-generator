@@ -138,10 +138,11 @@ export default function CertificateTemplate({
             fontSize: "20px",
           }}
         >
-         {fieldOfInterest
-          ? `${cleanProgramName} : ${fieldOfInterest}`
-          : cleanProgramName}
-
+       {cleanProgramName
+          ? fieldOfInterest
+            ? `${cleanProgramName} : ${fieldOfInterest}`
+            : cleanProgramName
+          : fieldOfInterest}
         </h2>
 
         {/* Achievement Text */}
