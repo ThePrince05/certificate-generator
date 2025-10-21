@@ -79,7 +79,7 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
 
     // ✅ Add template state
   const [selectedTemplate, setTemplate] = useState<Template>({
-    backgroundUrl: "/templates/default-template.jpg",
+    backgroundUrl: "/templates/one-planet-one-people/certificate-template.jpg",
     name: "Default Template",
   });
 
