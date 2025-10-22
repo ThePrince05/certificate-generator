@@ -10,6 +10,8 @@ import { generatePDF, generateJPEG } from "../utils/generatePDF";
 import { CleanCertificateData } from "@/types/certificates";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
+import { handleMultiDownload } from "@/app/utils/multiDownload";
+
 
 /** Returns true when viewport is desktop width or larger. Tailwind 'lg' == 1024px. */
 function useIsDesktop() {
@@ -45,10 +47,15 @@ export default function GenerateSingle() {
   const [dbSearch, setDbSearch] = useState("");
   const [showHistory, setShowHistory] = useState(false);
 
+
+
   const { selectedOrg } = useOrganization();
   const { groups, loadGroups, selectedTemplate } = useTemplates();
   const router = useRouter();
   const isDesktop = useIsDesktop();
+  const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
+
+
 
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
   const [forcePreview, setForcePreview] = useState(false);
@@ -71,6 +78,27 @@ export default function GenerateSingle() {
       console.warn("Could not save certificate history", e);
     }
   };
+const handleGenerateFromDatabase = (cert: DemoCertificate) => {
+  const newItem: PastCertificate = {
+    ...cert,
+    id: uuidv4(),
+    generatedAt: new Date().toISOString(),
+  };
+
+  // Check for duplicates
+  const alreadyExists = history.some(
+    (h) =>
+      h.recipientName === cert.recipientName &&
+      h.programName === cert.programName
+  );
+
+  if (!alreadyExists) {
+    saveHistory([newItem, ...history]);
+  }
+
+  setFormData(cert);
+};
+
 
   const getCertificateDate = () => {
     const today = new Date();
@@ -96,11 +124,27 @@ export default function GenerateSingle() {
   }, [selectedOrg, router, loadGroups]);
 
   // Handle new certificate generation
-  const handleGenerate = (data: CleanCertificateData) => {
-    const item: PastCertificate = { ...data, id: uuidv4(), generatedAt: new Date().toISOString() };
-    saveHistory([item, ...history]);
-    setFormData(data);
-  };
+const handleGenerate = (data: CleanCertificateData) => {
+  const exists = history.some(
+    (h) =>
+      h.recipientName === data.recipientName &&
+      h.programName === data.programName
+  );
+
+  if (!exists) {
+    const item: PastCertificate = {
+      ...data,
+      id: uuidv4(),
+      generatedAt: new Date().toISOString(),
+    };
+
+    const updatedHistory = [item, ...history];
+    saveHistory(updatedHistory);
+  }
+
+  setFormData(data); // still update form preview even if duplicate
+};
+
 
   const handleDeleteHistory = (id: string) => {
     saveHistory(history.filter((h) => h.id !== id));
@@ -272,44 +316,155 @@ George Martin;STEP-44: Product Development;Engineering & Product;In recognition 
               ))}
             </ul>
           )}
+          {personCertificates.length > 0 && (
+  <div className="flex justify-end mb-2">
+    <button
+      onClick={() =>
+        setSelectedCertificates(
+          selectedCertificates.length === personCertificates.length
+            ? []
+            : personCertificates.map(c => c.id)
+        )
+      }
+      className="text-blue-600 hover:underline text-sm"
+    >
+      {selectedCertificates.length === personCertificates.length
+        ? "Deselect All"
+        : "Select All"}
+    </button>
+  </div>
+)}
 
           {/* Certificates for selected person */}
           {selectedPerson && personCertificates.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-xl font-semibold text-gray-800">{selectedPerson}'s Certificates</h3>
               <div className="space-y-3">
-                {personCertificates.map(cert => (
-                  <div
-                    key={cert.id}
-                    className="border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-                  >
-                    <div>
-                      <p className="font-bold text-gray-900">{cert.programName}</p>
-                      <p className="text-sm text-gray-500">{cert.category}</p>
-                      <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition text-sm"
-                        onClick={() => setFormData(cert)}
-                      >
-                        Preview
-                      </button>
-                      <button
-                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition text-sm"
-                        onClick={() => { setFormData(cert); setTimeout(() => generatePDF({}), 200); }}
-                      >
-                        PDF
-                      </button>
-                      <button
-                        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition text-sm"
-                        onClick={() => { setFormData(cert); setTimeout(() => generateJPEG({}), 200); }}
-                      >
-                        JPEG
-                      </button>
-                    </div>
-                  </div>
-                ))}
+               {personCertificates.map(cert => {
+  const isSelected = selectedCertificates.includes(cert.id);
+  return (
+    <div
+      key={cert.id}
+      className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
+        isSelected ? "border-blue-500 bg-blue-50" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => {
+            setSelectedCertificates(prev =>
+              isSelected
+                ? prev.filter(id => id !== cert.id)
+                : [...prev, cert.id]
+            );
+          }}
+          className="mt-1 accent-blue-500 scale-110"
+        />
+        <div>
+          <p className="font-bold text-gray-900">{cert.programName}</p>
+          <p className="text-sm text-gray-500">{cert.category}</p>
+          <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition text-sm"
+          onClick={() => setFormData(cert)}
+        >
+          Preview
+        </button>
+        <button
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition text-sm"
+          onClick={() => {
+            handleGenerateFromDatabase(cert);
+            setTimeout(() =>
+              generatePDF({
+                organization: -25,       // <- custom offset for this button
+                programName: -12,
+                achievementText: -14,
+                recipientName: -18,
+                certificateDate: -10,
+                signatory: -8,
+              }),
+              200
+            );
+          }}
+        >
+          PDF
+        </button>
+       <button
+        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition text-sm"
+        onClick={() => {
+          handleGenerateFromDatabase(cert);
+          setTimeout(() =>
+            generateJPEG({
+              organization: -25,       // <- custom offset for this button
+              programName: -12,
+              achievementText: -14,
+              recipientName: -18,
+              certificateDate: -10,
+              signatory: -8,
+            }),
+            200
+          );
+        }}
+      >
+        JPEG
+      </button>
+      </div>
+    </div>
+  );
+})}
+
+          {selectedCertificates.length > 0 && (
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mt-6 border-t pt-4">
+          <p className="text-gray-700">
+            {selectedCertificates.length} certificate
+            {selectedCertificates.length > 1 ? "s" : ""} selected
+          </p>
+
+          <div className="flex gap-3">
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+          onClick={() => {
+            const selected = personCertificates.filter(c =>
+              selectedCertificates.includes(c.id)
+            );
+
+            // ✅ Pass string safely with fallback
+            handleMultiDownload(
+              selected,
+              "pdf",
+              selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+            );
+          }}
+        >
+          Generate PDFs (ZIP)
+        </button>
+
+        <button
+          className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition"
+          onClick={() => {
+            const selected = personCertificates.filter(c =>
+              selectedCertificates.includes(c.id)
+            );
+
+            handleMultiDownload(
+              selected,
+              "jpeg",
+              selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+            );
+          }}
+        >
+          Generate JPEGs (ZIP)
+        </button>
+      </div>
+      </div>
+    )}
+
               </div>
             </div>
           )}

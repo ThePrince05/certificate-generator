@@ -13,6 +13,9 @@ import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
 import ReactDOM from "react-dom/client";
 import { CertificateData, CertificateFields } from "@/types/certificates";
+import { handleMultiDownload } from "../utils/multiDownload";
+import { v4 as uuidv4 } from "uuid";
+
 
 // Max lengths for validation
 const MAX_LENGTHS: Record<CertificateFields, number> = {
@@ -146,81 +149,43 @@ const handleBatchDownloadPDF = async () => {
   }
 
   setIsDownloading(true);
-  const zip = new JSZip();
-  for (let i = 0; i < validatedBatch.length; i++) {
-    const item = validatedBatch[i];
-    const container = document.createElement("div");
-    container.style.position = "absolute";
-    container.style.left = "-9999px";
-    document.body.appendChild(container);
+  try {
+    // Add 'id' to each certificate for multiDownload
+    const batchWithIds = validatedBatch.map(cert => ({
+      ...cert,
+      id: uuidv4(),
+    }));
 
-    const root = ReactDOM.createRoot(container);
-    root.render(renderCertificate(item));
-    await new Promise((res) => setTimeout(res, 300));
-
-    const el = container.querySelector("#certificate") as HTMLElement;
-    if (el) {
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [canvas.width, canvas.height] });
-      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-      zip.file(`${(item.recipientName || "certificate").replace(/\s+/g, "_")}-${i + 1}.pdf`, pdf.output("arraybuffer"));
-    }
-
-    root.unmount();
-    document.body.removeChild(container);
+   await handleMultiDownload(batchWithIds, "pdf", selectedOrg.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg");
+  } finally {
+    setIsDownloading(false);
   }
-
-  const blob = await zip.generateAsync({ type: "blob" });
-  saveAs(blob, `${selectedOrg.name}-certificates.zip`);
-  setIsDownloading(false);
 };
 
-
-  const handleBatchDownloadJPEG = async () => {
+const handleBatchDownloadJPEG = async () => {
   if (!validatedBatch.length) return;
 
-  // Block download if there are invalid fields
   if (hasInvalidRows(validatedBatch)) {
     alert("Some fields are invalid. Please fix them before downloading.");
     return;
   }
 
   setIsDownloading(true);
-
   try {
-    const zip = new JSZip();
+    const batchWithIds = validatedBatch.map(cert => ({
+      ...cert,
+      id: uuidv4(),
+    }));
 
-    for (let i = 0; i < validatedBatch.length; i++) {
-      const item = validatedBatch[i];
-      const container = document.createElement("div");
-      container.style.position = "absolute";
-      container.style.left = "-9999px";
-      document.body.appendChild(container);
-
-      const root = ReactDOM.createRoot(container);
-      root.render(renderCertificate(item));
-      await new Promise((res) => setTimeout(res, 300));
-
-      const certificateEl = container.querySelector("#certificate") as HTMLElement;
-      if (certificateEl) {
-        const canvas = await html2canvas(certificateEl, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL("image/jpeg", 0.9);
-        const res = await fetch(imgData);
-        const blob = await res.blob();
-        zip.file(`${(item.recipientName || "certificate").replace(/\s+/g, "_")}-${i + 1}.jpg`, blob);
-      }
-
-      root.unmount();
-      document.body.removeChild(container);
-    }
-
-    const zipBlob = await zip.generateAsync({ type: "blob" });
-    saveAs(zipBlob, `${selectedOrg.name}-certificates-jpeg.zip`);
+     await handleMultiDownload(batchWithIds, "jpeg", selectedOrg.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg");
   } finally {
     setIsDownloading(false);
   }
 };
+
+
+
+  
 
 
   // Table for desktop
