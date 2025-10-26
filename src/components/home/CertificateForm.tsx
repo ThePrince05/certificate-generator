@@ -12,6 +12,7 @@ interface FormFields {
   programName: string;
   achievementText: string;
   recipientName: string;
+  email: string;
   certificateDate: string;
   fieldOfInterest: string;
   signature?: string;
@@ -22,6 +23,7 @@ const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
   programName: 65,
   achievementText: 260,
   recipientName: 15,
+  email: 100,
   certificateDate: 22,
 };
 
@@ -97,6 +99,7 @@ export default function CertificateForm({
     programName: "",
     achievementText: "",
     recipientName: "",
+    email: "",
     certificateDate: `Awarded ${selectedMonth} ${selectedYear}`,
     fieldOfInterest: "",
   });
@@ -254,6 +257,12 @@ useEffect(() => {
 const handleSubmit = (e: React.FormEvent) => {
   e.preventDefault();
 
+// simple email validation
+    if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
   // check max lengths
   for (const key in MAX_LENGTHS) {
     const field = key as keyof FormFields;
@@ -264,23 +273,12 @@ const handleSubmit = (e: React.FormEvent) => {
     }
   }
 
-  // required fields
- // if (!formData.category) {
-  //  alert("Please select a Category.");
-    //return;
- // }
 
   // only validate Field of Interest if the dropdown is visible
   if (selectedCategory !== "Gaming & Development" && !formData.fieldOfInterest) {
     alert("Please select a Field of Interest.");
     return;
   }
-
- // Program Name is optional — no validation needed
-// if (!formData.programName) {
-//   alert("Please select a Program Name.");
-//   return;
-// }
 
 
   onSubmit(formData);
@@ -410,6 +408,20 @@ const filteredCategories = useMemo(() => {
           className="border p-2 w-full mb-2"
         />
         {renderCounter("recipientName")}
+      </div>
+
+      {/*Email */}
+      <div>
+        <input
+          name="email"
+          type="email"
+          placeholder="Recipient Email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          className="border p-2 w-full mb-2"
+        />
+        {renderCounter("email")}
       </div>
 
       {/* Date Selection */}

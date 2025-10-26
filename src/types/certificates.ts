@@ -12,12 +12,13 @@ export type CertificateFields =
 export type CertificateData = {
   organization: string;
   category: string;
+  email: string;
   fieldOfInterest: string;
   programName: string;
   achievementText: string;
   recipientName: string;
   certificateDate?: string;
-  signature?: string; // optional now
+  signature?: string;
   signatory?: string;
 } & {
   [K in `${CertificateFields}_invalid`]?: boolean;
@@ -25,3 +26,21 @@ export type CertificateData = {
 
 // Data without _invalid flags
 export type CleanCertificateData = Omit<CertificateData, `${CertificateFields}_invalid`>;
+
+// Social media types for certificate forwarding
+export interface ContactInfo {
+  recipientName: string;
+  email: string;
+  phone?: string;
+  whatsapp?: string;
+  facebook?: string;
+  linkedin?: string;
+  twitter?: string;
+  preferredMethod?: 'whatsapp' | 'email' | 'facebook' | 'linkedin' | 'twitter';
+}
+
+export interface ShareableCertificate extends CleanCertificateData {
+  contactInfo?: ContactInfo;
+  downloadUrl?: string;
+  shareMessage?: string;
+}
