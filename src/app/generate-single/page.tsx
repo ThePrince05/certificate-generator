@@ -131,35 +131,30 @@ export default function GenerateSingle() {
         const parsedData = parseCSVData(csvContent, selectedOrg.name);
 
        // inside your loadDemoData function — replace the current parsedData.map(...) block
-const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
-  const emailFromCSV = (item.email || "").trim();
-  const contact = contactInfoList.find(
-    (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
-  );
+        const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
+          const emailFromCSV = (item.recipientName || "").trim(); // CSV value as email
+          const contact = contactInfoList.find(
+            (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
+          );
 
-  return {
-    id: uuidv4(),
-    // prefer CSV recipientName, then contact.recipientName (or contact.name), then fallback
-    recipientName:
-      (item.recipientName && item.recipientName.trim()) ||
-      contact?.recipientName ||
-      // some contact lists use `name` instead — be defensive
-      (contact as any)?.name ||
-      "Unknown",
-    email: emailFromCSV || contact?.email || "",
-    programName: item.programName || "",
-    category: item.category || "",
-    achievementText: item.achievementText || "",
-    fieldOfInterest: item.fieldOfInterest ?? "",
-    certificateDate:
-      item.certificateDate ||
-      `Awarded ${new Date().toLocaleString("en-GB", {
-        month: "long",
-        year: "numeric",
-      })}`,
-    organization: item.organization || selectedOrg.name,
-  };
-});
+          return {
+            id: uuidv4(),
+            // Use contact name if available, otherwise fallback
+            recipientName: contact?.recipientName || (contact as any)?.name || "Unknown",
+            email: emailFromCSV || contact?.email || "",
+            programName: item.programName || "",
+            category: item.category || "",
+            achievementText: item.achievementText || "",
+            fieldOfInterest: item.fieldOfInterest ?? "",
+            certificateDate:
+              item.certificateDate ||
+              `Awarded ${new Date().toLocaleString("en-GB", {
+                month: "long",
+                year: "numeric",
+              })}`,
+            organization: item.organization || selectedOrg.name,
+          };
+        });
 
         setDbCertificates(demoCertificates);
       } catch (error) {
@@ -223,31 +218,53 @@ const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
     }, 250);
   };
 
-  // Build unique suggestions — prefer unique by email; fall back to name if no email
-  const suggestions = (() => {
-    const map = new Map<string, { name: string; email: string }>();
+// Build unique suggestions — only include people that exist in demoData (tolerant matching)
+const suggestions = (() => {
+  const map = new Map<string, { name: string; email: string }>();
 
-    // Merge from dbCertificates
-    for (const c of dbCertificates) {
-      const name = c.recipientName?.trim();
-      const email = c.email?.trim();
-      if (name && email && !map.has(email.toLowerCase())) {
-        map.set(email.toLowerCase(), { name, email });
-      }
+  // Quick debug: inspect loaded certificates
+  console.log("DEBUG: dbCertificates loaded:", dbCertificates);
+
+  // Prepare normalized lists from dbCertificates
+  const validEmails = new Set<string>();
+  const normalizedNames: string[] = [];
+
+  for (const c of dbCertificates) {
+    const e = c.email?.trim().toLowerCase();
+    if (e) validEmails.add(e);
+
+    const n = c.recipientName?.trim().toLowerCase();
+    if (n) normalizedNames.push(n);
+  }
+
+  console.log("DEBUG: validEmails:", Array.from(validEmails));
+  console.log("DEBUG: normalizedNames:", normalizedNames);
+
+  // Walk contacts and include any that match by email OR by name loosely
+  for (const contact of contactInfoList) {
+    const name = contact.recipientName?.trim();
+    const email = contact.email?.trim();
+    if (!name || !email) continue;
+
+    const emailLower = email.toLowerCase();
+    const nameLower = name.toLowerCase();
+
+    const emailMatch = validEmails.has(emailLower);
+    const nameMatch = normalizedNames.some(
+      (n) => n.includes(nameLower) || nameLower.includes(n)
+    );
+
+    if ((emailMatch || nameMatch) && !map.has(emailLower)) {
+      map.set(emailLower, { name, email });
     }
+  }
 
-      // Merge from contactInfoList if not already included
-    for (const contact of contactInfoList) {
-      const name = contact.recipientName?.trim();
-      const email = contact.email?.trim();
-      if (name && email && !map.has(email.toLowerCase())) {
-        map.set(email.toLowerCase(), { name, email });
-      }
-    }
+  const result = Array.from(map.values());
+  console.log("DEBUG: suggestions generated:", result); // <-- this shows what will appear in dropdown
+  return result;
+})();
 
-    // Return as array for rendering
-    return Array.from(map.values());
-  })();
+
 
 
 // Filter suggestions by dbSearch matching either name or email
@@ -331,7 +348,7 @@ const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
             <h2 className="text-2xl text-center text-gray-600 mb-8">{selectedOrg.name}</h2>
 
             {/* Search Box */}
-            <div className="p-6 bg-white rounded shadow border border-gray-200 space-y-4">
+              <div className="p-6 bg-white rounded shadow border border-gray-200 space-y-4">
               <input
                 type="text"
                 placeholder="Search for a person or email..."
@@ -345,31 +362,38 @@ const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
                   {filteredPersons.map((s) => (
                     <li
                       key={`${s.email ?? s.name}`}
-                     onClick={() => {
-                    setSelectedPerson(s.name);
-                    setDbSearch("");
+                      onClick={() => {
+                        setSelectedPerson(s.name);
+                        setDbSearch("");
 
-                    const certs = dbCertificates.filter((c) => {
-                      if (s.email) return c.email?.trim().toLowerCase() === s.email.toLowerCase();
-                      return c.recipientName?.trim().toLowerCase() === s.name.toLowerCase();
-                    });
+                        const certs = dbCertificates.filter((c) => {
+                          const certEmail = c.email?.trim().toLowerCase() || "";
+                          const certName = c.recipientName?.trim().toLowerCase() || "";
+                          const searchEmail = s.email?.toLowerCase() || "";
+                          const searchName = s.name?.toLowerCase() || "";
 
-                    setPersonCertificates(certs);
+                          // Match by exact email OR by name (loose)
+                          return (
+                            (searchEmail && certEmail === searchEmail) ||
+                            certName.includes(searchName) ||
+                            searchName.includes(certName)
+                          );
+                        });
 
-                    // If certificates exist, pick the first one to show in preview
-                    if (certs.length > 0) {
-                      setFormData({
-                        ...certs[0],
-                        certificateDate: certs[0].certificateDate || getCertificateDate(), // fallback
-                      });
-                    } else {
-                      setFormData(null); // ensure nothing renders if none
-                    }
-                  }}
+                        setPersonCertificates(certs);
 
+                        // Show first certificate in preview if exists
+                        if (certs.length > 0) {
+                          setFormData({
+                            ...certs[0],
+                            certificateDate: certs[0].certificateDate || getCertificateDate(),
+                          });
+                        } else {
+                          setFormData(null);
+                        }
+                      }}
                       className="p-3 hover:bg-gray-50 cursor-pointer text-gray-700"
                     >
-
                       <div className="flex justify-between items-center">
                         <div>
                           <span className="font-semibold">{s.name}</span>
@@ -384,9 +408,10 @@ const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
               )}
             </div>
 
+
             {/* Certificates for selected person */}
             {selectedPerson && personCertificates.length > 0 && (
-              <div className="space-y-4">
+              <div>
                 <h3 className="text-xl font-semibold text-gray-800">
                   {personCertificates[0].recipientName}'s Certificates
                 </h3>
