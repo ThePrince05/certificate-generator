@@ -4,14 +4,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import CertificateTemplate from "@/components/home/CertificateTemplate";
+import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
 import { useOrganization } from "../context/OrganizationContext";
 import Papa from "papaparse";
-import JSZip from "jszip";
-import jsPDF from "jspdf";
-import { saveAs } from "file-saver";
-import html2canvas from "html2canvas";
-import ReactDOM from "react-dom/client";
 import { CertificateData, CertificateFields } from "@/types/certificates";
 import { handleMultiDownload } from "../utils/multiDownload";
 import { v4 as uuidv4 } from "uuid";

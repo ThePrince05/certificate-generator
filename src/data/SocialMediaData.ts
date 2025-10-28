@@ -16,7 +16,7 @@ export const contactInfoList: ContactInfo[] = [
     recipientName: "Robert Adamo",
     email: "robert.adamo2@example.com",
     phone: "+1234500000",
-    whatsapp: "+1234500000",
+    whatsapp: "+27614181641",
     facebook: "https://facebook.com/robertadamo.official",
     linkedin: "https://linkedin.com/in/robertadamo2",
     twitter: "https://twitter.com/robertadamo2",
@@ -254,7 +254,7 @@ export function shareCertificate(
   const contactInfo = certificate.contactInfo;
 
   if (!contactInfo) {
-    console.warn('No contact info available for', certificate.recipientName);
+   
     return;
   }
 

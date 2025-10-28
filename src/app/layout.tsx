@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TemplateProvider } from "./context/TemplateContext";
 import { OrganizationProvider } from "./context/OrganizationContext";
-import QuickAccessPanel from "@/components/home/QuickAccessPanel"; // ✅ Import the panel
+import QuickAccessPanel from "@/components/QuickAccessPanel"; // ✅ Import the panel
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

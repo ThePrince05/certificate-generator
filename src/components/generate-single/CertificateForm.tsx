@@ -114,24 +114,21 @@ export default function CertificateForm({
 
   // --- derive program options safely ---
   const programOptions = useMemo(() => {
-    console.group("🧭 Deriving Program Options");
-    console.log("Groups:", groups);
+
     const opts = (groups || []).map((g) => ({
       value: g.programName,
       label: g.programName,
     }));
-    console.log("Derived programOptions:", opts);
-    console.groupEnd();
+   
     return opts;
   }, [groups]);
 
   // --- handle program selection ---
   const handleProgramSelect = (selected: { value: string; label: string } | null) => {
     const newProgram = selected?.value || "";
-    console.log("➡️ Program selected:", newProgram);
-
+   
     const defaults = groups.find((g) => g.programName === newProgram);
-    if (!defaults) console.warn("⚠️ No group found for selected program.");
+    
 
     setFormData((prev) => ({
       ...prev,
@@ -142,44 +139,33 @@ export default function CertificateForm({
 
   // --- filtered program options with category filtering + debug ---
 const filteredProgramOptions = useMemo(() => {
-  console.group("🔍 Filtering Program Options");
-  console.log("programOptions:", programOptions);
-  console.log("selectedCategory:", selectedCategory);
-
+  
   const selected = (selectedCategory || "").trim().toLowerCase();
 
   const filtered = programOptions.filter((p) => {
     const group = groups.find((g) => g.programName === p.value);
     if (!group) {
-      console.warn("⚠️ Group not found for program:", p.value);
+     
       return false;
     }
 
     const groupCategory = (group.category || "").trim().toLowerCase();
     const match = selected === "" || groupCategory === selected;
 
-    console.log(
-      `Program: ${p.value}, Group Category: ${group.category}, Matches?`,
-      match
-    );
+    
     return match;
   });
 
-  console.groupEnd();
+
   return filtered;
 }, [programOptions, groups, selectedCategory]);
 
 
   // --- prevent clearing before groups are loaded ---
   useEffect(() => {
-    console.group("📝 Category Change Check");
-    console.log("selectedCategory:", selectedCategory);
-    console.log("current programName:", formData.programName);
-    console.log("groups length:", groups?.length || 0);
-
+   
     if (!groups || groups.length === 0) {
-      console.log("⏳ Groups not loaded yet — skipping clear logic.");
-      console.groupEnd();
+     
       return;
     }
 
@@ -192,17 +178,16 @@ const filteredProgramOptions = useMemo(() => {
       (!selectedProgramGroup ||
         selectedProgramGroup.category !== selectedCategory)
     ) {
-      console.warn("⚠️ Clearing programName + achievementText due to category mismatch.");
+    
       setFormData((prev) => ({
         ...prev,
         programName: "",
         achievementText: "",
       }));
     } else {
-      console.log("✅ Program still valid for category — keeping selection.");
+     
     }
 
-    console.groupEnd();
   }, [selectedCategory, groups]);
 
     // --- clear Field of Interest for Gaming & Development ---

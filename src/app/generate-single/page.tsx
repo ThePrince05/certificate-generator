@@ -1,11 +1,12 @@
 "use client";
 
+import { FaShareAlt } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "../context/OrganizationContext";
 import { useTemplates } from "../context/TemplateContext";
-import CertificateForm from "@/components/home/CertificateForm";
-import CertificateTemplate from "@/components/home/CertificateTemplate";
+import CertificateForm from "@/components/generate-single/CertificateForm";
+import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
 import { generatePDF, generateJPEG } from "../utils/generatePDF";
 import { CleanCertificateData } from "@/types/certificates";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,13 +14,14 @@ import { v4 as uuidv4 } from "uuid";
 import { handleMultiDownload } from "@/app/utils/multiDownload";
 import { loadCSVData, parseCSVData } from "../utils/csvLoader";
 import { contactInfoList } from "@/data/SocialMediaData";
+import { ShareModal } from "@/components/generate-single/ShareModal";
 
 interface DownloadDropdownProps {
   onDownloadPDF: (e?: MouseEvent) => void;
   onDownloadJPEG: (e?: MouseEvent) => void;
+  fontSize?: "sm" | "base";
 }
 
-/** Returns true when viewport is desktop width or larger. Tailwind 'lg' == 1024px. */
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
@@ -40,24 +42,77 @@ type DemoCertificate = CleanCertificateData & {
   id: string;
 };
 
+const DownloadDropdown = ({
+  onDownloadPDF,
+  onDownloadJPEG,
+  fontSize = "base",
+}: DownloadDropdownProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const sizeClass = fontSize === "sm" ? "text-sm" : "text-base";
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition ${sizeClass} flex items-center gap-2`}
+      >
+        Download
+        <svg
+          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10 overflow-hidden">
+          <button
+            onClick={() => {
+              onDownloadPDF();
+              setIsOpen(false);
+            }}
+            className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-green-500 hover:bg-green-600 transition`}
+          >
+            PDF
+          </button>
+          <button
+            onClick={() => {
+              onDownloadJPEG();
+              setIsOpen(false);
+            }}
+            className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-yellow-500 hover:bg-yellow-600 transition`}
+          >
+            JPEG
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function GenerateSingle() {
   const [isDownloadingMulti, setIsDownloadingMulti] = useState(false);
   const [showManualForm, setShowManualForm] = useState(true);
   const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
-  const [selectedPerson, setSelectedPerson] = useState<string | null>(null); // stores email if available, otherwise name
+  const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
   const [dbSearch, setDbSearch] = useState("");
   const [showHistory, setShowHistory] = useState(false);
-
-  const { selectedOrg } = useOrganization();
-  const { groups, loadGroups, selectedTemplate } = useTemplates();
-  const router = useRouter();
-  const isDesktop = useIsDesktop();
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
   const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
-
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
   const [forcePreview, setForcePreview] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
+  const { selectedOrg } = useOrganization();
+  const { loadGroups, selectedTemplate } = useTemplates();
+  const router = useRouter();
+  const isDesktop = useIsDesktop();
+
   const [history, setHistory] = useState<any[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -68,14 +123,73 @@ export default function GenerateSingle() {
     }
   });
 
+  const certificatesToShare = personCertificates.filter(cert =>
+    selectedCertificates.includes(cert.id)
+  );
+
   const saveHistory = (items: any[]) => {
     setHistory(items);
     try {
       localStorage.setItem("certificateHistory_v1", JSON.stringify(items));
     } catch (e) {
-      console.warn("Could not save certificate history", e);
     }
   };
+const MultiDownloadDropdown = ({
+  onDownloadPDF,
+  onDownloadJPEG,
+  isDownloading,
+}: {
+  onDownloadPDF: () => void;
+  onDownloadJPEG: () => void;
+  isDownloading: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2`}
+        disabled={isDownloading}
+      >
+        {isDownloading ? "Generating..." : "Download ZIP"}
+        <svg
+          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 w-44 bg-white rounded-md shadow-lg border border-gray-200 z-10 overflow-hidden">
+          <button
+            onClick={() => {
+              onDownloadPDF();
+              setIsOpen(false);
+            }}
+            className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white transition"
+            disabled={isDownloading}
+          >
+            PDF
+          </button>
+          <button
+            onClick={() => {
+              onDownloadJPEG();
+              setIsOpen(false);
+            }}
+            className="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white transition"
+            disabled={isDownloading}
+          >
+            JPEG
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
   const handleGenerateFromDatabase = (cert: DemoCertificate) => {
     const newItem = {
@@ -105,7 +219,6 @@ export default function GenerateSingle() {
     return `Awarded ${month} ${year}`;
   };
 
-  // Filter history by search
   const filteredHistory = history.filter((h) =>
     [h.recipientName, h.programName, h.category, h.fieldOfInterest, h.email]
       .join(" ")
@@ -121,60 +234,47 @@ export default function GenerateSingle() {
     loadGroups(selectedOrg.id);
   }, [selectedOrg, router, loadGroups]);
 
-
-  // Load CSV demo data and attach emails from contact list when missing
   useEffect(() => {
     const loadDemoData = async () => {
       if (!selectedOrg) return;
 
-      try {
+
         const csvContent = await loadCSVData();
         const parsedData = parseCSVData(csvContent, selectedOrg.name);
 
-       // inside your loadDemoData function — replace the current parsedData.map(...) block
         const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
-          const emailFromCSV = (item.recipientName || "").trim(); // CSV value as email
+          const emailFromCSV = (item.recipientName || "").trim();
           const contact = contactInfoList.find(
             (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
           );
 
           return {
             id: uuidv4(),
-            // Use contact name if available, otherwise fallback
             recipientName: contact?.recipientName || (contact as any)?.name || "Unknown",
             email: emailFromCSV || contact?.email || "",
             programName: item.programName || "",
             category: item.category || "",
             achievementText: item.achievementText || "",
             fieldOfInterest: item.fieldOfInterest ?? "",
-            certificateDate:
-              item.certificateDate ||
-              `Awarded ${new Date().toLocaleString("en-GB", {
-                month: "long",
-                year: "numeric",
-              })}`,
+            certificateDate: item.certificateDate || getCertificateDate(),
             organization: item.organization || selectedOrg.name,
           };
         });
 
         setDbCertificates(demoCertificates);
-      } catch (error) {
-        console.error("Failed to load demo data:", error);
-      }
+
     };
 
     loadDemoData();
   }, [selectedOrg]);
 
-  // Hide manual form when a person is selected
   useEffect(() => {
     if (selectedPerson) {
       setShowManualForm(false);
     } else {
-      setShowManualForm(true); // optional: show form again if no person is selected
+      setShowManualForm(true);
     }
   }, [selectedPerson]);
-
 
   const handleGenerate = (data: CleanCertificateData) => {
     const exists = history.some(
@@ -189,7 +289,6 @@ export default function GenerateSingle() {
         id: uuidv4(),
         generatedAt: new Date().toISOString(),
       };
-
       const updatedHistory = [item, ...history];
       saveHistory(updatedHistory);
     }
@@ -229,56 +328,41 @@ export default function GenerateSingle() {
     }, 250);
   };
 
-// Build unique suggestions — only include people that exist in demoData (tolerant matching)
-const suggestions = (() => {
-  const map = new Map<string, { name: string; email: string }>();
+  const suggestions = (() => {
+    const map = new Map<string, { name: string; email: string }>();
 
-  // Quick debug: inspect loaded certificates
-  console.log("DEBUG: dbCertificates loaded:", dbCertificates);
+    const validEmails = new Set<string>();
+    const normalizedNames: string[] = [];
 
-  // Prepare normalized lists from dbCertificates
-  const validEmails = new Set<string>();
-  const normalizedNames: string[] = [];
+    for (const c of dbCertificates) {
+      const e = c.email?.trim().toLowerCase();
+      if (e) validEmails.add(e);
 
-  for (const c of dbCertificates) {
-    const e = c.email?.trim().toLowerCase();
-    if (e) validEmails.add(e);
-
-    const n = c.recipientName?.trim().toLowerCase();
-    if (n) normalizedNames.push(n);
-  }
-
-  console.log("DEBUG: validEmails:", Array.from(validEmails));
-  console.log("DEBUG: normalizedNames:", normalizedNames);
-
-  // Walk contacts and include any that match by email OR by name loosely
-  for (const contact of contactInfoList) {
-    const name = contact.recipientName?.trim();
-    const email = contact.email?.trim();
-    if (!name || !email) continue;
-
-    const emailLower = email.toLowerCase();
-    const nameLower = name.toLowerCase();
-
-    const emailMatch = validEmails.has(emailLower);
-    const nameMatch = normalizedNames.some(
-      (n) => n.includes(nameLower) || nameLower.includes(n)
-    );
-
-    if ((emailMatch || nameMatch) && !map.has(emailLower)) {
-      map.set(emailLower, { name, email });
+      const n = c.recipientName?.trim().toLowerCase();
+      if (n) normalizedNames.push(n);
     }
-  }
 
-  const result = Array.from(map.values());
-  console.log("DEBUG: suggestions generated:", result); // <-- this shows what will appear in dropdown
-  return result;
-})();
+    for (const contact of contactInfoList) {
+      const name = contact.recipientName?.trim();
+      const email = contact.email?.trim();
+      if (!name || !email) continue;
 
+      const emailLower = email.toLowerCase();
+      const nameLower = name.toLowerCase();
 
+      const emailMatch = validEmails.has(emailLower);
+      const nameMatch = normalizedNames.some(
+        (n) => n.includes(nameLower) || nameLower.includes(n)
+      );
 
+      if ((emailMatch || nameMatch) && !map.has(emailLower)) {
+        map.set(emailLower, { name, email });
+      }
+    }
 
-// Filter suggestions by dbSearch matching either name or email
+    return Array.from(map.values());
+  })();
+
   const filteredPersons = suggestions.filter((s) => {
     if (!dbSearch) return true;
     const q = dbSearch.toLowerCase();
@@ -289,51 +373,16 @@ const suggestions = (() => {
   });
 
   if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
+  // Determine template URL dynamically
+  const getTemplateUrl = (category?: string) => {
+    if (!category) return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
 
-  const DownloadDropdown = ({ onDownloadPDF, onDownloadJPEG }: DownloadDropdownProps) => {
-    const [isOpen, setIsOpen] = useState(false);
+    if (category.toLowerCase().includes("gaming") || category.toLowerCase().includes("development")) {
+      return "/templates/one-planet-one-people-games/certificate-template.jpg";
+    }
 
-    return (
-      <div className="relative inline-block">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition text-base flex items-center gap-2"
-        >
-          Download
-          <svg
-            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {isOpen && (
-          <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10 overflow-hidden">
-            <button
-              onClick={() => {
-                onDownloadPDF();
-                setIsOpen(false);
-              }}
-              className="flex justify-center items-center w-full px-4 py-2 text-base text-white bg-green-500 hover:bg-green-600 transition"
-            >
-              PDF
-            </button>
-            <button
-              onClick={() => {
-                onDownloadJPEG();
-                setIsOpen(false);
-              }}
-              className="flex justify-center items-center w-full px-4 py-2 text-base text-white bg-yellow-500 hover:bg-yellow-600 transition"
-            >
-              JPEG
-            </button>
-          </div>
-        )}
-      </div>
-    );
+    // fallback to org's or default
+    return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
   };
 
   return (
@@ -358,8 +407,7 @@ const suggestions = (() => {
             <h1 className="text-4xl font-bold text-center mb-4">Generate Single Certificate</h1>
             <h2 className="text-2xl text-center text-gray-600 mb-8">{selectedOrg.name}</h2>
 
-            {/* Search Box */}
-              <div className="p-6 bg-white rounded shadow border border-gray-200 space-y-4">
+            <div className="p-6 bg-white rounded shadow border border-gray-200 space-y-4">
               <input
                 type="text"
                 placeholder="Search for a person or email..."
@@ -370,54 +418,52 @@ const suggestions = (() => {
 
               {dbSearch && filteredPersons.length > 0 && (
                 <ul className="border rounded max-h-60 overflow-y-auto divide-y divide-gray-200">
-                {filteredPersons.map((s) => (
-                  <li
-                    key={`${s.email ?? s.name}`}
-                    onClick={() => {
-                      setSelectedPerson(s.name);
-                      setDbSearch("");
+                  {filteredPersons.map((s) => (
+                    <li
+                      key={`${s.email ?? s.name}`}
+                      onClick={() => {
+                        setSelectedPerson(s.name);
+                        setDbSearch("");
 
-                      const certs = dbCertificates.filter((c) => {
+                        const certs = dbCertificates.filter((c) => {
                         const certEmail = c.email?.trim().toLowerCase() || "";
                         const certName = c.recipientName?.trim().toLowerCase() || "";
                         const searchEmail = s.email?.toLowerCase() || "";
                         const searchName = s.name?.toLowerCase() || "";
 
-                        // Match by exact email OR by name (loose)
-                        return (
-                          (searchEmail && certEmail === searchEmail) ||
-                          certName.includes(searchName) ||
-                          searchName.includes(certName)
-                        );
+                        // Primary: Exact email match
+                        if (searchEmail && certEmail === searchEmail) return true;
+                        
+                        // Secondary: Only use name matching if NO email is available in certificate
+                        if (!certEmail && searchName && certName === searchName) return true;
+                        
+                        return false;
                       });
+                        setPersonCertificates(certs);
 
-                      setPersonCertificates(certs);
+                        if (certs.length > 0) {
+                          const firstCert = {
+                            ...certs[0],
+                            certificateDate: certs[0].certificateDate || getCertificateDate(),
+                          };
 
-                      if (certs.length > 0) {
-                        const firstCert = {
-                          ...certs[0],
-                          certificateDate: certs[0].certificateDate || getCertificateDate(),
-                        };
+                          setFormData(firstCert);
 
-                        setFormData(firstCert);
-
-                        // Add to history if not already there
-                        const alreadyExists = history.some(
-                          (h) =>
-                            h.recipientName === firstCert.recipientName &&
-                            h.programName === firstCert.programName &&
-                            h.email === firstCert.email
-                        );
-                        if (!alreadyExists) {
-                          saveHistory([{ ...firstCert, id: uuidv4(), generatedAt: new Date().toISOString() }, ...history]);
+                          const alreadyExists = history.some(
+                            (h) =>
+                              h.recipientName === firstCert.recipientName &&
+                              h.programName === firstCert.programName &&
+                              h.email === firstCert.email
+                          );
+                          if (!alreadyExists) {
+                            saveHistory([{ ...firstCert, id: uuidv4(), generatedAt: new Date().toISOString() }, ...history]);
+                          }
+                        } else {
+                          setFormData(null);
                         }
-                      } else {
-                        setFormData(null);
-                      }
-                    }}
-                    className="p-3 hover:bg-gray-50 cursor-pointer text-gray-700"
-                  >
-
+                      }}
+                      className="p-3 hover:bg-gray-50 cursor-pointer text-gray-700"
+                    >
                       <div className="flex justify-between items-center">
                         <div>
                           <span className="font-semibold">{s.name}</span>
@@ -432,228 +478,124 @@ const suggestions = (() => {
               )}
             </div>
 
-
-            {/* Certificates for selected person */}
             {selectedPerson && personCertificates.length > 0 && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-800">
-                  {personCertificates[0].recipientName}'s Certificates
-                </h3>
+              <div className="flex justify-between items-center mb-4">
+  <h3 className="text-xl font-semibold text-gray-800">
+    {personCertificates[0].recipientName}'s Certificates
+  </h3>
 
-                {personCertificates.length > 0 && (
-                  <div className="flex justify-end mb-2">
-                    <button
-                      onClick={() =>
-                        setSelectedCertificates(
-                          selectedCertificates.length === personCertificates.length
-                            ? []
-                            : personCertificates.map((c) => c.id)
-                        )
-                      }
-                      className="text-blue-600 hover:underline text-sm"
-                    >
-                      {selectedCertificates.length === personCertificates.length ? "Deselect All" : "Select All"}
-                    </button>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  {personCertificates.map((cert) => {
-                    const isSelected = selectedCertificates.includes(cert.id);
-                    return (
-                      <div
-                        key={cert.id}
-                        onClick={(e) => {
-                          if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
-                            setFormData(cert);
-                          }
-                        }}
-                        className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
-                          isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={() => {
-                              setSelectedCertificates((prev) =>
-                                isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
-                              );
-                            }}
-                            className="mt-1 accent-blue-500 scale-110"
-                          />
-                          <div>
-                            <p className="font-bold text-gray-900">{cert.programName}</p>
-                            <p className="text-sm text-gray-500">{cert.category}</p>
-                            <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition text-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleGenerateFromDatabase(cert);
-                              setTimeout(
-                                () =>
-                                  generatePDF({
-                                    organization: -25,
-                                    programName: -12,
-                                    achievementText: -14,
-                                    recipientName: -18,
-                                    certificateDate: -10,
-                                    signatory: -8,
-                                  }),
-                                200
-                              );
-                            }}
-                          >
-                            PDF
-                          </button>
-                          <button
-                            className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition text-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleGenerateFromDatabase(cert);
-                              setTimeout(
-                                () =>
-                                  generateJPEG({
-                                    organization: -25,
-                                    programName: -12,
-                                    achievementText: -14,
-                                    recipientName: -18,
-                                    certificateDate: -10,
-                                    signatory: -8,
-                                  }),
-                                200
-                              );
-                            }}
-                          >
-                            JPEG
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {selectedCertificates.length > 0 && (
-                   <div className="flex flex-col md:flex-row justify-between items-center gap-4 mt-6 border-t pt-4">
-  <p className="text-gray-700">
-    {selectedCertificates.length} certificate{selectedCertificates.length > 1 ? "s" : ""} selected
-  </p>
-
-  <div className="flex gap-3">
+  <div className="flex gap-4 items-center">
     <button
-      onClick={async () => {
-        const selected = personCertificates.filter((c) =>
-          selectedCertificates.includes(c.id)
-        );
-        setIsDownloadingMulti(true);
-        try {
-          await handleMultiDownload(
-            selected,
-            "pdf",
-            selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
-          );
-        } finally {
-          setIsDownloadingMulti(false);
-        }
-      }}
-      disabled={isDownloadingMulti}
-      className={`bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition flex items-center gap-2 ${
-        isDownloadingMulti ? "opacity-70 cursor-not-allowed" : ""
-      }`}
+      onClick={() =>
+        setSelectedCertificates(
+          selectedCertificates.length === personCertificates.length
+            ? []
+            : personCertificates.map((c) => c.id)
+        )
+      }
+      className="text-blue-600 hover:underline text-sm"
     >
-      {isDownloadingMulti ? (
-        <>
-          Generating...
-          <svg
-            className="animate-spin h-5 w-5"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            />
-          </svg>
-        </>
-      ) : (
-        "Generate PDFs (ZIP)"
-      )}
+      {selectedCertificates.length === personCertificates.length ? "Deselect All" : "Select All"}
     </button>
 
-      <button
-        onClick={async () => {
-          const selected = personCertificates.filter((c) =>
-            selectedCertificates.includes(c.id)
-          );
-          setIsDownloadingMulti(true);
-                    try {
-                      await handleMultiDownload(
-                        selected,
-                        "jpeg",
-                        selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
-                      );
-                    } finally {
-                      setIsDownloadingMulti(false);
-                    }
-                  }}
-                  disabled={isDownloadingMulti}
-                  className={`bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition flex items-center gap-2 ${
-                    isDownloadingMulti ? "opacity-70 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {isDownloadingMulti ? (
-                    <>
-                      Generating...
-                      <svg
-                        className="animate-spin h-5 w-5"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                        />
-                      </svg>
-                    </>
-                  ) : (
-                    "Generate JPEGs (ZIP)"
-                  )}
-                </button>
+    <button
+      onClick={() => setCertificatesCollapsed(prev => !prev)}
+      className="text-blue-600 hover:underline text-sm"
+    >
+      {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
+    </button>
+  </div>
+</div>
+
+              <AnimatePresence initial={false}>
+  {!certificatesCollapsed && (
+    <motion.div
+      key="certificates-list"
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.25 }}
+      className="space-y-3 overflow-hidden"
+    >
+      {personCertificates.map((cert) => {
+        const isSelected = selectedCertificates.includes(cert.id);
+        return (
+          <div
+            key={cert.id}
+            onClick={(e) => {
+              if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
+                setFormData(cert);
+              }
+            }}
+            className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
+              isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onClick={(e) => e.stopPropagation()}
+                onChange={() => {
+                  setSelectedCertificates((prev) =>
+                    isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
+                  );
+                }}
+                className="mt-1 accent-blue-500 scale-110"
+              />
+              <div>
+                <p className="font-bold text-gray-900">{cert.programName}</p>
+                <p className="text-sm text-gray-500">{cert.category}</p>
+                <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
               </div>
             </div>
 
-                  )}
-                </div>
+            <div className="flex gap-2 flex-wrap">
+              <DownloadDropdown
+                onDownloadPDF={() => {
+                  handleGenerateFromDatabase(cert);
+                  setTimeout(
+                    () =>
+                      generatePDF({
+                        organization: -25,
+                        programName: -12,
+                        achievementText: -14,
+                        recipientName: -18,
+                        certificateDate: -10,
+                        signatory: -8,
+                      }),
+                    200
+                  );
+                }}
+                onDownloadJPEG={() => {
+                  handleGenerateFromDatabase(cert);
+                  setTimeout(
+                    () =>
+                      generateJPEG({
+                        organization: -25,
+                        programName: -12,
+                        achievementText: -14,
+                        recipientName: -18,
+                        certificateDate: -10,
+                        signatory: -8,
+                      }),
+                    200
+                  );
+                }}
+                fontSize="sm"
+              />
+            </div>
+          </div>
+        );
+      })}
+    </motion.div>
+  )}
+</AnimatePresence>
+
               </div>
             )}
 
-            {/* Manual Input Form (always visible) */}
             <div className="p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-300">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Manual Entry</h3>
@@ -682,86 +624,113 @@ const suggestions = (() => {
             </div>
           </div>
 
-          {formData && (
-            <div className="mt-6 text-center space-y-4">
-              {!isDesktop && !forcePreview ? (
-                <>
-                  <p className="text-sm text-gray-500">
-                    Preview is disabled on small/tablet screens to improve performance and prevent layout issues.
-                  </p>
+         {formData && (
+  <div className="text-center">
+    {!isDesktop && !forcePreview ? (
+      <>
+        <p className="text-sm text-gray-500 mb-2">
+          Preview is disabled on small/tablet screens to improve performance and prevent layout issues.
+        </p>
 
-                  <div className="flex justify-center">
-                    <DownloadDropdown
-                      onDownloadPDF={() =>
-                        generatePDF({
-                          organization: -30,
-                          programName: -14,
-                          achievementText: -15,
-                          recipientName: -16,
-                          certificateDate: -10,
-                          signatory: -10,
-                        })
-                      }
-                      onDownloadJPEG={() =>
-                        generateJPEG({
-                          organization: -30,
-                          programName: -14,
-                          achievementText: -15,
-                          recipientName: -16,
-                          certificateDate: -10,
-                          signatory: -10,
-                        })
-                      }
-                    />
-                  </div>
+        <div className="flex justify-center gap-3 mb-2">
+          {/* Share button */}
+          <button
+            onClick={() => {
+              setShareTarget({ type: "history", data: formData });
+              setIsShareModalOpen(true);
+            }}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+          >
+            <FaShareAlt className="w-4 h-4" />
+            Share
+          </button>
 
-                  <button onClick={() => setForcePreview(true)} className="mt-2 text-sm underline text-blue-600">
-                    Show preview anyway
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="w-full flex justify-center overflow-x-auto py-4">
-                    <div className="flex-shrink-0">
-                      <CertificateTemplate
-                        {...formData}
-                        templateUrl={selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"}
-                        isPreview
-                        certificateDate={formData.certificateDate ?? getCertificateDate()}
-                      />
-                    </div>
-                  </div>
+          {/* Download dropdown */}
+          <DownloadDropdown
+            onDownloadPDF={() =>
+              generatePDF({
+                organization: -30,
+                programName: -14,
+                achievementText: -15,
+                recipientName: -16,
+                certificateDate: -10,
+                signatory: -10,
+              })
+            }
+            onDownloadJPEG={() =>
+              generateJPEG({
+                organization: -30,
+                programName: -14,
+                achievementText: -15,
+                recipientName: -16,
+                certificateDate: -10,
+                signatory: -10,
+              })
+            }
+          />
+        </div>
 
-                  <div className="flex justify-center">
-                    <DownloadDropdown
-                      onDownloadPDF={() =>
-                        generatePDF({
-                          organization: -30,
-                          programName: -14,
-                          achievementText: -15,
-                          recipientName: -16,
-                          certificateDate: -10,
-                          signatory: -10,
-                        })
-                      }
-                      onDownloadJPEG={() =>
-                        generateJPEG({
-                          organization: -30,
-                          programName: -14,
-                          achievementText: -15,
-                          recipientName: -16,
-                          certificateDate: -10,
-                          signatory: -10,
-                        })
-                      }
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+        <button
+          onClick={() => setForcePreview(true)}
+          className="text-sm underline text-blue-600"
+        >
+          Show preview anyway
+        </button>
+      </>
+    ) : (
+      <>
+        <div className="w-full flex justify-center overflow-x-auto py-4">
+          <div className="flex-shrink-0">
+            <CertificateTemplate
+              {...formData}
+              templateUrl={getTemplateUrl(formData.category)}
+              isPreview
+              certificateDate={formData.certificateDate ?? getCertificateDate()}
+            />
+          </div>
+        </div>
 
-          {/* Toggle History Button */}
+        <div className="flex justify-center gap-3 mt-2">
+          <button
+            onClick={() => {
+              setShareTarget({ type: "history", data: formData });
+              setIsShareModalOpen(true);
+            }}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+          >
+            <FaShareAlt className="w-4 h-4" />
+            Share
+          </button>
+
+          <DownloadDropdown
+            onDownloadPDF={() =>
+              generatePDF({
+                organization: -30,
+                programName: -14,
+                achievementText: -15,
+                recipientName: -16,
+                certificateDate: -10,
+                signatory: -10,
+              })
+            }
+            onDownloadJPEG={() =>
+              generateJPEG({
+                organization: -30,
+                programName: -14,
+                achievementText: -15,
+                recipientName: -16,
+                certificateDate: -10,
+                signatory: -10,
+              })
+            }
+          />
+        </div>
+      </>
+    )}
+  </div>
+)}
+
+
           {history.length > 0 && (
             <div className="flex justify-center mb-4">
               <button
@@ -784,7 +753,6 @@ const suggestions = (() => {
                 )}
               </div>
 
-              {/* Search */}
               {history.length > 0 && (
                 <div className="mb-4">
                   <input
@@ -817,25 +785,19 @@ const suggestions = (() => {
                           </p>
                         </div>
 
-                        <div className="flex gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                       <div className="flex gap-2">
+                          <DownloadDropdown
+                            onDownloadPDF={(e) => {
+                              e?.stopPropagation?.();
                               doDownloadPDF(h);
                             }}
-                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition text-sm"
-                          >
-                            PDF
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onDownloadJPEG={(e) => {
+                              e?.stopPropagation?.();
                               doDownloadJPEG(h);
                             }}
-                            className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition text-sm"
-                          >
-                            JPEG
-                          </button>
+                            fontSize="sm"
+                          />
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -856,6 +818,50 @@ const suggestions = (() => {
             </section>
           )}
         </div>
+      {isShareModalOpen && (() => {
+  let recipientCertificates: any[] = [];
+
+  if (shareTarget?.type === "person") {
+    recipientCertificates = personCertificates
+      .filter(c => selectedCertificates.includes(c.id))
+      .map(c => ({
+        ...c,
+        contactInfo: contactInfoList.find(
+          ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
+        ) || null,
+      }));
+  } else if (shareTarget?.type === "history") {
+    if (shareTarget.data) {
+      recipientCertificates = [{
+        ...shareTarget.data,
+        contactInfo: contactInfoList.find(
+          ci => ci?.email?.toLowerCase() === shareTarget.data.email?.toLowerCase()
+        ) || null
+      }];
+    }
+  }
+
+  // ---- DEBUGGING LOGS ----
+  console.log("ShareModal Opened");
+  console.log("shareTarget:", shareTarget);
+  console.log("personCertificates:", personCertificates);
+  console.log("selectedCertificates:", selectedCertificates);
+  console.log("recipientCertificates:", recipientCertificates);
+
+  return (
+    <ShareModal
+      isOpen={isShareModalOpen}
+      onClose={() => {
+        setIsShareModalOpen(false);
+        setShareTarget(null);
+      }}
+      recipientCertificates={recipientCertificates}
+      contactInfoList={contactInfoList}
+      defaultEmail={recipientCertificates[0]?.email ?? ""}
+    />
+  );
+})()}
+
       </motion.div>
     </AnimatePresence>
   );

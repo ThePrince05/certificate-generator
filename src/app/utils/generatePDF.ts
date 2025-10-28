@@ -153,7 +153,7 @@ export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
     resetOffsets();
   } catch (err) {
     // If something goes wrong, still try to remove the clone
-    console.error("Error generating PDF:", err);
+   
   } finally {
     clone.remove();
   }
@@ -187,7 +187,7 @@ export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
 
     resetOffsets();
   } catch (err) {
-    console.error("Error generating JPEG:", err);
+  
   } finally {
     clone.remove();
   }

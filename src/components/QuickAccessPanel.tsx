@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useOrganization } from "../../app/context/OrganizationContext";
+import { useOrganization } from "../app/context/OrganizationContext";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function QuickAccessPanel() {
