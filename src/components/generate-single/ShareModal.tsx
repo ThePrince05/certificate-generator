@@ -45,6 +45,41 @@ export const ShareModal = ({
     email: !!editableContactInfo.email,
     whatsapp: !!editableContactInfo.whatsapp,
   });
+  const [loadingMessage, setLoadingMessage] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const generateMessage = async () => {
+      try {
+        setLoadingMessage(true);
+        const firstCert = recipientCertificates[0];
+        if (!firstCert) return;
+
+        const res = await fetch("/api/generate-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientName:
+              firstCert.recipientName ||
+              editableContactInfo.recipientName ||
+              "Participant",
+            programName: firstCert.programName || "the program",
+            organization: firstCert.organization || "our organization",
+          }),
+        });
+
+        const data = await res.json();
+        if (data.message) setCustomMessage(data.message);
+      } catch (err) {
+        console.error("Failed to fetch Gemini message:", err);
+      } finally {
+        setLoadingMessage(false);
+      }
+    };
+
+    generateMessage();
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -129,15 +164,22 @@ export const ShareModal = ({
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Custom Message (optional)</label>
-          <textarea
-            className="w-full border rounded px-2 py-1"
-            rows={4}
-            value={customMessage}
-            onChange={(e) => setCustomMessage(e.target.value)}
-            placeholder="Enter a custom message (or leave empty for A.I generated message)"
-          />
-        </div>
+  <label className="block font-medium mb-1">Custom Message</label>
+  {loadingMessage ? (
+    <div className="border rounded px-2 py-3 text-gray-500 text-center italic">
+      Generating message with AI...
+    </div>
+  ) : (
+    <textarea
+      className="w-full border rounded px-2 py-1"
+      rows={4}
+      value={customMessage}
+      onChange={(e) => setCustomMessage(e.target.value)}
+      placeholder="Enter a custom message (leave empty to use AI suggestion)"
+    />
+  )}
+</div>
+
 
         <div className="flex justify-end gap-3 mt-4">
           <button className="px-4 py-2 bg-gray-300 rounded" onClick={onClose}>

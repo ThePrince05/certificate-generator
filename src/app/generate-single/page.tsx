@@ -1,7 +1,7 @@
 "use client";
 
 import { FaShareAlt } from "react-icons/fa";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "../context/OrganizationContext";
 import { useTemplates } from "../context/TemplateContext";
@@ -15,10 +15,11 @@ import { handleMultiDownload } from "@/app/utils/multiDownload";
 import { loadCSVData, parseCSVData } from "../utils/csvLoader";
 import { contactInfoList } from "@/data/SocialMediaData";
 import { ShareModal } from "@/components/generate-single/ShareModal";
+import { createPortal } from "react-dom";
 
 interface DownloadDropdownProps {
-  onDownloadPDF: (e?: MouseEvent) => void;
-  onDownloadJPEG: (e?: MouseEvent) => void;
+  onDownloadPDF: (e?:React.MouseEvent<HTMLButtonElement>) => void;
+  onDownloadJPEG: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   fontSize?: "sm" | "base";
 }
 
@@ -48,48 +49,91 @@ const DownloadDropdown = ({
   fontSize = "base",
 }: DownloadDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
   const sizeClass = fontSize === "sm" ? "text-sm" : "text-base";
 
-  return (
-    <div className="relative inline-block">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition ${sizeClass} flex items-center gap-2`}
-      >
-        Download
-        <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current) return;
 
-      {isOpen && (
-        <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10 overflow-hidden">
-          <button
-            onClick={() => {
-              onDownloadPDF();
-              setIsOpen(false);
-            }}
-            className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-green-500 hover:bg-green-600 transition`}
+    const rect = buttonRef.current.getBoundingClientRect();
+    const dropdownHeight = 90; // roughly height of both buttons
+    const shouldOpenUpward = window.innerHeight - rect.bottom < dropdownHeight + 10;
+
+    setOpenUpward(shouldOpenUpward);
+    setDropdownPos({
+      top: shouldOpenUpward ? rect.top - dropdownHeight - 8 : rect.bottom + 8,
+      left: rect.left + rect.width / 2,
+    });
+  }, [isOpen]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <>
+      <div className="relative inline-block">
+        <button
+          ref={buttonRef}
+          onClick={() => setIsOpen((prev) => !prev)}
+          className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition ${sizeClass} flex items-center gap-2`}
+        >
+          Download
+          <svg
+            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            PDF
-          </button>
-          <button
-            onClick={() => {
-              onDownloadJPEG();
-              setIsOpen(false);
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      {isOpen &&
+        createPortal(
+          <div
+            className="fixed z-[9999]"
+            style={{
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              transform: "translateX(-50%)", // ✅ always centered to parent
             }}
-            className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-yellow-500 hover:bg-yellow-600 transition`}
           >
-            JPEG
-          </button>
-        </div>
-      )}
-    </div>
+            <div className="w-40 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden">
+              <button
+                onClick={(e) => {
+                  onDownloadPDF(e);
+                  setIsOpen(false);
+                }}
+                className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-green-500 hover:bg-green-600 transition`}
+              >
+                PDF
+              </button>
+              <button
+                onClick={(e) => {
+                  onDownloadJPEG(e);
+                  setIsOpen(false);
+                }}
+                className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-yellow-500 hover:bg-yellow-600 transition`}
+              >
+                JPEG
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
   );
 };
 
@@ -144,13 +188,25 @@ const MultiDownloadDropdown = ({
   isDownloading: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const dropdownHeight = 90;
+      setOpenUpward(spaceBelow < dropdownHeight);
+    }
+  }, [isOpen]);
 
   return (
     <div className="relative inline-block">
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2`}
         disabled={isDownloading}
+        className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2`}
       >
         {isDownloading ? "Generating..." : "Download ZIP"}
         <svg
@@ -164,14 +220,18 @@ const MultiDownloadDropdown = ({
       </button>
 
       {isOpen && (
-        <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 w-44 bg-white rounded-md shadow-lg border border-gray-200 z-10 overflow-hidden">
+        <div
+          className={`absolute left-1/2 transform -translate-x-1/2 ${
+            openUpward ? "bottom-full mb-1" : "top-full mt-1"
+          } w-44 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden`}
+        >
           <button
             onClick={() => {
               onDownloadPDF();
               setIsOpen(false);
             }}
-            className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white transition"
             disabled={isDownloading}
+            className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white transition"
           >
             PDF
           </button>
@@ -180,8 +240,8 @@ const MultiDownloadDropdown = ({
               onDownloadJPEG();
               setIsOpen(false);
             }}
-            className="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white transition"
             disabled={isDownloading}
+            className="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white transition"
           >
             JPEG
           </button>
@@ -190,6 +250,7 @@ const MultiDownloadDropdown = ({
     </div>
   );
 };
+
 
   const handleGenerateFromDatabase = (cert: DemoCertificate) => {
     const newItem = {
@@ -478,123 +539,185 @@ const MultiDownloadDropdown = ({
               )}
             </div>
 
-            {selectedPerson && personCertificates.length > 0 && (
-              <div>
-              <div className="flex justify-between items-center mb-4">
-  <h3 className="text-xl font-semibold text-gray-800">
-    {personCertificates[0].recipientName}'s Certificates
-  </h3>
+           {selectedPerson && personCertificates.length > 0 && (
+  <div>
+    {/* Header: title + Select All + Collapse */}
+    <div className="flex justify-between items-center mb-4">
+      <h3 className="text-xl font-semibold text-gray-800">
+        {personCertificates[0]?.recipientName}'s Certificates
+      </h3>
 
-  <div className="flex gap-4 items-center">
-    <button
-      onClick={() =>
-        setSelectedCertificates(
-          selectedCertificates.length === personCertificates.length
-            ? []
-            : personCertificates.map((c) => c.id)
-        )
-      }
-      className="text-blue-600 hover:underline text-sm"
-    >
-      {selectedCertificates.length === personCertificates.length ? "Deselect All" : "Select All"}
-    </button>
+      <div className="flex gap-4 items-center">
+        <button
+          onClick={() =>
+            setSelectedCertificates(
+              selectedCertificates.length === personCertificates.length
+                ? []
+                : personCertificates.map((c) => c.id)
+            )
+          }
+          className="text-blue-600 hover:underline text-sm"
+        >
+          {selectedCertificates.length === personCertificates.length ? "Deselect All" : "Select All"}
+        </button>
 
-    <button
-      onClick={() => setCertificatesCollapsed(prev => !prev)}
-      className="text-blue-600 hover:underline text-sm"
-    >
-      {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
-    </button>
-  </div>
-</div>
+        <button
+          onClick={() => setCertificatesCollapsed((prev) => !prev)}
+          className="text-blue-600 hover:underline text-sm"
+        >
+          {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
+        </button>
+      </div>
+    </div>
 
-              <AnimatePresence initial={false}>
-  {!certificatesCollapsed && (
-    <motion.div
-      key="certificates-list"
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.25 }}
-      className="space-y-3 overflow-hidden"
-    >
-      {personCertificates.map((cert) => {
-        const isSelected = selectedCertificates.includes(cert.id);
-        return (
-          <div
-            key={cert.id}
-            onClick={(e) => {
-              if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
-                setFormData(cert);
+    {/* Collapsible list (animated) */}
+    <AnimatePresence initial={false}>
+      {!certificatesCollapsed && (
+        <motion.div
+          key="certificates-list"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.25 }}
+          className="space-y-3 overflow-hidden"
+        >
+          {personCertificates.map((cert) => {
+            const isSelected = selectedCertificates.includes(cert.id);
+            return (
+              <div
+                key={cert.id}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
+                    setFormData(cert);
+                  }
+                }}
+                className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
+                  isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => {
+                      setSelectedCertificates((prev) =>
+                        isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
+                      );
+                    }}
+                    className="mt-1 accent-blue-500 scale-110"
+                  />
+                  <div>
+                    <p className="font-bold text-gray-900">{cert.programName}</p>
+                    <p className="text-sm text-gray-500">{cert.category}</p>
+                    <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <DownloadDropdown
+                    onDownloadPDF={() => {
+                      handleGenerateFromDatabase(cert);
+                      setTimeout(
+                        () =>
+                          generatePDF({
+                            organization: -25,
+                            programName: -12,
+                            achievementText: -14,
+                            recipientName: -18,
+                            certificateDate: -10,
+                            signatory: -8,
+                          }),
+                        200
+                      );
+                    }}
+                    onDownloadJPEG={() => {
+                      handleGenerateFromDatabase(cert);
+                      setTimeout(
+                        () =>
+                          generateJPEG({
+                            organization: -25,
+                            programName: -12,
+                            achievementText: -14,
+                            recipientName: -18,
+                            certificateDate: -10,
+                            signatory: -8,
+                          }),
+                        200
+                      );
+                    }}
+                    fontSize="sm"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Selected-actions — always visible when there are selected items */}
+    <AnimatePresence>
+      {selectedCertificates.length > 0 && (
+        <motion.div
+          key="selected-actions"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          transition={{ duration: 0.18 }}
+          className="flex flex-wrap justify-center gap-4 mt-6"
+        >
+          <button
+            onClick={() => {
+              const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+              if (selected.length === 0) return;
+              setShareTarget({ type: "person", data: selected });
+              setIsShareModalOpen(true);
+            }}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+          >
+            <FaShareAlt className="w-4 h-4" />
+            Share Selected
+          </button>
+
+          <MultiDownloadDropdown
+            isDownloading={isDownloadingMulti}
+            onDownloadPDF={async () => {
+              const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+              if (selected.length === 0) return;
+              setIsDownloadingMulti(true);
+              try {
+                // Correct handleMultiDownload signature: (items, format, templateUrl)
+                await handleMultiDownload(
+                  selected,
+                  "pdf",
+                  selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+                );
+              } finally {
+                setIsDownloadingMulti(false);
               }
             }}
-            className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
-              isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onClick={(e) => e.stopPropagation()}
-                onChange={() => {
-                  setSelectedCertificates((prev) =>
-                    isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
-                  );
-                }}
-                className="mt-1 accent-blue-500 scale-110"
-              />
-              <div>
-                <p className="font-bold text-gray-900">{cert.programName}</p>
-                <p className="text-sm text-gray-500">{cert.category}</p>
-                <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
-              </div>
-            </div>
+            onDownloadJPEG={async () => {
+              const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+              if (selected.length === 0) return;
+              setIsDownloadingMulti(true);
+              try {
+                await handleMultiDownload(
+                  selected,
+                  "jpeg",
+                  selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+                );
+              } finally {
+                setIsDownloadingMulti(false);
+              }
+            }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+)}
 
-            <div className="flex gap-2 flex-wrap">
-              <DownloadDropdown
-                onDownloadPDF={() => {
-                  handleGenerateFromDatabase(cert);
-                  setTimeout(
-                    () =>
-                      generatePDF({
-                        organization: -25,
-                        programName: -12,
-                        achievementText: -14,
-                        recipientName: -18,
-                        certificateDate: -10,
-                        signatory: -8,
-                      }),
-                    200
-                  );
-                }}
-                onDownloadJPEG={() => {
-                  handleGenerateFromDatabase(cert);
-                  setTimeout(
-                    () =>
-                      generateJPEG({
-                        organization: -25,
-                        programName: -12,
-                        achievementText: -14,
-                        recipientName: -18,
-                        certificateDate: -10,
-                        signatory: -8,
-                      }),
-                    200
-                  );
-                }}
-                fontSize="sm"
-              />
-            </div>
-          </div>
-        );
-      })}
-    </motion.div>
-  )}
-</AnimatePresence>
-
-              </div>
-            )}
 
             <div className="p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-300">
               <div className="flex items-center justify-between mb-4">
