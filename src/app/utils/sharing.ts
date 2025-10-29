@@ -1,4 +1,29 @@
 import { ShareableCertificate } from "@/types/certificates";
+// app/utils/sharing.ts (or add to your existing file)
+export type ClientAttachment = {
+  url: string;
+  filename?: string;
+};
+
+export async function sendCertificatesEmail(opts: {
+  to: string;
+  subject: string;
+  message: string;
+  attachments?: ClientAttachment[];
+}) {
+  const res = await fetch("/api/send-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error || "Failed to send email");
+  }
+
+  return res.json();
+}
 
 export async function shareCertificate(cert: ShareableCertificate, method: "email" | "whatsapp") {
   const message = cert.shareMessage || `Hi ${cert.recipientName}, here’s your certificate!`;

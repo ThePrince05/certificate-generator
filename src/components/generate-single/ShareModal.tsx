@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FaEnvelope, FaWhatsapp, FaFacebookF, FaLinkedinIn, FaTwitter } from "react-icons/fa";
 import { ShareableCertificate, ContactInfo } from "@/types/certificates";
-import { shareCertificate } from "@/app/utils/sharing";
+import { sendCertificatesEmail } from "@/app/utils/sharing";
 
 type ShareModalProps = {
   recipientCertificates: ShareableCertificate[];
@@ -47,39 +47,46 @@ export const ShareModal = ({
   });
   const [loadingMessage, setLoadingMessage] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) return;
+ useEffect(() => {
+  if (!isOpen) return;
 
-    const generateMessage = async () => {
-      try {
-        setLoadingMessage(true);
-        const firstCert = recipientCertificates[0];
-        if (!firstCert) return;
+  const generateMessage = async () => {
+    try {
+      setLoadingMessage(true);
+      if (recipientCertificates.length === 0) return;
 
-        const res = await fetch("/api/generate-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipientName:
-              firstCert.recipientName ||
-              editableContactInfo.recipientName ||
-              "Participant",
-            programName: firstCert.programName || "the program",
-            organization: firstCert.organization || "our organization",
-          }),
-        });
+      const firstCert = recipientCertificates[0];
 
-        const data = await res.json();
-        if (data.message) setCustomMessage(data.message);
-      } catch (err) {
-        console.error("Failed to fetch Gemini message:", err);
-      } finally {
-        setLoadingMessage(false);
-      }
-    };
+      // Gather all program names
+      const programNames = recipientCertificates.map(
+        (c) => c.programName || "a program"
+      );
 
-    generateMessage();
-  }, [isOpen]);
+      const res = await fetch("/api/generate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName:
+            firstCert.recipientName ||
+            editableContactInfo.recipientName ||
+            "Participant",
+          programs: programNames,
+          organization: firstCert.organization || "our organization",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.message) setCustomMessage(data.message);
+    } catch (err) {
+      console.error("Failed to fetch Gemini message:", err);
+    } finally {
+      setLoadingMessage(false);
+    }
+  };
+
+  generateMessage();
+}, [isOpen]);
+
 
   useEffect(() => {
     if (!isOpen) return;
@@ -109,22 +116,51 @@ export const ShareModal = ({
     });
   }, [isOpen, recipientCertificates, contactInfoList, defaultEmail]);
 
-  const handleShare = () => {
-    recipientCertificates.forEach((cert) => {
-      const shareCert: ShareableCertificate = {
-        ...cert,
-        shareMessage: customMessage || cert.shareMessage,
-        contactInfo: editableContactInfo,
-      };
+ const handleShare = async () => {
 
-      Object.entries(platforms).forEach(([method, enabled]) => {
-        if (!enabled) return;
-        shareCertificate(shareCert, method as any);
-      });
+  function sanitizeFilename(name: string) {
+  return name
+    .trim()
+    .replace(/[/\\?%*:|"<>]/g, "_") // remove illegal filesystem chars
+    .replace(/\s+/g, "_")            // spaces → underscores
+    .replace(/__+/g, "_")            // collapse duplicate underscores
+    .slice(0, 120);                  // optional: limit length
+}
+
+  // Build attachments array from recipientCertificates
+  const attachments = recipientCertificates
+  .map((cert, idx) => {
+    const url = cert.downloadUrl;
+    if (!url) return null; // skip if no URL
+
+    const baseName = `${cert.recipientName ?? "recipient"} - ${cert.programName ?? "certificate"}`;
+    const filename = sanitizeFilename(`${baseName}${cert.certificateDate ? ` - ${cert.certificateDate}` : ""}.pdf`);
+
+    return { url, filename };
+  })
+  .filter((a): a is { url: string; filename: string } => a !== null && !!a.url);
+
+  const to = editableContactInfo.email;
+  const subject = `Your Certificate${recipientCertificates.length > 1 ? 's' : ''} from ${recipientCertificates[0]?.organization || ''}`;
+  const messageToSend = customMessage || recipientCertificates[0]?.shareMessage || "Please find your certificate(s) attached.";
+
+  try {
+    await sendCertificatesEmail({
+      to,
+      subject,
+      message: messageToSend,
+      attachments,
     });
 
+    // optionally show success toast
+    alert(`Email sent to ${to}`);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to send email. Please try again.");
+  } finally {
     onClose();
-  };
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -172,7 +208,7 @@ export const ShareModal = ({
   ) : (
     <textarea
       className="w-full border rounded px-2 py-1"
-      rows={4}
+      rows={12}
       value={customMessage}
       onChange={(e) => setCustomMessage(e.target.value)}
       placeholder="Enter a custom message (leave empty to use AI suggestion)"

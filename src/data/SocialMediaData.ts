@@ -31,12 +31,12 @@ export const contactInfoList: ContactInfo[] = [
     linkedin: "https://linkedin.com/in/bobsmith",
     preferredMethod: 'email'
   },
-  // duplicate Bob Smith with a work email
+
   {
-    recipientName: "Bob Smith",
-    email: "bob.smith.work@example.com",
+    recipientName: "Prince Sithole",
+    email: "princesithole49@gmail.com",
     phone: "+1234599999",
-    whatsapp: "+1234599999",
+    whatsapp: "+27614181641",
     facebook: "https://facebook.com/bobsmith.work",
     linkedin: "https://linkedin.com/in/bobsmith-work",
     preferredMethod: 'whatsapp'

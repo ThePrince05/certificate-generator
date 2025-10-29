@@ -16,6 +16,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
     "jszip": "^3.10.1",
+    "mailersend": "^2.6.0",
     "multer": "^2.0.2",
     "next": "15.5.4",
     "papaparse": "^5.5.3",
