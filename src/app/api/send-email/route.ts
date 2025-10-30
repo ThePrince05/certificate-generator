@@ -34,28 +34,25 @@ export async function POST(req: Request) {
       .setHtml(message || "");
 
    // process attachments
-const processed: { content: string; filename: string; type: string }[] = [];
+const processed: { content: string; filename: string; disposition: string }[] = [];
 
 for (const [i, att] of attachments.entries()) {
   if (att.content) {
-    // base64 blob attachment
+    // client already sent base64 content (no data: prefix)
     processed.push({
       content: att.content,
       filename: att.filename || `attachment_${i}.pdf`,
-      type: "application/pdf",
+      disposition: "attachment", // <-- required by MailerSend
     });
   } else if (att.url) {
-    // fetch the URL and convert to base64
     try {
       const res = await fetch(att.url);
       if (!res.ok) {
         console.warn(`Attachment ${i} fetch failed: ${res.status}`);
         continue;
       }
-
       const arrayBuffer = await res.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const contentType = res.headers.get("content-type") || "application/pdf";
       let filename = att.filename;
       if (!filename) {
         try {
@@ -65,13 +62,12 @@ for (const [i, att] of attachments.entries()) {
         }
       }
 
-      processed.push({
+        processed.push({
         content: buffer.toString("base64"),
         filename,
-        type: contentType,
+        disposition: "attachment",
       });
 
-      console.log(`Attachment ${i} processed: filename=${filename}, type=${contentType}`);
     } catch (err) {
       console.error(`Error processing attachment ${i}:`, err);
     }
