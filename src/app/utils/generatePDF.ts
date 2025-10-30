@@ -113,10 +113,6 @@ const createOffscreenClone = (certificateEl: HTMLElement) => {
  */
 export const generatePDF = async (pdfOffsets?: PDFOffsets) => {
   const certificateElement = document.getElementById("certificate") as HTMLElement | null;
-   if (!certificateElement) {
-    console.warn("⚠️ No certificate element found in DOM. Make sure the preview is rendered.");
-    return;
-  }
   if (!certificateElement) return;
 
   // 1) Capture original positions (on-screen) BEFORE cloning

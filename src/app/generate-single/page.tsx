@@ -77,30 +77,40 @@ const DownloadDropdown = ({
 
   const sizeClass = fontSize === "sm" ? "text-sm" : "text-base";
 
-  useEffect(() => {
-    if (!isOpen || !buttonRef.current) return;
+const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-    const rect = buttonRef.current.getBoundingClientRect();
-    const dropdownHeight = 90;
-    const shouldOpenUpward = window.innerHeight - rect.bottom < dropdownHeight + 10;
+useEffect(() => {
+  if (!isOpen || !buttonRef.current) return;
 
-    setOpenUpward(shouldOpenUpward);
-    setDropdownPos({
-      top: shouldOpenUpward ? rect.top - dropdownHeight - 8 : rect.bottom + 8,
-      left: rect.left + rect.width / 2,
-    });
-  }, [isOpen]);
+  const rect = buttonRef.current.getBoundingClientRect();
+  const dropdownHeight = 90;
+  const shouldOpenUpward = window.innerHeight - rect.bottom < dropdownHeight + 10;
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  setOpenUpward(shouldOpenUpward);
+  setDropdownPos({
+    top: shouldOpenUpward ? rect.top - dropdownHeight - 8 : rect.bottom + 8,
+    left: rect.left + rect.width / 2,
+  });
+}, [isOpen]);
+
+useEffect(() => {
+  const handleClickOutside = (e: MouseEvent) => {
+    const target = e.target as Node;
+    if (
+      buttonRef.current &&
+      !buttonRef.current.contains(target) &&
+      dropdownRef.current &&
+      !dropdownRef.current.contains(target)
+    ) {
+      setIsOpen(false);
+    }
+  };
+
+  if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, [isOpen]);
+
+
 
   return (
     <>
@@ -123,39 +133,46 @@ const DownloadDropdown = ({
         </button>
       </div>
 
-      {isOpen &&
-        createPortal(
-          <div
-            className="fixed z-[9999]"
-            style={{
-              top: dropdownPos.top,
-              left: dropdownPos.left,
-              transform: "translateX(-50%)",
-            }}
-          >
-            <div className="w-40 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden">
-              <button
-                onClick={(e) => {
-                  onDownloadPDF(e);
-                  setIsOpen(false);
-                }}
-                className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-green-500 hover:bg-green-600 transition`}
-              >
-                PDF
-              </button>
-              <button
-                onClick={(e) => {
-                  onDownloadJPEG(e);
-                  setIsOpen(false);
-                }}
-                className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-yellow-500 hover:bg-yellow-600 transition`}
-              >
-                JPEG
-              </button>
-            </div>
-          </div>,
-          document.body
-        )}
+
+  {isOpen &&
+  createPortal(
+    <div
+      className="fixed z-[9999]"
+      style={{
+        top: dropdownPos.top,
+        left: dropdownPos.left,
+        transform: "translateX(-50%)",
+      }}
+    >
+      <div className="w-40 bg-white rounded-md shadow-lg border overflow-hidden">
+        <button
+          onClick={(e) => {
+  e.stopPropagation();
+  console.log("[DEBUG] PDF button clicked");
+  onDownloadPDF(e);
+  setTimeout(() => setIsOpen(false), 50);
+}}
+          className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-green-500 hover:bg-green-600 transition`}
+        >
+          PDF
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log("[DEBUG] JPEG button clicked");
+            onDownloadJPEG(e);
+            setIsOpen(false);
+          }}
+          className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-yellow-500 hover:bg-yellow-600 transition`}
+        >
+          JPEG
+        </button>
+      </div>
+    </div>,
+    document.body
+  )}
+
+
     </>
   );
 };
@@ -640,38 +657,41 @@ export default function GenerateSingle() {
 
                             <div className="flex gap-2 flex-wrap">
                               <DownloadDropdown
-                                onDownloadPDF={() => {
-                                  handleGenerateFromDatabase(cert);
-                                  setTimeout(
-                                    () =>
-                                      generatePDF({
-                                        organization: -25,
-                                        programName: -12,
-                                        achievementText: -14,
-                                        recipientName: -18,
-                                        certificateDate: -10,
-                                        signatory: -8,
-                                      }),
-                                    200
-                                  );
-                                }}
-                                onDownloadJPEG={() => {
-                                  handleGenerateFromDatabase(cert);
-                                  setTimeout(
-                                    () =>
-                                      generateJPEG({
-                                        organization: -25,
-                                        programName: -12,
-                                        achievementText: -14,
-                                        recipientName: -18,
-                                        certificateDate: -10,
-                                        signatory: -8,
-                                      }),
-                                    200
-                                  );
-                                }}
-                                fontSize="sm"
-                              />
+  onDownloadPDF={() => {
+    console.log("[DEBUG] PDF download clicked for certificate:", cert);
+    handleGenerateFromDatabase(cert);
+    setTimeout(
+      () =>
+        generatePDF({
+          organization: -25,
+          programName: -12,
+          achievementText: -14,
+          recipientName: -18,
+          certificateDate: -10,
+          signatory: -8,
+        }),
+      200
+    );
+  }}
+  onDownloadJPEG={() => {
+    console.log("[DEBUG] JPEG download clicked for certificate:", cert);
+    handleGenerateFromDatabase(cert);
+    setTimeout(
+      () =>
+        generateJPEG({
+          organization: -25,
+          programName: -12,
+          achievementText: -14,
+          recipientName: -18,
+          certificateDate: -10,
+          signatory: -8,
+        }),
+      200
+    );
+  }}
+  fontSize="sm"
+/>
+
                             </div>
                           </div>
                         );
@@ -723,37 +743,40 @@ export default function GenerateSingle() {
                   </button>
 
 
-                      <MultiDownloadDropdown
-                        isDownloading={isDownloadingMulti}
-                        onDownloadPDF={async () => {
-                          const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-                          if (selected.length === 0) return;
-                          setIsDownloadingMulti(true);
-                          try {
-                            await handleMultiDownload(
-                              selected,
-                              "pdf",
-                              selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
-                            );
-                          } finally {
-                            setIsDownloadingMulti(false);
-                          }
-                        }}
-                        onDownloadJPEG={async () => {
-                          const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-                          if (selected.length === 0) return;
-                          setIsDownloadingMulti(true);
-                          try {
-                            await handleMultiDownload(
-                              selected,
-                              "jpeg",
-                              selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
-                            );
-                          } finally {
-                            setIsDownloadingMulti(false);
-                          }
-                        }}
-                      />
+                     <MultiDownloadDropdown
+                      isDownloading={isDownloadingMulti}
+                      onDownloadPDF={async () => {
+                        const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+                        if (selected.length === 0) return;
+                        console.log("[DEBUG] Multi PDF download clicked for:", selected);
+                        setIsDownloadingMulti(true);
+                        try {
+                          await handleMultiDownload(
+                            selected,
+                            "pdf",
+                            selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+                          );
+                        } finally {
+                          setIsDownloadingMulti(false);
+                        }
+                      }}
+                      onDownloadJPEG={async () => {
+                        const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+                        if (selected.length === 0) return;
+                        console.log("[DEBUG] Multi JPEG download clicked for:", selected);
+                        setIsDownloadingMulti(true);
+                        try {
+                          await handleMultiDownload(
+                            selected,
+                            "jpeg",
+                            selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+                          );
+                        } finally {
+                          setIsDownloadingMulti(false);
+                        }
+                      }}
+                    />
+
                     </motion.div>
                   )}
                 </AnimatePresence>
