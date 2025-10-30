@@ -179,10 +179,6 @@ const handleBatchDownloadJPEG = async () => {
 };
 
 
-
-  
-
-
   // Table for desktop
   const TableView = () => (
     <div className="overflow-auto max-w-5xl mx-auto mt-4 hidden sm:block">

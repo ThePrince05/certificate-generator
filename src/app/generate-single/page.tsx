@@ -134,24 +134,24 @@ useEffect(() => {
       </div>
 
 
-  {isOpen &&
-  createPortal(
-    <div
-      className="fixed z-[9999]"
-      style={{
-        top: dropdownPos.top,
-        left: dropdownPos.left,
-        transform: "translateX(-50%)",
-      }}
-    >
-      <div className="w-40 bg-white rounded-md shadow-lg border overflow-hidden">
-        <button
-          onClick={(e) => {
-  e.stopPropagation();
-  console.log("[DEBUG] PDF button clicked");
-  onDownloadPDF(e);
-  setTimeout(() => setIsOpen(false), 50);
-}}
+    {isOpen &&
+    createPortal(
+      <div
+        className="fixed z-[9999]"
+        style={{
+          top: dropdownPos.top,
+          left: dropdownPos.left,
+          transform: "translateX(-50%)",
+        }}
+      >
+        <div className="w-40 bg-white rounded-md shadow-lg border overflow-hidden">
+          <button
+            onClick={(e) => {
+    e.stopPropagation();
+    console.log("[DEBUG] PDF button clicked");
+    onDownloadPDF(e);
+    setTimeout(() => setIsOpen(false), 50);
+  }}
           className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-green-500 hover:bg-green-600 transition`}
         >
           PDF

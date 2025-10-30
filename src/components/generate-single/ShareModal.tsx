@@ -52,7 +52,7 @@ export const ShareModal = ({
     if (!isOpen) return;
 
     const generateMessage = async () => {
-      const DISABLE_GEMINI = true; // 🔹 toggle Gemini
+      const DISABLE_GEMINI = false; // 🔹 toggle Gemini
       if (DISABLE_GEMINI) {
         setCustomMessage(""); // fallback message
         return;
