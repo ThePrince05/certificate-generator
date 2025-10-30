@@ -48,7 +48,7 @@ for (const [i, att] of attachments.entries()) {
     try {
       const res = await fetch(att.url);
       if (!res.ok) {
-        console.warn(`Attachment ${i} fetch failed: ${res.status}`);
+     //   console.warn(`Attachment ${i} fetch failed: ${res.status}`);
         continue;
       }
       const arrayBuffer = await res.arrayBuffer();
@@ -69,7 +69,7 @@ for (const [i, att] of attachments.entries()) {
       });
 
     } catch (err) {
-      console.error(`Error processing attachment ${i}:`, err);
+    //  console.error(`Error processing attachment ${i}:`, err);
     }
   }
 }
@@ -80,7 +80,7 @@ if (processed.length > 0) emailParams.setAttachments(processed as any);
     return NextResponse.json({ success: true });
 
   } catch (err: any) {
-    console.error("send-email error:", err);
+  //  console.error("send-email error:", err);
     return NextResponse.json({ error: err.message || "Failed to send email" }, { status: 500 });
   }
 }

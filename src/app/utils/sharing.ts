@@ -61,10 +61,10 @@ export async function sendCertificatesEmail(opts: {
   };
 
   // 🔹 Debug (optional, can remove after testing)
-  console.log(
-    "📦 Sending email with MailerSend payload:",
-    JSON.stringify(body, null, 2)
-  );
+ // console.log(
+ //   "📦 Sending email with MailerSend payload:",
+ //   JSON.stringify(body, null, 2)
+ // );
 
   const res = await fetch("/api/send-email", {
     method: "POST",

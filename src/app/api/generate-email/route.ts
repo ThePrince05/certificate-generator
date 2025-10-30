@@ -30,7 +30,7 @@ async function generateGeminiMessage({ recipientName, programs, organization }: 
     const result = await model.generateContent(prompt);
     return result.response?.text?.() ?? fallback;
   } catch (err: any) {
-    console.warn("Gemini failed, using fallback message:", err.message || err);
+  //  console.warn("Gemini failed, using fallback message:", err.message || err);
     return fallback;
   }
 }
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const message = await generateGeminiMessage({ recipientName, programs, organization });
     return NextResponse.json({ message });
   } catch (err) {
-    console.error("generate-email route error:", err);
+  //  console.error("generate-email route error:", err);
     return NextResponse.json({ message: "Hi! Please find your certificate(s) attached." }, { status: 500 });
   }
 }

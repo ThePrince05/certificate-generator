@@ -1,4 +1,3 @@
-
 import { FaShareAlt } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import { FaEnvelope, FaWhatsapp, FaFacebookF, FaLinkedinIn, FaTwitter } from "react-icons/fa";
@@ -53,12 +52,17 @@ export const ShareModal = ({
     if (!isOpen) return;
 
     const generateMessage = async () => {
+      const DISABLE_GEMINI = true; // 🔹 toggle Gemini
+      if (DISABLE_GEMINI) {
+        setCustomMessage(""); // fallback message
+        return;
+      }
+
       try {
         setLoadingMessage(true);
         if (recipientCertificates.length === 0) return;
 
         const firstCert = recipientCertificates[0];
-
         const programNames = recipientCertificates.map(c => c.programName || "a program");
 
         const res = await fetch("/api/generate-email", {
@@ -74,7 +78,7 @@ export const ShareModal = ({
         const data = await res.json();
         if (data.message) setCustomMessage(data.message);
       } catch (err) {
-        console.error("Failed to fetch Gemini message:", err);
+        // console.error("Failed to fetch Gemini message:", err);
       } finally {
         setLoadingMessage(false);
       }
@@ -112,92 +116,75 @@ export const ShareModal = ({
   }, [isOpen, recipientCertificates, contactInfoList, defaultEmail]);
 
   const handleShare = async () => {
-  function sanitizeFilename(name: string) {
-    return name
-      .trim()
-      .replace(/[/\\?%*:|"<>]/g, "_")
-      .replace(/\s+/g, "_")
-      .replace(/__+/g, "_")
-      .slice(0, 120);
-  }
-
-  try {
-    if (!recipientCertificates.length) return;
-
-    // Generate attachments
-    const attachments: ClientAttachment[] = (
-      await Promise.all(
-        recipientCertificates.map(async (cert) => {
-          const baseName = `${cert.recipientName ?? "recipient"} - ${cert.programName ?? "certificate"}`;
-          const filename = sanitizeFilename(
-            `${baseName}${cert.certificateDate ? ` - ${cert.certificateDate}` : ""}.pdf`
-          );
-
-          const pdfOffsets = {
-            organization: -30,
-            programName: -15,
-            achievementText: -15,
-            recipientName: -16,
-            certificateDate: -8,
-            signature: 1,
-            signatory: -10,
-          };
-
-          const blob = await generatePDFBlob(pdfOffsets);
-          if (!blob) return null;
-
-          // Convert PDF blob to Base64 and strip "data:" prefix
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const result = reader.result as string;
-              const pureBase64 = result.split(",")[1]; // ✅ strip prefix
-              resolve(pureBase64);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-
-          // 🔹 Send base64 under `content` instead of `url`
-          return { content: base64, filename } as ClientAttachment;
-        })
-      )
-    ).filter((a): a is ClientAttachment => a !== null);
-
-    if (!attachments.length) {
-      alert("No certificates were generated.");
-      return;
+    function sanitizeFilename(name: string) {
+      return name
+        .trim()
+        .replace(/[/\\?%*:|"<>]/g, "_")
+        .replace(/\s+/g, "_")
+        .replace(/__+/g, "_")
+        .slice(0, 120);
     }
 
-    const to = editableContactInfo.email;
-    const subject = `Your Certificate${recipientCertificates.length > 1 ? "s" : ""} from ${
-      recipientCertificates[0]?.organization || ""
-    }`;
-    const messageToSend =
-      customMessage || recipientCertificates[0]?.shareMessage || "Please find your certificate(s) attached.";
+    try {
+      if (!recipientCertificates.length) {
+        console.warn("No certificates to share");
+        return;
+      }
 
-    // 🔹 Debug: Log full payload before sending
-    console.log("Sending email with payload:", { to, subject, message: messageToSend, attachments });
-    attachments.forEach((att, i) => {
-      console.log(`Attachment ${i}: filename=${att.filename}, first 30 chars of Base64=${att.content!.slice(0,30)}`);
-    });
+      // Generate attachments
+      const attachments: ClientAttachment[] = (
+        await Promise.all(
+          recipientCertificates.map(async (cert) => {
+            const baseName = `${cert.recipientName ?? "recipient"} - ${cert.programName ?? "certificate"}`;
+            const filename = sanitizeFilename(
+              `${baseName}${cert.certificateDate ? ` - ${cert.certificateDate}` : ""}.pdf`
+            );
 
-    await sendCertificatesEmail({
-      to,
-      subject,
-      message: messageToSend,
-      attachments,
-    });
+            const pdfOffsets = {
+              organization: -30,
+              programName: -15,
+              achievementText: -15,
+              recipientName: -16,
+              certificateDate: -8,
+              signature: 1,
+              signatory: -10,
+            };
 
-    alert(`Email sent to ${to}`);
-  } catch (err) {
-    console.error("send-email route error:", err);
-    alert("Failed to send email. Please try again.");
-  } finally {
-    onClose();
-  }
-};
+            const blob = await generatePDFBlob(pdfOffsets);
+            if (!blob) return null;
 
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve((reader.result as string).split(",")[1]);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+
+            return { content: base64, filename } as ClientAttachment;
+          })
+        )
+      ).filter((a): a is ClientAttachment => a !== null);
+
+      if (!attachments.length) {
+        alert("No certificates were generated.");
+        return;
+      }
+
+      const to = editableContactInfo.email;
+      const subject = `Your Certificate${recipientCertificates.length > 1 ? "s" : ""} from ${recipientCertificates[0]?.organization || ""}`;
+      const messageToSend = customMessage || recipientCertificates[0]?.shareMessage || "Please find your certificate(s) attached.";
+
+      // Send email
+      await sendCertificatesEmail({ to, subject, message: messageToSend, attachments });
+
+      alert("Certificates shared successfully!");
+    } catch (err) {
+      console.error("send-email route error:", err);
+      alert("Failed to send email. Please try again.");
+    } finally {
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -254,9 +241,11 @@ export const ShareModal = ({
           <button className="px-4 py-2 bg-gray-300 rounded" onClick={onClose}>
             Cancel
           </button>
-          <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
-           onClick={handleShare}>
-             <FaShareAlt className="w-4 h-4" />
+          <button
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+            onClick={handleShare}
+          >
+            <FaShareAlt className="w-4 h-4" />
             Share
           </button>
         </div>

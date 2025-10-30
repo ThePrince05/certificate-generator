@@ -43,11 +43,7 @@ export default function CertificateTemplate({
   const offset = (key: keyof PDFOffsets) =>
     isPreview ? 0 : pdfOffsets?.[key] ?? 0;
 
-  const cleanProgramName = programName
-    .replace(/^STEP[-:\s]*\d*[:\s-]*/i, "")
-    .trim();
-
-  const fullProgramText = `${cleanProgramName} : ${fieldOfInterest}`;
+  const fullProgramText = `${programName} : ${fieldOfInterest}`;
 
   // 🧠 Detect actual line wrapping in the DOM
   const programRef = useRef<HTMLHeadingElement>(null);
@@ -137,10 +133,10 @@ export default function CertificateTemplate({
             fontSize: "20px",
           }}
         >
-       {cleanProgramName
+       {programName
           ? fieldOfInterest
-            ? `${cleanProgramName} : ${fieldOfInterest}`
-            : cleanProgramName
+            ? `${programName} : ${fieldOfInterest}`
+            : programName
           : fieldOfInterest}
         </h2>
 

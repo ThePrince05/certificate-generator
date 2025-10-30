@@ -1,48 +1,70 @@
 "use client";
 
-import { FaShareAlt, FaFilePdf, FaFileImage, FaDownload } from "react-icons/fa";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useOrganization } from "../context/OrganizationContext";
-import { useTemplates } from "../context/TemplateContext";
-import CertificateForm from "@/components/generate-single/CertificateForm";
-import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
-import { generatePDF, generateJPEG } from "../utils/generatePDF";
-import { CleanCertificateData } from "@/types/certificates";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
+import { FaShareAlt, FaFilePdf, FaFileImage, FaDownload } from "react-icons/fa";
+
+// Contexts
+import { useOrganization } from "../context/OrganizationContext";
+import { useTemplates } from "../context/TemplateContext";
+
+// Components
+import CertificateForm from "@/components/generate-single/CertificateForm";
+import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
+import { ShareModal } from "@/components/generate-single/ShareModal";
+
+// Utilities
+import { generatePDF, generateJPEG } from "../utils/generatePDF";
 import { handleMultiDownload } from "@/app/utils/multiDownload";
 import { loadCSVData, parseCSVData } from "../utils/csvLoader";
-import { contactInfoList } from "@/data/SocialMediaData";
-import { ShareModal } from "@/components/generate-single/ShareModal";
-import { createPortal } from "react-dom";
 
+// Types & Data
+import { CleanCertificateData } from "@/types/certificates";
+import { contactInfoList } from "@/data/SocialMediaData";
+
+// Types
 interface DownloadDropdownProps {
-  onDownloadPDF: (e?:React.MouseEvent<HTMLButtonElement>) => void;
+  onDownloadPDF: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onDownloadJPEG: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   fontSize?: "sm" | "base";
-}
-
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const onChange = (e: MediaQueryListEvent | MediaQueryList) => setIsDesktop(e.matches);
-    onChange(mq);
-    if (mq.addEventListener) mq.addEventListener("change", onChange);
-    else mq.addListener(onChange);
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
-      else mq.removeListener(onChange);
-    };
-  }, []);
-  return isDesktop;
 }
 
 type DemoCertificate = CleanCertificateData & {
   id: string;
 };
 
+// Custom Hooks
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+  
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => setIsDesktop(e.matches);
+    
+    onChange(mq);
+    
+    if (mq.addEventListener) {
+      mq.addEventListener("change", onChange);
+    } else {
+      mq.addListener(onChange);
+    }
+    
+    return () => {
+      if (mq.removeEventListener) {
+        mq.removeEventListener("change", onChange);
+      } else {
+        mq.removeListener(onChange);
+      }
+    };
+  }, []);
+  
+  return isDesktop;
+}
+
+// Components
 const DownloadDropdown = ({
   onDownloadPDF,
   onDownloadJPEG,
@@ -59,7 +81,7 @@ const DownloadDropdown = ({
     if (!isOpen || !buttonRef.current) return;
 
     const rect = buttonRef.current.getBoundingClientRect();
-    const dropdownHeight = 90; // roughly height of both buttons
+    const dropdownHeight = 90;
     const shouldOpenUpward = window.innerHeight - rect.bottom < dropdownHeight + 10;
 
     setOpenUpward(shouldOpenUpward);
@@ -69,13 +91,13 @@ const DownloadDropdown = ({
     });
   }, [isOpen]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
+    
     if (isOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
@@ -108,7 +130,7 @@ const DownloadDropdown = ({
             style={{
               top: dropdownPos.top,
               left: dropdownPos.left,
-              transform: "translateX(-50%)", // ✅ always centered to parent
+              transform: "translateX(-50%)",
             }}
           >
             <div className="w-40 bg-white rounded-md shadow-lg border border-gray-200 overflow-hidden">
@@ -138,47 +160,6 @@ const DownloadDropdown = ({
   );
 };
 
-export default function GenerateSingle() {
-  const [isDownloadingMulti, setIsDownloadingMulti] = useState(false);
-  const [showManualForm, setShowManualForm] = useState(true);
-  const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
-  const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
-  const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
-  const [dbSearch, setDbSearch] = useState("");
-  const [showHistory, setShowHistory] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
-  const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
-  const [formData, setFormData] = useState<CleanCertificateData | null>(null);
-  const [forcePreview, setForcePreview] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
-  const { selectedOrg } = useOrganization();
-  const { loadGroups, selectedTemplate } = useTemplates();
-  const router = useRouter();
-  const isDesktop = useIsDesktop();
-
-  const [history, setHistory] = useState<any[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem("certificateHistory_v1");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const certificatesToShare = personCertificates.filter(cert =>
-    selectedCertificates.includes(cert.id)
-  );
-
-  const saveHistory = (items: any[]) => {
-    setHistory(items);
-    try {
-      localStorage.setItem("certificateHistory_v1", JSON.stringify(items));
-    } catch (e) {
-    }
-  };
 const MultiDownloadDropdown = ({
   onDownloadPDF,
   onDownloadJPEG,
@@ -207,7 +188,7 @@ const MultiDownloadDropdown = ({
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         disabled={isDownloading}
-        className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2`}
+        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2"
       >
         {isDownloading ? "Generating..." : "Download ZIP"}
         <svg
@@ -252,6 +233,102 @@ const MultiDownloadDropdown = ({
   );
 };
 
+// Main Component
+export default function GenerateSingle() {
+  const router = useRouter();
+  const isDesktop = useIsDesktop();
+  const { selectedOrg } = useOrganization();
+  const { loadGroups, selectedTemplate } = useTemplates();
+
+  // State
+  const [isDownloadingMulti, setIsDownloadingMulti] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(true);
+  const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
+  const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
+  const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
+  const [dbSearch, setDbSearch] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
+  const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
+  const [formData, setFormData] = useState<CleanCertificateData | null>(null);
+  const [forcePreview, setForcePreview] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
+
+  const [history, setHistory] = useState<any[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("certificateHistory_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Derived state
+  const certificatesToShare = personCertificates.filter(cert =>
+    selectedCertificates.includes(cert.id)
+  );
+
+  // Effects
+  useEffect(() => {
+    if (!selectedOrg) {
+      router.push("/generate");
+      return;
+    }
+    loadGroups(selectedOrg.id);
+  }, [selectedOrg, router, loadGroups]);
+
+  useEffect(() => {
+    const loadDemoData = async () => {
+      if (!selectedOrg) return;
+
+      const csvContent = await loadCSVData();
+      const parsedData = parseCSVData(csvContent, selectedOrg.name);
+
+      const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
+        const emailFromCSV = (item.recipientName || "").trim();
+        const contact = contactInfoList.find(
+          (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
+        );
+
+        return {
+          id: uuidv4(),
+          recipientName: contact?.recipientName || (contact as any)?.name || "Unknown",
+          email: emailFromCSV || contact?.email || "",
+          programName: item.programName || "",
+          category: item.category || "",
+          achievementText: item.achievementText || "",
+          fieldOfInterest: item.fieldOfInterest ?? "",
+          certificateDate: item.certificateDate || getCertificateDate(),
+          organization: item.organization || selectedOrg.name,
+        };
+      });
+
+      setDbCertificates(demoCertificates);
+    };
+
+    loadDemoData();
+  }, [selectedOrg]);
+
+  useEffect(() => {
+    if (selectedPerson) {
+      setShowManualForm(false);
+    } else {
+      setShowManualForm(true);
+    }
+  }, [selectedPerson]);
+
+  // Handlers
+  const saveHistory = (items: any[]) => {
+    setHistory(items);
+    try {
+      localStorage.setItem("certificateHistory_v1", JSON.stringify(items));
+    } catch (e) {
+    //  console.error("Failed to save history:", e);
+    }
+  };
 
   const handleGenerateFromDatabase = (cert: DemoCertificate) => {
     const newItem = {
@@ -280,63 +357,6 @@ const MultiDownloadDropdown = ({
     const year = today.getFullYear();
     return `Awarded ${month} ${year}`;
   };
-
-  const filteredHistory = history.filter((h) =>
-    [h.recipientName, h.programName, h.category, h.fieldOfInterest, h.email]
-      .join(" ")
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
-
-  useEffect(() => {
-    if (!selectedOrg) {
-      router.push("/generate");
-      return;
-    }
-    loadGroups(selectedOrg.id);
-  }, [selectedOrg, router, loadGroups]);
-
-  useEffect(() => {
-    const loadDemoData = async () => {
-      if (!selectedOrg) return;
-
-
-        const csvContent = await loadCSVData();
-        const parsedData = parseCSVData(csvContent, selectedOrg.name);
-
-        const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
-          const emailFromCSV = (item.recipientName || "").trim();
-          const contact = contactInfoList.find(
-            (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
-          );
-
-          return {
-            id: uuidv4(),
-            recipientName: contact?.recipientName || (contact as any)?.name || "Unknown",
-            email: emailFromCSV || contact?.email || "",
-            programName: item.programName || "",
-            category: item.category || "",
-            achievementText: item.achievementText || "",
-            fieldOfInterest: item.fieldOfInterest ?? "",
-            certificateDate: item.certificateDate || getCertificateDate(),
-            organization: item.organization || selectedOrg.name,
-          };
-        });
-
-        setDbCertificates(demoCertificates);
-
-    };
-
-    loadDemoData();
-  }, [selectedOrg]);
-
-  useEffect(() => {
-    if (selectedPerson) {
-      setShowManualForm(false);
-    } else {
-      setShowManualForm(true);
-    }
-  }, [selectedPerson]);
 
   const handleGenerate = (data: CleanCertificateData) => {
     const exists = history.some(
@@ -390,9 +410,9 @@ const MultiDownloadDropdown = ({
     }, 250);
   };
 
+  // Helper functions
   const suggestions = (() => {
     const map = new Map<string, { name: string; email: string }>();
-
     const validEmails = new Set<string>();
     const normalizedNames: string[] = [];
 
@@ -434,8 +454,13 @@ const MultiDownloadDropdown = ({
     );
   });
 
-  if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
-  // Determine template URL dynamically
+  const filteredHistory = history.filter((h) =>
+    [h.recipientName, h.programName, h.category, h.fieldOfInterest, h.email]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
+
   const getTemplateUrl = (category?: string) => {
     if (!category) return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
 
@@ -443,9 +468,10 @@ const MultiDownloadDropdown = ({
       return "/templates/one-planet-one-people-games/certificate-template.jpg";
     }
 
-    // fallback to org's or default
     return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
   };
+
+  if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
 
   return (
     <AnimatePresence mode="wait">
@@ -469,6 +495,7 @@ const MultiDownloadDropdown = ({
             <h1 className="text-4xl font-bold text-center mb-4">Generate Single Certificate</h1>
             <h2 className="text-2xl text-center text-gray-600 mb-8">{selectedOrg.name}</h2>
 
+            {/* Person Search */}
             <div className="p-6 bg-white rounded shadow border border-gray-200 space-y-4">
               <input
                 type="text"
@@ -488,19 +515,16 @@ const MultiDownloadDropdown = ({
                         setDbSearch("");
 
                         const certs = dbCertificates.filter((c) => {
-                        const certEmail = c.email?.trim().toLowerCase() || "";
-                        const certName = c.recipientName?.trim().toLowerCase() || "";
-                        const searchEmail = s.email?.toLowerCase() || "";
-                        const searchName = s.name?.toLowerCase() || "";
+                          const certEmail = c.email?.trim().toLowerCase() || "";
+                          const certName = c.recipientName?.trim().toLowerCase() || "";
+                          const searchEmail = s.email?.toLowerCase() || "";
+                          const searchName = s.name?.toLowerCase() || "";
 
-                        // Primary: Exact email match
-                        if (searchEmail && certEmail === searchEmail) return true;
-                        
-                        // Secondary: Only use name matching if NO email is available in certificate
-                        if (!certEmail && searchName && certName === searchName) return true;
-                        
-                        return false;
-                      });
+                          if (searchEmail && certEmail === searchEmail) return true;
+                          if (!certEmail && searchName && certName === searchName) return true;
+                          
+                          return false;
+                        });
                         setPersonCertificates(certs);
 
                         if (certs.length > 0) {
@@ -540,186 +564,203 @@ const MultiDownloadDropdown = ({
               )}
             </div>
 
-           {selectedPerson && personCertificates.length > 0 && (
-    <div>
-    {/* Header: title + Select All + Collapse */}
-    <div className="flex justify-between items-center mb-4">
-      <h3 className="text-xl font-semibold text-gray-800">
-        {personCertificates[0]?.recipientName}'s Certificates
-      </h3>
+            {/* Person Certificates */}
+            {selectedPerson && personCertificates.length > 0 && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    {personCertificates[0]?.recipientName}'s Certificates
+                  </h3>
 
-      <div className="flex gap-4 items-center">
-        <button
-          onClick={() =>
-            setSelectedCertificates(
-              selectedCertificates.length === personCertificates.length
-                ? []
-                : personCertificates.map((c) => c.id)
-            )
-          }
-          className="text-blue-600 hover:underline text-sm"
-        >
-          {selectedCertificates.length === personCertificates.length ? "Unselect All" : "Select All"}
-        </button>
+                  <div className="flex gap-4 items-center">
+                    <button
+                      onClick={() =>
+                        setSelectedCertificates(
+                          selectedCertificates.length === personCertificates.length
+                            ? []
+                            : personCertificates.map((c) => c.id)
+                        )
+                      }
+                      className="text-blue-600 hover:underline text-sm"
+                    >
+                      {selectedCertificates.length === personCertificates.length ? "Unselect All" : "Select All"}
+                    </button>
 
-        <button
-          onClick={() => setCertificatesCollapsed((prev) => !prev)}
-          className="text-blue-600 hover:underline text-sm"
-        >
-          {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
-        </button>
-      </div>
-    </div>
-
-    {/* Collapsible list (animated) */}
-    <AnimatePresence initial={false}>
-      {!certificatesCollapsed && (
-        <motion.div
-          key="certificates-list"
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.25 }}
-          className="space-y-3 overflow-hidden"
-        >
-          {personCertificates.map((cert) => {
-            const isSelected = selectedCertificates.includes(cert.id);
-            return (
-              <div
-                key={cert.id}
-                onClick={(e) => {
-                  if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
-                    setFormData(cert);
-                  }
-                }}
-                className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
-                  isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={() => {
-                      setSelectedCertificates((prev) =>
-                        isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
-                      );
-                    }}
-                    className="mt-1 accent-blue-500 scale-110"
-                  />
-                  <div>
-                    <p className="font-bold text-gray-900">{cert.programName}</p>
-                    <p className="text-sm text-gray-500">{cert.category}</p>
-                    <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
+                    <button
+                      onClick={() => setCertificatesCollapsed((prev) => !prev)}
+                      className="text-blue-600 hover:underline text-sm"
+                    >
+                      {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  <DownloadDropdown
-                    onDownloadPDF={() => {
-                      handleGenerateFromDatabase(cert);
-                      setTimeout(
-                        () =>
-                          generatePDF({
-                            organization: -25,
-                            programName: -12,
-                            achievementText: -14,
-                            recipientName: -18,
-                            certificateDate: -10,
-                            signatory: -8,
-                          }),
-                        200
+                <AnimatePresence initial={false}>
+                  {!certificatesCollapsed && (
+                    <motion.div
+                      key="certificates-list"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="space-y-3 overflow-hidden"
+                    >
+                      {personCertificates.map((cert) => {
+                        const isSelected = selectedCertificates.includes(cert.id);
+                        return (
+                          <div
+                            key={cert.id}
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
+                                setFormData(cert);
+                              }
+                            }}
+                            className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
+                              isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={() => {
+                                  setSelectedCertificates((prev) =>
+                                    isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
+                                  );
+                                }}
+                                className="mt-1 accent-blue-500 scale-110"
+                              />
+                              <div>
+                                <p className="font-bold text-gray-900">{cert.programName}</p>
+                                <p className="text-sm text-gray-500">{cert.category}</p>
+                                <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 flex-wrap">
+                              <DownloadDropdown
+                                onDownloadPDF={() => {
+                                  handleGenerateFromDatabase(cert);
+                                  setTimeout(
+                                    () =>
+                                      generatePDF({
+                                        organization: -25,
+                                        programName: -12,
+                                        achievementText: -14,
+                                        recipientName: -18,
+                                        certificateDate: -10,
+                                        signatory: -8,
+                                      }),
+                                    200
+                                  );
+                                }}
+                                onDownloadJPEG={() => {
+                                  handleGenerateFromDatabase(cert);
+                                  setTimeout(
+                                    () =>
+                                      generateJPEG({
+                                        organization: -25,
+                                        programName: -12,
+                                        achievementText: -14,
+                                        recipientName: -18,
+                                        certificateDate: -10,
+                                        signatory: -8,
+                                      }),
+                                    200
+                                  );
+                                }}
+                                fontSize="sm"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {selectedCertificates.length > 0 && (
+                    <motion.div
+                      key="selected-actions"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.18 }}
+                      className="flex flex-wrap justify-center gap-4 mt-6"
+                    >
+                     <button
+                    onClick={() => {
+                      const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+                      if (selected.length === 0) return;
+
+                      // Add to history if not already there
+                      const newHistoryEntries = selected.map((c) => ({
+                        ...c,
+                        id: uuidv4(),
+                        generatedAt: new Date().toISOString(),
+                      })).filter((newItem) => 
+                        !history.some(
+                          (h) =>
+                            h.recipientName === newItem.recipientName &&
+                            h.programName === newItem.programName &&
+                            h.email === newItem.email
+                        )
                       );
+
+                      if (newHistoryEntries.length > 0) {
+                        saveHistory([...newHistoryEntries, ...history]);
+                      }
+
+                      setShareTarget({ type: "person", data: selected });
+                      setIsShareModalOpen(true);
                     }}
-                    onDownloadJPEG={() => {
-                      handleGenerateFromDatabase(cert);
-                      setTimeout(
-                        () =>
-                          generateJPEG({
-                            organization: -25,
-                            programName: -12,
-                            achievementText: -14,
-                            recipientName: -18,
-                            certificateDate: -10,
-                            signatory: -8,
-                          }),
-                        200
-                      );
-                    }}
-                    fontSize="sm"
-                  />
-                </div>
+                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+                  >
+                    <FaShareAlt className="w-4 h-4" />
+                    Share Selected
+                  </button>
+
+
+                      <MultiDownloadDropdown
+                        isDownloading={isDownloadingMulti}
+                        onDownloadPDF={async () => {
+                          const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+                          if (selected.length === 0) return;
+                          setIsDownloadingMulti(true);
+                          try {
+                            await handleMultiDownload(
+                              selected,
+                              "pdf",
+                              selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+                            );
+                          } finally {
+                            setIsDownloadingMulti(false);
+                          }
+                        }}
+                        onDownloadJPEG={async () => {
+                          const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
+                          if (selected.length === 0) return;
+                          setIsDownloadingMulti(true);
+                          try {
+                            await handleMultiDownload(
+                              selected,
+                              "jpeg",
+                              selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
+                            );
+                          } finally {
+                            setIsDownloadingMulti(false);
+                          }
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            );
-          })}
-        </motion.div>
-      )}
-    </AnimatePresence>
+            )}
 
-    {/* Selected-actions — always visible when there are selected items */}
-    <AnimatePresence>
-      {selectedCertificates.length > 0 && (
-        <motion.div
-          key="selected-actions"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
-          transition={{ duration: 0.18 }}
-          className="flex flex-wrap justify-center gap-4 mt-6"
-        >
-          <button
-            onClick={() => {
-              const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-              if (selected.length === 0) return;
-              setShareTarget({ type: "person", data: selected });
-              setIsShareModalOpen(true);
-            }}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
-          >
-            <FaShareAlt className="w-4 h-4" />
-            Share Selected
-          </button>
-
-          <MultiDownloadDropdown
-            isDownloading={isDownloadingMulti}
-            onDownloadPDF={async () => {
-              const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-              if (selected.length === 0) return;
-              setIsDownloadingMulti(true);
-              try {
-                // Correct handleMultiDownload signature: (items, format, templateUrl)
-                await handleMultiDownload(
-                  selected,
-                  "pdf",
-                  selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
-                );
-              } finally {
-                setIsDownloadingMulti(false);
-              }
-            }}
-            onDownloadJPEG={async () => {
-              const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-              if (selected.length === 0) return;
-              setIsDownloadingMulti(true);
-              try {
-                await handleMultiDownload(
-                  selected,
-                  "jpeg",
-                  selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
-                );
-              } finally {
-                setIsDownloadingMulti(false);
-              }
-            }}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-)}
-
-
+            {/* Manual Entry Form */}
             <div className="p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-300">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Manual Entry</h3>
@@ -748,60 +789,59 @@ const MultiDownloadDropdown = ({
             </div>
           </div>
 
-       {formData && (
-  <div className="text-center">
-    <div className="w-full flex justify-center overflow-x-auto py-4">
-      <div className="flex-shrink-0 max-w-full sm:max-w-[90%] md:max-w-[80%] lg:max-w-[70%]">
-        <CertificateTemplate
-          {...formData}
-          templateUrl={getTemplateUrl(formData.category)}
-          isPreview
-          certificateDate={formData.certificateDate ?? getCertificateDate()}
-        />
-      </div>
-    </div>
+          {/* Certificate Preview */}
+          {formData && (
+            <div className="text-center">
+              <div className="w-full flex justify-center overflow-x-auto py-4">
+                <div className="flex-shrink-0 max-w-full sm:max-w-[90%] md:max-w-[80%] lg:max-w-[70%]">
+                  <CertificateTemplate
+                    {...formData}
+                    templateUrl={getTemplateUrl(formData.category)}
+                    isPreview
+                    certificateDate={formData.certificateDate ?? getCertificateDate()}
+                  />
+                </div>
+              </div>
 
-    <div className="flex justify-center gap-3 mt-3 flex-wrap">
-      {/* Share button */}
-      <button
-        onClick={() => {
-          setShareTarget({ type: "history", data: formData });
-          setIsShareModalOpen(true);
-        }}
-        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
-      >
-        <FaShareAlt className="w-4 h-4" />
-        Share
-      </button>
+              <div className="flex justify-center gap-3 mt-3 flex-wrap">
+                <button
+                  onClick={() => {
+                    setShareTarget({ type: "history", data: formData });
+                    setIsShareModalOpen(true);
+                  }}
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+                >
+                  <FaShareAlt className="w-4 h-4" />
+                  Share
+                </button>
 
-      {/* Download dropdown */}
-      <DownloadDropdown
-        onDownloadPDF={() =>
-          generatePDF({
-            organization: -30,
-            programName: -14,
-            achievementText: -15,
-            recipientName: -16,
-            certificateDate: -10,
-            signatory: -10,
-          })
-        }
-        onDownloadJPEG={() =>
-          generateJPEG({
-            organization: -30,
-            programName: -14,
-            achievementText: -15,
-            recipientName: -16,
-            certificateDate: -10,
-            signatory: -10,
-          })
-        }
-      />
-    </div>
-  </div>
-)}
+                <DownloadDropdown
+                  onDownloadPDF={() =>
+                    generatePDF({
+                      organization: -30,
+                      programName: -14,
+                      achievementText: -15,
+                      recipientName: -16,
+                      certificateDate: -10,
+                      signatory: -10,
+                    })
+                  }
+                  onDownloadJPEG={() =>
+                    generateJPEG({
+                      organization: -30,
+                      programName: -14,
+                      achievementText: -15,
+                      recipientName: -16,
+                      certificateDate: -10,
+                      signatory: -10,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          )}
 
-
+          {/* History Section */}
           {history.length > 0 && (
             <div className="flex justify-center mb-4">
               <button
@@ -850,13 +890,13 @@ const MultiDownloadDropdown = ({
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h3 className="font-bold">{h.recipientName || h.programName}</h3>
+                          <h3 className="font-bold">{h.recipientName}</h3>
                           <p className="text-xs text-gray-500">
-                            {h.category} · {h.fieldOfInterest} · {new Date(h.generatedAt).toLocaleString()}
+                            {h.category} · {h.programName} · {h.fieldOfInterest} · {new Date(h.generatedAt).toLocaleString()}
                           </p>
                         </div>
 
-                       <div className="flex gap-2">
+                        <div className="flex gap-2">
                           <DownloadDropdown
                             onDownloadPDF={(e) => {
                               e?.stopPropagation?.();
@@ -889,50 +929,44 @@ const MultiDownloadDropdown = ({
             </section>
           )}
         </div>
-      {isShareModalOpen && (() => {
-  let recipientCertificates: any[] = [];
 
-  if (shareTarget?.type === "person") {
-    recipientCertificates = personCertificates
-      .filter(c => selectedCertificates.includes(c.id))
-      .map(c => ({
-        ...c,
-        contactInfo: contactInfoList.find(
-          ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
-        ) || null,
-      }));
-  } else if (shareTarget?.type === "history") {
-    if (shareTarget.data) {
-      recipientCertificates = [{
-        ...shareTarget.data,
-        contactInfo: contactInfoList.find(
-          ci => ci?.email?.toLowerCase() === shareTarget.data.email?.toLowerCase()
-        ) || null
-      }];
-    }
-  }
+        {/* Share Modal */}
+        {isShareModalOpen && (() => {
+          let recipientCertificates: any[] = [];
 
-  // ---- DEBUGGING LOGS ----
-  console.log("ShareModal Opened");
-  console.log("shareTarget:", shareTarget);
-  console.log("personCertificates:", personCertificates);
-  console.log("selectedCertificates:", selectedCertificates);
-  console.log("recipientCertificates:", recipientCertificates);
+          if (shareTarget?.type === "person") {
+            recipientCertificates = personCertificates
+              .filter(c => selectedCertificates.includes(c.id))
+              .map(c => ({
+                ...c,
+                contactInfo: contactInfoList.find(
+                  ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
+                ) || null,
+              }));
+          } else if (shareTarget?.type === "history") {
+            if (shareTarget.data) {
+              recipientCertificates = [{
+                ...shareTarget.data,
+                contactInfo: contactInfoList.find(
+                  ci => ci?.email?.toLowerCase() === shareTarget.data.email?.toLowerCase()
+                ) || null
+              }];
+            }
+          }
 
-  return (
-    <ShareModal
-      isOpen={isShareModalOpen}
-      onClose={() => {
-        setIsShareModalOpen(false);
-        setShareTarget(null);
-      }}
-      recipientCertificates={recipientCertificates}
-      contactInfoList={contactInfoList}
-      defaultEmail={recipientCertificates[0]?.email ?? ""}
-    />
-  );
-})()}
-
+          return (
+            <ShareModal
+              isOpen={isShareModalOpen}
+              onClose={() => {
+                setIsShareModalOpen(false);
+                setShareTarget(null);
+              }}
+              recipientCertificates={recipientCertificates}
+              contactInfoList={contactInfoList}
+              defaultEmail={recipientCertificates[0]?.email ?? ""}
+            />
+          );
+        })()}
       </motion.div>
     </AnimatePresence>
   );

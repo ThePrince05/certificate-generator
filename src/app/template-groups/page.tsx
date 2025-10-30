@@ -241,7 +241,7 @@ const CATEGORIES = [
                   <div>
                     <h3 className="font-bold">{group.programName}</h3>
                     <p className="text-xs text-gray-500">
-                      {group.category} · {group.fieldOfInterest}
+                      {group.category}
                     </p>
                   </div>
                   <div className="flex gap-2">
