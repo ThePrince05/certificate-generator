@@ -79,7 +79,6 @@ export default function CertificateTemplate({
         overflowY: "auto",
         padding: "1rem 0",
         WebkitOverflowScrolling: "touch",
-        touchAction: "pan-x",
       }}
     >
       <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { FaShareAlt } from "react-icons/fa";
+import { FaShareAlt, FaFilePdf, FaFileImage, FaDownload } from "react-icons/fa";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "../context/OrganizationContext";
@@ -88,6 +88,7 @@ const DownloadDropdown = ({
           onClick={() => setIsOpen((prev) => !prev)}
           className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition ${sizeClass} flex items-center gap-2`}
         >
+          <FaDownload className="w-4 h-4" />
           Download
           <svg
             className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
@@ -540,7 +541,7 @@ const MultiDownloadDropdown = ({
             </div>
 
            {selectedPerson && personCertificates.length > 0 && (
-  <div>
+    <div>
     {/* Header: title + Select All + Collapse */}
     <div className="flex justify-between items-center mb-4">
       <h3 className="text-xl font-semibold text-gray-800">
@@ -558,7 +559,7 @@ const MultiDownloadDropdown = ({
           }
           className="text-blue-600 hover:underline text-sm"
         >
-          {selectedCertificates.length === personCertificates.length ? "Deselect All" : "Select All"}
+          {selectedCertificates.length === personCertificates.length ? "Unselect All" : "Select All"}
         </button>
 
         <button
@@ -747,109 +748,56 @@ const MultiDownloadDropdown = ({
             </div>
           </div>
 
-         {formData && (
+       {formData && (
   <div className="text-center">
-    {!isDesktop && !forcePreview ? (
-      <>
-        <p className="text-sm text-gray-500 mb-2">
-          Preview is disabled on small/tablet screens to improve performance and prevent layout issues.
-        </p>
+    <div className="w-full flex justify-center overflow-x-auto py-4">
+      <div className="flex-shrink-0 max-w-full sm:max-w-[90%] md:max-w-[80%] lg:max-w-[70%]">
+        <CertificateTemplate
+          {...formData}
+          templateUrl={getTemplateUrl(formData.category)}
+          isPreview
+          certificateDate={formData.certificateDate ?? getCertificateDate()}
+        />
+      </div>
+    </div>
 
-        <div className="flex justify-center gap-3 mb-2">
-          {/* Share button */}
-          <button
-            onClick={() => {
-              setShareTarget({ type: "history", data: formData });
-              setIsShareModalOpen(true);
-            }}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
-          >
-            <FaShareAlt className="w-4 h-4" />
-            Share
-          </button>
+    <div className="flex justify-center gap-3 mt-3 flex-wrap">
+      {/* Share button */}
+      <button
+        onClick={() => {
+          setShareTarget({ type: "history", data: formData });
+          setIsShareModalOpen(true);
+        }}
+        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+      >
+        <FaShareAlt className="w-4 h-4" />
+        Share
+      </button>
 
-          {/* Download dropdown */}
-          <DownloadDropdown
-            onDownloadPDF={() =>
-              generatePDF({
-                organization: -30,
-                programName: -14,
-                achievementText: -15,
-                recipientName: -16,
-                certificateDate: -10,
-                signatory: -10,
-              })
-            }
-            onDownloadJPEG={() =>
-              generateJPEG({
-                organization: -30,
-                programName: -14,
-                achievementText: -15,
-                recipientName: -16,
-                certificateDate: -10,
-                signatory: -10,
-              })
-            }
-          />
-        </div>
-
-        <button
-          onClick={() => setForcePreview(true)}
-          className="text-sm underline text-blue-600"
-        >
-          Show preview anyway
-        </button>
-      </>
-    ) : (
-      <>
-        <div className="w-full flex justify-center overflow-x-auto py-4">
-          <div className="flex-shrink-0">
-            <CertificateTemplate
-              {...formData}
-              templateUrl={getTemplateUrl(formData.category)}
-              isPreview
-              certificateDate={formData.certificateDate ?? getCertificateDate()}
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-center gap-3 mt-2">
-          <button
-            onClick={() => {
-              setShareTarget({ type: "history", data: formData });
-              setIsShareModalOpen(true);
-            }}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
-          >
-            <FaShareAlt className="w-4 h-4" />
-            Share
-          </button>
-
-          <DownloadDropdown
-            onDownloadPDF={() =>
-              generatePDF({
-                organization: -30,
-                programName: -14,
-                achievementText: -15,
-                recipientName: -16,
-                certificateDate: -10,
-                signatory: -10,
-              })
-            }
-            onDownloadJPEG={() =>
-              generateJPEG({
-                organization: -30,
-                programName: -14,
-                achievementText: -15,
-                recipientName: -16,
-                certificateDate: -10,
-                signatory: -10,
-              })
-            }
-          />
-        </div>
-      </>
-    )}
+      {/* Download dropdown */}
+      <DownloadDropdown
+        onDownloadPDF={() =>
+          generatePDF({
+            organization: -30,
+            programName: -14,
+            achievementText: -15,
+            recipientName: -16,
+            certificateDate: -10,
+            signatory: -10,
+          })
+        }
+        onDownloadJPEG={() =>
+          generateJPEG({
+            organization: -30,
+            programName: -14,
+            achievementText: -15,
+            recipientName: -16,
+            certificateDate: -10,
+            signatory: -10,
+          })
+        }
+      />
+    </div>
   </div>
 )}
 

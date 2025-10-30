@@ -1,9 +1,22 @@
-import { ShareableCertificate } from "@/types/certificates";
-// app/utils/sharing.ts (or add to your existing file)
 export type ClientAttachment = {
-  url: string;
+  url?: string;       // fallback URL-based attachments
+  blob?: Blob;        // blob object
+  content?: string;   // base64 string for server
   filename?: string;
 };
+
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]); // remove data:image/...;base64, prefix
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 export async function sendCertificatesEmail(opts: {
   to: string;
@@ -11,10 +24,30 @@ export async function sendCertificatesEmail(opts: {
   message: string;
   attachments?: ClientAttachment[];
 }) {
+  // convert blobs to base64
+  const attachmentsPayload = await Promise.all(
+    (opts.attachments || []).map(async (att) => {
+      if (att.blob) {
+        const base64 = await blobToBase64(att.blob);
+        return { content: base64, filename: att.filename || "attachment.pdf" };
+      } else if (att.url) {
+        return { url: att.url, filename: att.filename };
+      }
+      return null;
+    })
+  );
+
+  const body = {
+    to: opts.to,
+    subject: opts.subject,
+    message: opts.message,
+    attachments: attachmentsPayload.filter(Boolean), // remove nulls
+  };
+
   const res = await fetch("/api/send-email", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(opts),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -23,43 +56,4 @@ export async function sendCertificatesEmail(opts: {
   }
 
   return res.json();
-}
-
-export async function shareCertificate(cert: ShareableCertificate, method: "email" | "whatsapp") {
-  const message = cert.shareMessage || `Hi ${cert.recipientName}, here’s your certificate!`;
-  const encodedMessage = encodeURIComponent(message);
-
-  if (method === "whatsapp") {
-    // Manual share – just open WhatsApp
-    const phone = cert.contactInfo?.whatsapp?.replace(/[^0-9]/g, "");
-    if (!phone) {
-      alert("No WhatsApp number available.");
-      return;
-    }
-    const waUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
-    window.open(waUrl, "_blank");
-    return;
-  }
-
-  if (method === "email") {
-    // Automatic share via backend or service
-    try {
-      const response = await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: cert.contactInfo?.email,
-          subject: `Certificate for ${cert.recipientName}`,
-          message,
-          attachmentUrl: cert.downloadUrl, // optional
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to send email");
-      alert(`Email sent to ${cert.contactInfo?.email}`);
-    } catch (err) {
-  
-      alert("Failed to send email. Please try again.");
-    }
-  }
 }

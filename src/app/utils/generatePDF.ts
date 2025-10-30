@@ -192,3 +192,39 @@ export const generateJPEG = async (pdfOffsets?: PDFOffsets) => {
     clone.remove();
   }
 };
+
+// utils/generatePDF.ts
+export const generatePDFBlob = async (pdfOffsets?: PDFOffsets): Promise<Blob | null> => {
+  const certificateElement = document.getElementById("certificate") as HTMLElement | null;
+  if (!certificateElement) return null;
+
+  const originalPositions = captureOriginalPositions(certificateElement);
+  const clone = createOffscreenClone(certificateElement);
+
+  try {
+    await document.fonts.ready;
+    await waitForImages(clone);
+
+    const resetOffsets = applyOffsetsOnClone(clone, originalPositions, pdfOffsets);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const canvas = await html2canvas(clone, { scale: 2, useCORS: true });
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "px",
+      format: [canvas.width, canvas.height],
+    });
+    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+
+    const blob = pdf.output("blob");
+    resetOffsets();
+    return blob;
+  } catch (err) {
+    console.error("PDF generation failed:", err);
+    return null;
+  } finally {
+    clone.remove();
+  }
+};

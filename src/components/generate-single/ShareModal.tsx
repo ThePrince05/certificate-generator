@@ -1,14 +1,17 @@
+
+import { FaShareAlt } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import { FaEnvelope, FaWhatsapp, FaFacebookF, FaLinkedinIn, FaTwitter } from "react-icons/fa";
 import { ShareableCertificate, ContactInfo } from "@/types/certificates";
-import { sendCertificatesEmail } from "@/app/utils/sharing";
+import { sendCertificatesEmail , ClientAttachment } from "@/app/utils/sharing";
+import { generatePDFBlob } from "@/app/utils/generatePDF";
 
 type ShareModalProps = {
   recipientCertificates: ShareableCertificate[];
   contactInfoList?: ContactInfo[];
   isOpen: boolean;
   onClose: () => void;
-  defaultEmail?: string; // ✅ add this
+  defaultEmail?: string;
 }
 
 const platformIcons: Record<string, React.ReactNode> = {
@@ -28,7 +31,6 @@ export const ShareModal = ({
 }: ShareModalProps) => {
   const recipient = recipientCertificates[0];
 
-  // ✅ Ensure initial state has all required fields
   const [editableContactInfo, setEditableContactInfo] = useState<ContactInfo>({
     email: defaultEmail || recipient.contactInfo?.email || recipient.email || "",
     recipientName: recipient.contactInfo?.recipientName || recipient.recipientName || "Unknown",
@@ -47,46 +49,39 @@ export const ShareModal = ({
   });
   const [loadingMessage, setLoadingMessage] = useState(false);
 
- useEffect(() => {
-  if (!isOpen) return;
+  useEffect(() => {
+    if (!isOpen) return;
 
-  const generateMessage = async () => {
-    try {
-      setLoadingMessage(true);
-      if (recipientCertificates.length === 0) return;
+    const generateMessage = async () => {
+      try {
+        setLoadingMessage(true);
+        if (recipientCertificates.length === 0) return;
 
-      const firstCert = recipientCertificates[0];
+        const firstCert = recipientCertificates[0];
 
-      // Gather all program names
-      const programNames = recipientCertificates.map(
-        (c) => c.programName || "a program"
-      );
+        const programNames = recipientCertificates.map(c => c.programName || "a program");
 
-      const res = await fetch("/api/generate-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipientName:
-            firstCert.recipientName ||
-            editableContactInfo.recipientName ||
-            "Participant",
-          programs: programNames,
-          organization: firstCert.organization || "our organization",
-        }),
-      });
+        const res = await fetch("/api/generate-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientName: firstCert.recipientName || editableContactInfo.recipientName || "Participant",
+            programs: programNames,
+            organization: firstCert.organization || "our organization",
+          }),
+        });
 
-      const data = await res.json();
-      if (data.message) setCustomMessage(data.message);
-    } catch (err) {
-      console.error("Failed to fetch Gemini message:", err);
-    } finally {
-      setLoadingMessage(false);
-    }
-  };
+        const data = await res.json();
+        if (data.message) setCustomMessage(data.message);
+      } catch (err) {
+        console.error("Failed to fetch Gemini message:", err);
+      } finally {
+        setLoadingMessage(false);
+      }
+    };
 
-  generateMessage();
-}, [isOpen]);
-
+    generateMessage();
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -116,35 +111,77 @@ export const ShareModal = ({
     });
   }, [isOpen, recipientCertificates, contactInfoList, defaultEmail]);
 
- const handleShare = async () => {
-
+  const handleShare = async () => {
   function sanitizeFilename(name: string) {
-  return name
-    .trim()
-    .replace(/[/\\?%*:|"<>]/g, "_") // remove illegal filesystem chars
-    .replace(/\s+/g, "_")            // spaces → underscores
-    .replace(/__+/g, "_")            // collapse duplicate underscores
-    .slice(0, 120);                  // optional: limit length
-}
-
-  // Build attachments array from recipientCertificates
-  const attachments = recipientCertificates
-  .map((cert, idx) => {
-    const url = cert.downloadUrl;
-    if (!url) return null; // skip if no URL
-
-    const baseName = `${cert.recipientName ?? "recipient"} - ${cert.programName ?? "certificate"}`;
-    const filename = sanitizeFilename(`${baseName}${cert.certificateDate ? ` - ${cert.certificateDate}` : ""}.pdf`);
-
-    return { url, filename };
-  })
-  .filter((a): a is { url: string; filename: string } => a !== null && !!a.url);
-
-  const to = editableContactInfo.email;
-  const subject = `Your Certificate${recipientCertificates.length > 1 ? 's' : ''} from ${recipientCertificates[0]?.organization || ''}`;
-  const messageToSend = customMessage || recipientCertificates[0]?.shareMessage || "Please find your certificate(s) attached.";
+    return name
+      .trim()
+      .replace(/[/\\?%*:|"<>]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/__+/g, "_")
+      .slice(0, 120);
+  }
 
   try {
+    if (!recipientCertificates.length) return;
+
+    // Generate attachments
+    const attachments: ClientAttachment[] = (
+      await Promise.all(
+        recipientCertificates.map(async (cert) => {
+          const baseName = `${cert.recipientName ?? "recipient"} - ${cert.programName ?? "certificate"}`;
+          const filename = sanitizeFilename(
+            `${baseName}${cert.certificateDate ? ` - ${cert.certificateDate}` : ""}.pdf`
+          );
+
+          const pdfOffsets = {
+            organization: -30,
+            programName: -15,
+            achievementText: -15,
+            recipientName: -16,
+            certificateDate: -8,
+            signature: 1,
+            signatory: -10,
+          };
+
+          const blob = await generatePDFBlob(pdfOffsets);
+          if (!blob) return null;
+
+          // Convert PDF blob to Base64 and strip "data:" prefix
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              const pureBase64 = result.split(",")[1]; // ✅ strip prefix
+              resolve(pureBase64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+
+          // 🔹 Send base64 under `content` instead of `url`
+          return { content: base64, filename } as ClientAttachment;
+        })
+      )
+    ).filter((a): a is ClientAttachment => a !== null);
+
+    if (!attachments.length) {
+      alert("No certificates were generated.");
+      return;
+    }
+
+    const to = editableContactInfo.email;
+    const subject = `Your Certificate${recipientCertificates.length > 1 ? "s" : ""} from ${
+      recipientCertificates[0]?.organization || ""
+    }`;
+    const messageToSend =
+      customMessage || recipientCertificates[0]?.shareMessage || "Please find your certificate(s) attached.";
+
+    // 🔹 Debug: Log full payload before sending
+    console.log("Sending email with payload:", { to, subject, message: messageToSend, attachments });
+    attachments.forEach((att, i) => {
+      console.log(`Attachment ${i}: filename=${att.filename}, first 30 chars of Base64=${att.content!.slice(0,30)}`);
+    });
+
     await sendCertificatesEmail({
       to,
       subject,
@@ -152,15 +189,15 @@ export const ShareModal = ({
       attachments,
     });
 
-    // optionally show success toast
     alert(`Email sent to ${to}`);
   } catch (err) {
-    console.error(err);
+    console.error("send-email route error:", err);
     alert("Failed to send email. Please try again.");
   } finally {
     onClose();
   }
 };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -188,10 +225,7 @@ export const ShareModal = ({
                   value={editableContactInfo[platform as keyof ContactInfo] || ""}
                   placeholder={platform}
                   onChange={(e) =>
-                    setEditableContactInfo((prev) => ({
-                      ...prev,
-                      [platform]: e.target.value,
-                    }))
+                    setEditableContactInfo((prev) => ({ ...prev, [platform]: e.target.value }))
                   }
                 />
               </div>
@@ -200,31 +234,29 @@ export const ShareModal = ({
         </div>
 
         <div>
-  <label className="block font-medium mb-1">Custom Message</label>
-  {loadingMessage ? (
-    <div className="border rounded px-2 py-3 text-gray-500 text-center italic">
-      Generating message with AI...
-    </div>
-  ) : (
-    <textarea
-      className="w-full border rounded px-2 py-1"
-      rows={12}
-      value={customMessage}
-      onChange={(e) => setCustomMessage(e.target.value)}
-      placeholder="Enter a custom message (leave empty to use AI suggestion)"
-    />
-  )}
-</div>
-
+          <label className="block font-medium mb-1">Custom Message</label>
+          {loadingMessage ? (
+            <div className="border rounded px-2 py-3 text-gray-500 text-center italic">
+              Generating message with AI...
+            </div>
+          ) : (
+            <textarea
+              className="w-full border rounded px-2 py-1"
+              rows={12}
+              value={customMessage}
+              onChange={(e) => setCustomMessage(e.target.value)}
+              placeholder="Enter a custom message (leave empty to use AI suggestion)"
+            />
+          )}
+        </div>
 
         <div className="flex justify-end gap-3 mt-4">
           <button className="px-4 py-2 bg-gray-300 rounded" onClick={onClose}>
             Cancel
           </button>
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded"
-            onClick={handleShare}
-          >
+          <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+           onClick={handleShare}>
+             <FaShareAlt className="w-4 h-4" />
             Share
           </button>
         </div>
