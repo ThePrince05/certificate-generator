@@ -134,6 +134,12 @@ const CATEGORIES = [
 
   return (
     <div className="max-w-3xl mx-auto p-6">
+          <button
+            onClick={() => router.push("/generate-single")}
+            className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
+          >
+            ← Single Certificate
+          </button>
       {/* Add New Template Form */}
       <section className="bg-white border rounded shadow p-6 mb-20">
         <h1 className="text-2xl font-bold text-center mb-6">
@@ -196,12 +202,9 @@ const CATEGORIES = [
           </div>
 
           <div className="flex items-center gap-3 mt-4">
+            <div className="flex-1" />
             <button type="submit" className="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600 transition">
               Add Group
-            </button>
-            <div className="flex-1" />
-            <button type="button" onClick={() => router.push("/generate-single")} className="bg-gray-100 text-gray-800 px-5 py-2 rounded border hover:bg-gray-200 transition">
-              Back
             </button>
           </div>
         </form>
