@@ -6,11 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
-import { FaShareAlt, FaDownload } from "react-icons/fa";
+import { FaShareAlt, FaDownload,  FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 // Components
 import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
-import PersonSearch from "@/components/PersonSearch";
+import PersonSearchBatch from "@/components/generate-batch/PersonSearchBatch";
 
 // Contexts
 import { useOrganization } from "../context/OrganizationContext";
@@ -28,14 +28,10 @@ import { contactInfoList } from "@/data/SocialMediaData";
 import PreviewSection from "@/components/PreviewSection"; 
 import HistoryToggle from "@/components/HistoryToggle";
 import HistorySection from "@/components/HistorySection";
+import DownloadDropdown from "@/components/DownloadDropdown";
+import MultiDownloadDropdown from "@/components/MultiDownloadDropdown";
 
 // Types
-interface DownloadDropdownProps {
-  onDownloadPDF: (e?: React.MouseEvent<HTMLButtonElement>) => void;
-  onDownloadJPEG: (e?: React.MouseEvent<HTMLButtonElement>) => void;
-  fontSize?: "sm" | "base";
-}
-
 type DemoCertificate = CleanCertificateData & {
   id: string;
 };
@@ -65,183 +61,6 @@ const getCertificateDate = () => {
   return `Awarded ${month} ${year}`;
 };
 
-// Components
-const DownloadDropdown = ({
-  onDownloadPDF,
-  onDownloadJPEG,
-  fontSize = "base",
-}: DownloadDropdownProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  const sizeClass = fontSize === "sm" ? "text-sm" : "text-base";
-
-  useEffect(() => {
-    if (!isOpen || !buttonRef.current) return;
-
-    const rect = buttonRef.current.getBoundingClientRect();
-    const dropdownHeight = 90;
-    const shouldOpenUpward = window.innerHeight - rect.bottom < dropdownHeight + 10;
-
-    setOpenUpward(shouldOpenUpward);
-    setDropdownPos({
-      top: shouldOpenUpward ? rect.top - dropdownHeight - 8 : rect.bottom + 8,
-      left: rect.left + rect.width / 2,
-    });
-  }, [isOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        buttonRef.current &&
-        !buttonRef.current.contains(target) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  return (
-    <>
-      <div className="relative inline-block">
-        <button
-          ref={buttonRef}
-          onClick={() => setIsOpen((prev) => !prev)}
-          className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition ${sizeClass} flex items-center gap-2`}
-        >
-          <FaDownload className="w-4 h-4" />
-          Download
-          <svg
-            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </div>
-
-      {isOpen &&
-        createPortal(
-          <div
-            className="fixed z-[9999]"
-            style={{
-              top: dropdownPos.top,
-              left: dropdownPos.left,
-              transform: "translateX(-50%)",
-            }}
-          >
-            <div className="w-40 bg-white rounded-md shadow-lg border overflow-hidden">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownloadPDF(e);
-                  setTimeout(() => setIsOpen(false), 50);
-                }}
-                className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-green-500 hover:bg-green-600 transition`}
-              >
-                PDF
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownloadJPEG(e);
-                  setIsOpen(false);
-                }}
-                className={`flex justify-center items-center w-full px-4 py-2 ${sizeClass} text-white bg-yellow-500 hover:bg-yellow-600 transition`}
-              >
-                JPEG
-              </button>
-            </div>
-          </div>,
-          document.body
-        )}
-    </>
-  );
-};
-
-const MultiDownloadDropdown = ({
-  onDownloadPDF,
-  onDownloadJPEG,
-  isDownloading,
-}: {
-  onDownloadPDF: () => void;
-  onDownloadJPEG: () => void;
-  isDownloading: boolean;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = 90;
-      setOpenUpward(spaceBelow < dropdownHeight);
-    }
-  }, [isOpen]);
-
-  return (
-    <div className="relative inline-block">
-      <button
-        ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={isDownloading}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2"
-      >
-        {isDownloading ? "Generating..." : "Download ZIP"}
-        <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div
-          className={`absolute left-1/2 transform -translate-x-1/2 ${
-            openUpward ? "bottom-full mb-1" : "top-full mt-1"
-          } w-44 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden`}
-        >
-          <button
-            onClick={() => {
-              onDownloadPDF();
-              setIsOpen(false);
-            }}
-            disabled={isDownloading}
-            className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white transition"
-          >
-            PDF
-          </button>
-          <button
-            onClick={() => {
-              onDownloadJPEG();
-              setIsOpen(false);
-            }}
-            disabled={isDownloading}
-            className="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white transition"
-          >
-            JPEG
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Main Component
 export default function GenerateBatch() {
@@ -253,7 +72,7 @@ export default function GenerateBatch() {
   const [validatedBatch, setValidatedBatch] = useState<CertificateDataWithValidation[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [selectedPerson, setSelectedPersonName] = useState<string | null>(null);
+  const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
   const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
   const [formData, setFormData] = useState<CertificateData | null>(null);
   const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
@@ -265,7 +84,7 @@ export default function GenerateBatch() {
 
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [showCSVSection, setShowCSVSection] = useState(true);
   const [history, setHistory] = useState<any[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -373,6 +192,12 @@ const doDownloadJPEG = (item: any) => {
   loadDemoData();
 }, [selectedOrg]);
 
+
+  useEffect(() => {
+    if (selectedPersons.length > 0 && personCertificates.length > 0) {
+      setShowCSVSection(false);
+    }
+  }, [selectedPersons, personCertificates]); // Changed from selectedPerson
 
   const validateBatch = (
     data: CertificateData[]
@@ -669,111 +494,219 @@ const doDownloadJPEG = (item: any) => {
   );
 
   const PersonCertificatesSection = () => {
-    return (
-      <div className="person-certificates-section">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-800">
-            {personCertificates[0]?.recipientName}'s Certificates
-          </h3>
+  if (personCertificates.length === 0) return null;
 
-          <div className="flex gap-4 items-center">
-            <button
-              onClick={() =>
-                setSelectedCertificates(
-                  selectedCertificates.length === personCertificates.length
-                    ? []
-                    : personCertificates.map((c) => c.id)
-                )
-              }
-              className="text-blue-600 hover:underline text-sm"
-            >
-              {selectedCertificates.length === personCertificates.length ? "Unselect All" : "Select All"}
-            </button>
+  // Group certificates by recipient name
+  const certificatesByPerson = useMemo(() => {
+    const grouped: Record<string, DemoCertificate[]> = {};
+    
+    personCertificates.forEach(cert => {
+      if (!grouped[cert.recipientName]) {
+        grouped[cert.recipientName] = [];
+      }
+      grouped[cert.recipientName].push(cert);
+    });
+    
+    return grouped;
+  }, [personCertificates]);
 
-            <button
-              onClick={() => setCertificatesCollapsed((prev) => !prev)}
-              className="text-blue-600 hover:underline text-sm"
-            >
-              {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
-            </button>
-          </div>
+  const personNames = Object.keys(certificatesByPerson);
+  const displayNames = personNames.join(', ');
+
+  return (
+    <div className="person-certificates-section">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-semibold text-gray-800">
+          {personNames.length === 1 
+            ? `${displayNames}'s Certificates` 
+            : `Certificates for ${personNames.length} People`}
+        </h3>
+
+        <div className="flex gap-4 items-center">
+          <button
+            onClick={() =>
+              setSelectedCertificates(
+                selectedCertificates.length === personCertificates.length
+                  ? []
+                  : personCertificates.map((c) => c.id)
+              )
+            }
+            className="text-blue-600 hover:underline text-sm font-medium"
+          >
+            {selectedCertificates.length === personCertificates.length ? "Unselect All" : "Select All"}
+          </button>
+
+          <button
+            onClick={() => setCertificatesCollapsed((prev) => !prev)}
+            className="text-blue-600 hover:underline text-sm font-medium"
+          >
+            {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
+          </button>
         </div>
+      </div>
 
-        <AnimatePresence initial={false}>
-          {!certificatesCollapsed && (
-            <motion.div
-              key="certificates-list"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-3 overflow-hidden"
-            >
-              {personCertificates.map((cert) => {
-                const isSelected = selectedCertificates.includes(cert.id);
-                
-                return (
-                  <div
-                    key={cert.id}
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).tagName !== "BUTTON" && 
-                          (e.target as HTMLElement).tagName !== "INPUT") {
-                        setFormData(cert);
-                      }
-                    }}
-                    className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
-                      isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={() => {
-                          const newSelection = isSelected 
-                            ? selectedCertificates.filter((id) => id !== cert.id)
-                            : [...selectedCertificates, cert.id];
-                          setSelectedCertificates(newSelection);
-                        }}
-                        className="mt-1 accent-blue-500 scale-110"
-                      />
-                      <div>
-                        <p className="font-bold text-gray-900">{cert.programName}</p>
-                        <p className="text-sm text-gray-500">{cert.category}</p>
-                        <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
+      <AnimatePresence initial={false}>
+        {!certificatesCollapsed && (
+          <motion.div
+            key="certificates-list"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="space-y-6 overflow-hidden"
+          >
+            {personNames.map((personName) => {
+              const personCerts = certificatesByPerson[personName];
+              const allSelected = personCerts.every(cert => selectedCertificates.includes(cert.id));
+              const someSelected = personCerts.some(cert => selectedCertificates.includes(cert.id));
+
+              return (
+                <div key={personName} className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                  {/* Person Header - Fixed alignment */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          ref={(input) => {
+                            if (input) {
+                              input.indeterminate = someSelected && !allSelected;
+                            }
+                          }}
+                          onChange={() => {
+                            if (allSelected) {
+                              // Deselect all for this person
+                              const newSelection = selectedCertificates.filter(
+                                id => !personCerts.some(cert => cert.id === id)
+                              );
+                              setSelectedCertificates(newSelection);
+                            } else {
+                              // Select all for this person
+                              const personCertIds = personCerts.map(cert => cert.id);
+                              const newSelection = [...new Set([...selectedCertificates, ...personCertIds])];
+                              setSelectedCertificates(newSelection);
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-lg font-bold text-gray-900">{personName}</h4>
+                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            {personCerts.length} certificate{personCerts.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {someSelected && (
+                          <span className="text-blue-600 font-medium">
+                            {personCerts.filter(cert => selectedCertificates.includes(cert.id)).length} selected
+                          </span>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex gap-2 flex-wrap">
-                      <DownloadDropdown
-                        onDownloadPDF={() => handleDownloadCertificate(cert, "pdf")}
-                        onDownloadJPEG={() => handleDownloadCertificate(cert, "jpeg")}
-                        fontSize="sm"
-                      />
-                    </div>
                   </div>
-                );
-              })}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        <AnimatePresence>
-          {selectedCertificates.length > 0 && (
-            <motion.div
-              key="selected-actions"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.18 }}
-              className="flex flex-wrap justify-center gap-4 mt-6"
-            >
+                  {/* Certificates List */}
+                  <div className="divide-y divide-gray-100">
+                    {personCerts.map((cert) => {
+                      const isSelected = selectedCertificates.includes(cert.id);
+                      
+                      return (
+                        <div
+                          key={cert.id}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).tagName !== "BUTTON" && 
+                                (e.target as HTMLElement).tagName !== "INPUT") {
+                              setFormData(cert);
+                            }
+                          }}
+                          className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                            isSelected ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4 flex-1 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={() => {
+                                  const newSelection = isSelected 
+                                    ? selectedCertificates.filter((id) => id !== cert.id)
+                                    : [...selectedCertificates, cert.id];
+                                  setSelectedCertificates(newSelection);
+                                }}
+                                className="mt-0.5 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 flex-shrink-0"
+                              />
+                              
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-4 mb-2">
+                                  <p className="font-semibold text-gray-800 text-base leading-tight">
+                                    {cert.programName}
+                                  </p>
+                                  <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0">
+                                    {cert.category}
+                                  </span>
+                                </div>
+                                
+                                <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                                  {cert.achievementText}
+                                </p>
+                                
+                                <div className="flex items-center gap-4 text-xs text-gray-500">
+                                  {cert.fieldOfInterest && (
+                                    <span className="bg-green-50 text-green-700 px-2 py-1 rounded">
+                                      {cert.fieldOfInterest}
+                                    </span>
+                                  )}
+                                  <span>{cert.certificateDate}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <DownloadDropdown
+                                onDownloadPDF={() => handleDownloadCertificate(cert, "pdf")}
+                                onDownloadJPEG={() => handleDownloadCertificate(cert, "jpeg")}
+                                fontSize="sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Selected Actions - Fixed button size */}
+      <AnimatePresence>
+        {selectedCertificates.length > 0 && (
+          <motion.div
+            key="selected-actions"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.18 }}
+            className="flex flex-wrap justify-center gap-4 mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200"
+          >
+            <div className="text-center mb-2 w-full">
+              <p className="text-blue-800 font-medium">
+                {selectedCertificates.length} certificate{selectedCertificates.length !== 1 ? 's' : ''} selected across {personNames.length} person{personNames.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={handleShareSelected}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2 font-medium text-sm"
               >
-                <FaShareAlt className="w-4 h-4" />
+                <FaShareAlt className="w-3 h-3" />
                 Share Selected
               </button>
 
@@ -782,12 +715,14 @@ const doDownloadJPEG = (item: any) => {
                 onDownloadPDF={() => handleMultiDownloadAction("pdf")}
                 onDownloadJPEG={() => handleMultiDownloadAction("jpeg")}
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  };
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
   if (!selectedOrg) return <p className="p-8 text-center">Redirecting...</p>;
   const getTemplateUrl = (category?: string) => {
     if (!category) return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
@@ -798,6 +733,93 @@ const doDownloadJPEG = (item: any) => {
 
     return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
   };
+
+      const toggleCSVSection = () => {
+          setShowCSVSection(!showCSVSection);
+        };
+
+ const CSVUploadSection = () => (
+    <div className="flex justify-center my-6 px-4">
+      <div className="w-full max-w-3xl">
+        {/* Toggle Header */}
+        <div 
+          className="flex items-center justify-between p-4 bg-gray-100 border rounded-t cursor-pointer hover:bg-gray-200 transition-colors"
+          onClick={toggleCSVSection}
+        >
+          <h3 className="text-lg font-semibold text-gray-800">
+            CSV Upload & Batch Processing
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              {validatedBatch.length > 0 ? `${validatedBatch.length} records loaded` : 'No data'}
+            </span>
+            {showCSVSection ? <FaChevronUp className="w-4 h-4" /> : <FaChevronDown className="w-4 h-4" />}
+          </div>
+        </div>
+
+        {/* Collapsible Content */}
+        <AnimatePresence>
+          {showCSVSection && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 md:p-6 border border-t-0 rounded-b shadow bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <label className="font-semibold block mb-1">Upload CSV for Batch</label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-0">
+                  {validatedBatch.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => handleBatchDownload("pdf")}
+                        disabled={isDownloading}
+                        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow transition-all"
+                      >
+                        {isDownloading ? "Downloading..." : `Download PDF (${validatedBatch.length})`}
+                      </button>
+
+                      <button
+                        onClick={() => handleBatchDownload("jpeg")}
+                        disabled={isDownloading}
+                        className="w-full md:w-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded shadow transition-all"
+                      >
+                        {isDownloading ? "Downloading..." : `Download JPEG (${validatedBatch.length})`}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+
+  // Modify the Batch Data Display to be conditionally rendered
+  const BatchDataDisplay = () => {
+    if (validatedBatch.length === 0 || !showCSVSection) return null;
+
+    return (
+      <>
+        <TableView />
+        <CardView />
+      </>
+    );
+  };
+
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -822,76 +844,38 @@ const doDownloadJPEG = (item: any) => {
           ← Change Generation
         </button>
 
-        {/* Person Search & Certificates */}
-        <div className="max-w-3xl mx-auto mb-6 px-4">
-
-          <PersonSearch
-             dbCertificates={dbCertificates} 
-            contactInfoList={contactInfoList}
-            setSelectedPerson={setSelectedPersonName}
-            setPersonCertificates={setPersonCertificates}
-            setFormData={setFormData}
-            history={history}
-            saveHistory={saveHistory}
-            getCertificateDate={getCertificateDate}
-          />
-          
-          {selectedPerson && personCertificates.length > 0 && <PersonCertificatesSection />}
-          
-          {selectedPerson && personCertificates.length === 0 && (
-            <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded">
-              <p className="text-orange-700">
-                No certificates found for {selectedPerson}. 
-                This might mean there's no match between the contact and certificate data.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* CSV Upload & Batch Actions */}
-        <div className="flex justify-center my-6 px-4">
-          <div className="p-4 md:p-6 border rounded shadow bg-gray-50 w-full max-w-3xl flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <label className="font-semibold block mb-1">Upload CSV for Batch</label>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleCSVUpload}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-
-            <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-0">
-              {validatedBatch.length > 0 && (
-                <>
-                  <button
-                    onClick={() => handleBatchDownload("pdf")}
-                    disabled={isDownloading}
-                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow transition-all"
-                  >
-                    {isDownloading ? "Downloading..." : `Download PDF (${validatedBatch.length})`}
-                  </button>
-
-                  <button
-                    onClick={() => handleBatchDownload("jpeg")}
-                    disabled={isDownloading}
-                    className="w-full md:w-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded shadow transition-all"
-                  >
-                    {isDownloading ? "Downloading..." : `Download JPEG (${validatedBatch.length})`}
-                  </button>
-                </>
-              )}
-            </div>
+      {/* Person Search & Certificates */}
+      <div className="max-w-3xl mx-auto mb-6 px-4">
+        <PersonSearchBatch
+          dbCertificates={dbCertificates} 
+          contactInfoList={contactInfoList}
+          setSelectedPersons={setSelectedPersons}
+          setPersonCertificates={setPersonCertificates}
+          setFormData={setFormData}
+          history={history}
+          saveHistory={saveHistory}
+          getCertificateDate={getCertificateDate}
+        />
+        
+        {/* Updated conditions */}
+        {selectedPersons.length > 0 && personCertificates.length > 0 && <PersonCertificatesSection />}
+        
+        {selectedPersons.length > 0 && personCertificates.length === 0 && (
+          <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded">
+            <p className="text-orange-700">
+              No certificates found for {selectedPersons.join(', ')}. 
+              This might mean there's no match between the contact and certificate data.
+            </p>
           </div>
-        </div>
-
-        {/* Batch Data Display */}
-        {validatedBatch.length > 0 && (
-          <>
-            <TableView />
-            <CardView />
-          </>
         )}
+      </div>
+
+      
+        {/* CSV Upload & Batch Actions */}
+        <CSVUploadSection />
+
+        {/* Batch Data Display - Now conditionally rendered */}
+        <BatchDataDisplay />
 
         {/* Mobile Navigation */}
         <div className="px-4 block md:hidden">

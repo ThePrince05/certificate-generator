@@ -26,8 +26,10 @@ import { loadCSVData, parseCSVData } from "../utils/csvLoader";
 import { CleanCertificateData } from "@/types/certificates";
 import { contactInfoList } from "@/data/SocialMediaData";
 
+import PersonSearch from "@/components/generate-single/PersonSearch";
 import PreviewSection from "@/components/PreviewSection"; 
 import DownloadDropdown from "@/components/DownloadDropdown";
+import MultiDownloadDropdown from "@/components/MultiDownloadDropdown";
 import HistoryToggle from "@/components/HistoryToggle";
 import HistorySection from "@/components/HistorySection";
 
@@ -63,82 +65,6 @@ function useIsDesktop() {
 
   return isDesktop;
 }
-
-// Components
-
-
-const MultiDownloadDropdown = ({
-  onDownloadPDF,
-  onDownloadJPEG,
-  isDownloading,
-}: {
-  onDownloadPDF: () => void;
-  onDownloadJPEG: () => void;
-  isDownloading: boolean;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = 90;
-      setOpenUpward(spaceBelow < dropdownHeight);
-    }
-  }, [isOpen]);
-
-  return (
-    <div className="relative inline-block">
-      <button
-        ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={isDownloading}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2"
-      >
-        {isDownloading ? "Generating..." : "Download ZIP"}
-        <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div
-          className={`absolute left-1/2 transform -translate-x-1/2 ${
-            openUpward ? "bottom-full mb-1" : "top-full mt-1"
-          } w-44 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden`}
-        >
-          <button
-            onClick={() => {
-              onDownloadPDF();
-              setIsOpen(false);
-            }}
-            disabled={isDownloading}
-            className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white transition"
-          >
-            PDF
-          </button>
-          <button
-            onClick={() => {
-              onDownloadJPEG();
-              setIsOpen(false);
-            }}
-            disabled={isDownloading}
-            className="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white transition"
-          >
-            JPEG
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Main Component
 export default function GenerateSingle() {
@@ -402,74 +328,17 @@ export default function GenerateSingle() {
             <h1 className="text-4xl font-bold text-center mb-4">Generate Single Certificate</h1>
             <h2 className="text-2xl text-center text-gray-600 mb-8">{selectedOrg.name}</h2>
 
-            {/* Person Search */}
-            <div className="p-6 bg-white rounded shadow border border-gray-200 space-y-4">
-              <input
-                type="text"
-                placeholder="Search for a person or email..."
-                value={dbSearch}
-                onChange={(e) => setDbSearch(e.target.value)}
-                className="w-full border rounded p-3"
-              />
-
-              {dbSearch && filteredPersons.length > 0 && (
-                <ul className="border rounded max-h-60 overflow-y-auto divide-y divide-gray-200">
-                  {filteredPersons.map((s) => (
-                    <li
-                      key={`${s.email ?? s.name}`}
-                      onClick={() => {
-                        setSelectedPerson(s.name);
-                        setDbSearch("");
-
-                        const certs = dbCertificates.filter((c) => {
-                          const certEmail = c.email?.trim().toLowerCase() || "";
-                          const certName = c.recipientName?.trim().toLowerCase() || "";
-                          const searchEmail = s.email?.toLowerCase() || "";
-                          const searchName = s.name?.toLowerCase() || "";
-
-                          if (searchEmail && certEmail === searchEmail) return true;
-                          if (!certEmail && searchName && certName === searchName) return true;
-
-                          return false;
-                        });
-                        setPersonCertificates(certs);
-
-                        if (certs.length > 0) {
-                          const firstCert = {
-                            ...certs[0],
-                            certificateDate: certs[0].certificateDate || getCertificateDate(),
-                          };
-
-                          setFormData(firstCert);
-
-                          const alreadyExists = history.some(
-                            (h) =>
-                              h.recipientName === firstCert.recipientName &&
-                              h.programName === firstCert.programName &&
-                              h.email === firstCert.email
-                          );
-                          if (!alreadyExists) {
-                            saveHistory([{ ...firstCert, id: uuidv4(), generatedAt: new Date().toISOString() }, ...history]);
-                          }
-                        } else {
-                          setFormData(null);
-                        }
-                      }}
-                      className="p-3 hover:bg-gray-50 cursor-pointer text-gray-700"
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <span className="font-semibold">{s.name}</span>
-                          {s.email && (
-                            <span className="text-sm text-gray-500 ml-2">({s.email})</span>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+          {/* Person Search */}
+          <PersonSearch
+            dbCertificates={dbCertificates}
+            contactInfoList={contactInfoList}
+            setSelectedPerson={setSelectedPerson}
+            setPersonCertificates={setPersonCertificates}
+            setFormData={setFormData}
+            history={history}
+            saveHistory={saveHistory}
+            getCertificateDate={getCertificateDate}
+          />
 
             {/* Person Certificates */}
             {selectedPerson && personCertificates.length > 0 && (
