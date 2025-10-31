@@ -45,6 +45,7 @@ export const ShareModal = ({
   const [platforms, setPlatforms] = useState({
     email: !!editableContactInfo.email,
     whatsapp: !!editableContactInfo.whatsapp,
+    
   });
   const [loadingMessage, setLoadingMessage] = useState(false);
 
@@ -112,6 +113,7 @@ export const ShareModal = ({
     setPlatforms({
       email: !!contactToUse.email,
       whatsapp: !!contactToUse.whatsapp,
+      
     });
   }, [isOpen, recipientCertificates, contactInfoList, defaultEmail]);
 

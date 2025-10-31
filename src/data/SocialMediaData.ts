@@ -29,6 +29,7 @@ export const contactInfoList: ContactInfo[] = [
     whatsapp: "+1234567891",
     facebook: "https://facebook.com/bobsmith",
     linkedin: "https://linkedin.com/in/bobsmith",
+    twitter: "https://twitter.com/bobsmith",
     preferredMethod: 'email'
   },
 
@@ -37,8 +38,9 @@ export const contactInfoList: ContactInfo[] = [
     email: "princesithole49@gmail.com",
     phone: "+1234599999",
     whatsapp: "+27614181641",
-    facebook: "https://facebook.com/bobsmith.work",
-    linkedin: "https://linkedin.com/in/bobsmith-work",
+    facebook: "https://facebook.com/princesithole.work",
+    linkedin: "https://linkedin.com/in/princesithole-work",
+    twitter: "https://twitter.com/princesithole",
     preferredMethod: 'whatsapp'
   },
   {

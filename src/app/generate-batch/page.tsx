@@ -704,9 +704,8 @@ const doDownloadJPEG = (item: any) => {
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={handleShareSelected}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2 font-medium text-sm"
-              >
-                <FaShareAlt className="w-3 h-3" />
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2">
+                <FaShareAlt className="w-4 h-4" />
                 Share Selected
               </button>
 
