@@ -34,7 +34,7 @@ export default function TemplateGroupsPage() {
         <p>Please select an organization first.</p>
         <button
           className="mt-4 px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
-          onClick={() => router.push("/select-organization")}
+          onClick={() => router.push("/generate?step=org")}
         >
           Select Organization
         </button>

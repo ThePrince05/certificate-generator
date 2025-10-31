@@ -321,28 +321,6 @@ const filteredCategories = useMemo(() => {
       />
       </div>
 
-     {/* Field of Interest */}
-    {selectedCategory !== "Gaming & Development" && (
-      <div>
-        <label className="block font-semibold mb-1">Field of Interest</label>
-        <Select
-          options={[
-            { value: "", label: "-- Search or Select Field of Interest --" },
-            ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
-          ]}
-          value={
-            formData.fieldOfInterest
-              ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
-              : { value: "", label: "-- Search or Select Field of Interest --" }
-          }
-          onChange={handleFieldOfInterestChange}
-          isClearable={false}
-          required
-        />
-      </div>
-    )}
-
-
 
       {/* Program Name */}
       <div>
@@ -367,6 +345,29 @@ const filteredCategories = useMemo(() => {
           }
         />
       </div>
+
+      
+    {/* Field of Interest */}
+    {selectedCategory !== "Gaming & Development" && (
+      <div>
+        <label className="block font-semibold mb-1">Field of Interest</label>
+        <Select
+          options={[
+            { value: "", label: "-- Search or Select Field of Interest --" },
+            ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
+          ]}
+          value={
+            formData.fieldOfInterest
+              ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
+              : { value: "", label: "-- Search or Select Field of Interest --" }
+          }
+          onChange={handleFieldOfInterestChange}
+          isClearable={false}
+          required
+        />
+      </div>
+    )}
+      
 
       {/* Achievement Text */}
       <div>
