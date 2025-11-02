@@ -3,14 +3,14 @@
 import { motion } from "framer-motion";
 import { FaShareAlt } from "react-icons/fa";
 import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
-import { DownloadDropdown } from "@/components/DownloadDropdown"; // You'll need to export this
+import { DownloadDropdown } from "@/components/DownloadDropdown";
 import { CleanCertificateData } from "@/types/certificates";
 
 interface PreviewSectionProps {
   formData: CleanCertificateData | null;
   getTemplateUrl: (category?: string) => string;
   getCertificateDate: () => string;
-  onShare: () => void;
+  onShare: (e?: React.MouseEvent) => void; // Update this line - make event optional
   onDownloadPDF: () => void;
   onDownloadJPEG: () => void;
 }
@@ -39,13 +39,19 @@ export const PreviewSection: React.FC<PreviewSectionProps> = ({
       </div>
 
       <div className="flex justify-center gap-3 mt-3 flex-wrap">
-        <button
-          onClick={onShare}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
-        >
-          <FaShareAlt className="w-4 h-4" />
-          Share
-        </button>
+       <button
+  onClick={(e) => {
+    console.log("🟡 PreviewSection share button clicked", { 
+      hasFormData: !!formData,
+      eventType: e.type 
+    });
+    onShare(e);
+  }}
+  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+>
+  <FaShareAlt className="w-4 h-4" />
+  Share
+</button>
 
         <DownloadDropdown
           onDownloadPDF={onDownloadPDF}

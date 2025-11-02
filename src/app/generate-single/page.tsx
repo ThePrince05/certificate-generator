@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaShareAlt, FaFilePdf, FaFileImage, FaDownload } from "react-icons/fa";
@@ -537,7 +536,38 @@ export default function GenerateSingle() {
                   )}
                 </AnimatePresence>
               </div>
+
+              
             )}
+      <AnimatePresence>
+                  {isShareModalOpen && shareTarget?.type === "person" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, y: -20 }}
+                      animate={{ opacity: 1, height: "auto", y: 0 }}
+                      exit={{ opacity: 0, height: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-6 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+                    >
+                      <ShareModal
+                        isOpen={isShareModalOpen}
+                        onClose={() => {
+                          setIsShareModalOpen(false);
+                          setShareTarget(null);
+                        }}
+                      recipientCertificates={personCertificates
+                    .filter(c => selectedCertificates.includes(c.id))
+                    .map(c => ({
+                      ...c,
+                      contactInfo: contactInfoList.find(
+                        ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
+                      )  // Remove the "|| null" - find() returns undefined if not found
+                    }))}
+                        contactInfoList={contactInfoList}
+                        defaultEmail={personCertificates[0]?.email ?? ""}
+                      />
+                    </motion.div>
+                  )}
+            </AnimatePresence>
 
             {/* Manual Entry Form */}
             <div className="p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-300">
@@ -601,6 +631,44 @@ export default function GenerateSingle() {
                    }
                  />
                )}
+             <AnimatePresence>
+            {isShareModalOpen && shareTarget?.type === "history" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -20 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="mt-6 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-w-2xl mx-auto"
+              >
+                <ShareModal
+                  isOpen={isShareModalOpen}
+                  onClose={() => {
+                    setIsShareModalOpen(false);
+                    setShareTarget(null);
+                  }}
+                  recipientCertificates={formData ? [
+                    {
+                      organization: formData.organization || "",
+                      category: formData.category || "",
+                      email: formData.email || "",
+                      fieldOfInterest: formData.fieldOfInterest || "",
+                      programName: formData.programName || "",
+                      achievementText: formData.achievementText || "",
+                      recipientName: formData.recipientName || "",
+                      certificateDate: formData.certificateDate,
+                      signature: formData.signature,
+                      signatory: formData.signatory,
+                      contactInfo: contactInfoList.find(
+                        ci => ci?.email?.toLowerCase() === formData?.email?.toLowerCase()
+                      )
+                    }
+                  ] : []}
+                  contactInfoList={contactInfoList}
+                  defaultEmail={formData?.email ?? ""}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
       {/* History Section */}
@@ -624,43 +692,6 @@ export default function GenerateSingle() {
         doDownloadJPEG={doDownloadJPEG}
       />
 
-        {/* Share Modal */}
-        {isShareModalOpen && (() => {
-          let recipientCertificates: any[] = [];
-
-          if (shareTarget?.type === "person") {
-            recipientCertificates = personCertificates
-              .filter(c => selectedCertificates.includes(c.id))
-              .map(c => ({
-                ...c,
-                contactInfo: contactInfoList.find(
-                  ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
-                ) || null,
-              }));
-          } else if (shareTarget?.type === "history") {
-            if (shareTarget.data) {
-              recipientCertificates = [{
-                ...shareTarget.data,
-                contactInfo: contactInfoList.find(
-                  ci => ci?.email?.toLowerCase() === shareTarget.data.email?.toLowerCase()
-                ) || null
-              }];
-            }
-          }
-
-          return (
-            <ShareModal
-              isOpen={isShareModalOpen}
-              onClose={() => {
-                setIsShareModalOpen(false);
-                setShareTarget(null);
-              }}
-              recipientCertificates={recipientCertificates}
-              contactInfoList={contactInfoList}
-              defaultEmail={recipientCertificates[0]?.email ?? ""}
-            />
-          );
-        })()}
       </motion.div>
     </AnimatePresence>
   );
