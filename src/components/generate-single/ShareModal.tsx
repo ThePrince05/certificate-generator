@@ -12,6 +12,12 @@ type ShareModalProps = {
   defaultEmail?: string;
 };
 
+type MessageOption = {
+  id: string;
+  title: string;
+  content: string;
+};
+
 export const ShareModal = ({
   recipientCertificates,
   isOpen,
@@ -28,13 +34,15 @@ export const ShareModal = ({
   });
 
   const [customMessage, setCustomMessage] = useState("");
+  const [messageOptions, setMessageOptions] = useState<MessageOption[]>([]);
+  const [selectedMessageId, setSelectedMessageId] = useState<string>("");
   const [loadingMessage, setLoadingMessage] = useState(false);
 
-  // Generate AI message when modal opens
+  // Generate AI messages when modal opens
   useEffect(() => {
     if (!isOpen) return;
 
-    const generateMessage = async () => {
+    const generateMessages = async () => {
       const DISABLE_GEMINI = false;
       if (DISABLE_GEMINI) {
         setCustomMessage("");
@@ -59,16 +67,28 @@ export const ShareModal = ({
         });
 
         const data = await res.json();
-        if (data.message) setCustomMessage(data.message);
+        if (data.messages && Array.isArray(data.messages)) {
+          setMessageOptions(data.messages);
+          if (data.messages.length > 0) {
+            setSelectedMessageId(data.messages[0].id);
+            setCustomMessage(data.messages[0].content);
+          }
+        }
       } catch (err) {
         // Fallback to empty message
+        console.error("Failed to generate messages:", err);
       } finally {
         setLoadingMessage(false);
       }
     };
 
-    generateMessage();
+    generateMessages();
   }, [isOpen]);
+
+  const handleMessageOptionSelect = (option: MessageOption) => {
+    setSelectedMessageId(option.id);
+    setCustomMessage(option.content);
+  };
 
   const handleShare = async () => {
     if (!recipientCertificates.length) {
@@ -164,12 +184,35 @@ export const ShareModal = ({
         </div>
       </div>
 
+      {/* Message Options */}
+      {messageOptions.length > 0 && (
+        <div>
+          <label className="block font-medium mb-2">Choose a message</label>
+          <div className="space-y-2">
+            {messageOptions.map((option) => (
+              <div
+                key={option.id}
+                className={`border rounded px-3 py-2 cursor-pointer transition-colors ${
+                  selectedMessageId === option.id
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}
+                onClick={() => handleMessageOptionSelect(option)}
+              >
+                <div className="font-medium">{option.title}</div>
+                <div className="text-sm text-gray-600 line-clamp-2">{option.content}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Message */}
       <div>
         <label className="block font-medium mb-2">Message</label>
         {loadingMessage ? (
           <div className="border rounded px-3 py-4 text-gray-500 text-center italic">
-            Generating message with AI...
+            Generating message options with AI...
           </div>
         ) : (
           <textarea
