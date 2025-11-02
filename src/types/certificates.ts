@@ -6,8 +6,8 @@ export type CertificateFields =
   | "programName"
   | "achievementText"
   | "recipientName"
-  | "certificateDate";
-
+  | "certificateDate"  
+  | "type";
 // Certificate data including optional _invalid flags
 export type CertificateData = {
   organization: string;
@@ -20,6 +20,7 @@ export type CertificateData = {
   certificateDate?: string;
   signature?: string;
   signatory?: string;
+  type?: string;
 } & {
   [K in `${CertificateFields}_invalid`]?: boolean;
 };
@@ -43,4 +44,5 @@ export interface ShareableCertificate extends CleanCertificateData {
   contactInfo?: ContactInfo;
   downloadUrl?: string;
   shareMessage?: string;
+  type?: string; 
 }

@@ -51,6 +51,7 @@ const MAX_LENGTHS: Record<CertificateFields, number> = {
   achievementText: 260,
   recipientName: 15,
   certificateDate: 22,
+  type: 30,
 };
 
 // Utility Functions

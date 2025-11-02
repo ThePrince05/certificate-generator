@@ -56,15 +56,16 @@ export const ShareModal = ({
         const firstCert = recipientCertificates[0];
         const programNames = recipientCertificates.map(c => c.programName || "a program");
 
-        const res = await fetch("/api/generate-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipientName: firstCert.recipientName || editableContactInfo.recipientName || "Participant",
-            programs: programNames,
-            organization: firstCert.organization || "our organization",
-          }),
-        });
+       const res = await fetch("/api/generate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: firstCert.recipientName || editableContactInfo.recipientName || "Participant",
+          programs: programNames,
+          organization: firstCert.organization || "our organization",
+          certificateTypes: recipientCertificates.map(c => c.type || "Achievement") // Add this line
+        }),
+      });
 
         const data = await res.json();
         if (data.messages && Array.isArray(data.messages)) {

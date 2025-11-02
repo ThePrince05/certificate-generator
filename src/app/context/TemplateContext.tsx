@@ -47,12 +47,13 @@ const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
 
     const csvText = await response.text();
 
-    // ✅ Include 'fieldOfInterest' and 'category' if present in CSV
+    // ✅ Include 'type' field
     const parsed = Papa.parse<{
       programName: string;
       achievementText: string;
       category?: string;
       fieldOfInterest?: string;
+      type?: string; // Add this
     }>(csvText, {
       header: true,
       skipEmptyLines: true,
@@ -66,7 +67,8 @@ const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
         programName: row.programName.trim(),
         achievementText: row.achievementText.trim(),
         category: row.category?.trim() || "General",
-        fieldOfInterest: row.fieldOfInterest?.trim() || "Unspecified", // ✅ Default if missing
+        fieldOfInterest: row.fieldOfInterest?.trim() || "Unspecified",
+        type: row.type?.trim() || "Achievement", // Add this with default
       }));
   } catch {
     return [];
