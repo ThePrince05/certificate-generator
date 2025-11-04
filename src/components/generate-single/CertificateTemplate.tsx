@@ -22,6 +22,7 @@ interface CertificateProps {
   templateUrl?: string;
   pdfOffsets?: PDFOffsets;
   isPreview?: boolean;
+  certificateType?: string;
 }
 
 const SIGNATURE_PATH = "/signature.png";
@@ -43,7 +44,8 @@ export default function CertificateTemplate({
   const offset = (key: keyof PDFOffsets) =>
     isPreview ? 0 : pdfOffsets?.[key] ?? 0;
 
-  const fullProgramText = `${programName} : ${fieldOfInterest}`;
+  // 🧠 Choose either programName OR fieldOfInterest (programName takes priority)
+  const displayText = programName || fieldOfInterest;
 
   // 🧠 Detect actual line wrapping in the DOM
   const programRef = useRef<HTMLHeadingElement>(null);
@@ -57,7 +59,7 @@ export default function CertificateTemplate({
     const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
     const wraps = el.scrollHeight > lineHeight * 1.5;
     setIsTwoLineProgram(wraps);
-  }, [fullProgramText]);
+  }, [displayText]); // Changed dependency to displayText
 
   // 🎨 Conditional achievementText formatting
   const achievementStyle = {
@@ -115,7 +117,7 @@ export default function CertificateTemplate({
           {organization}
         </h1>
 
-        {/* Program Name */}
+        {/* Program Name OR Field of Interest (never both) */}
         <h2
           ref={programRef}
           id="programName-text"
@@ -133,11 +135,7 @@ export default function CertificateTemplate({
             fontSize: "20px",
           }}
         >
-       {programName
-          ? fieldOfInterest
-            ? `${programName} : ${fieldOfInterest}`
-            : programName
-          : fieldOfInterest}
+          {displayText}
         </h2>
 
         {/* Achievement Text */}

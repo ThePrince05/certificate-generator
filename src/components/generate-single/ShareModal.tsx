@@ -34,14 +34,15 @@ export const ShareModal = ({
   });
 
   const [customMessage, setCustomMessage] = useState("");
-  const [generatedMessage, setGeneratedMessage] = useState<MessageOption | null>(null);
+  const [messageOptions, setMessageOptions] = useState<MessageOption[]>([]);
+  const [selectedMessageId, setSelectedMessageId] = useState<string>("");
   const [loadingMessage, setLoadingMessage] = useState(false);
 
-  // Generate AI message when modal opens
+  // Generate AI messages when modal opens
   useEffect(() => {
     if (!isOpen) return;
 
-    const generateMessage = async () => {
+    const generateMessages = async () => {
       const DISABLE_GEMINI = false;
       if (DISABLE_GEMINI) {
         setCustomMessage("");
@@ -55,69 +56,40 @@ export const ShareModal = ({
         const firstCert = recipientCertificates[0];
         const programNames = recipientCertificates.map(c => c.programName || "a program");
 
-        const res = await fetch("/api/generate-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipientName: firstCert.recipientName || editableContactInfo.recipientName || "Participant",
-            programs: programNames,
-            organization: firstCert.organization || "our organization",
-            certificateTypes: recipientCertificates.map(c => c.type || "Achievement")
-          }),
-        });
+       const res = await fetch("/api/generate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: firstCert.recipientName || editableContactInfo.recipientName || "Participant",
+          programs: programNames,
+          organization: firstCert.organization || "our organization",
+          certificateTypes: recipientCertificates.map(c => c.type || "Achievement") // Add this line
+        }),
+      });
 
         const data = await res.json();
-        if (data.message) {
-          setGeneratedMessage(data.message);
-          setCustomMessage(data.message.content);
-        } else {
-          // Fallback if API response structure is unexpected
-          setCustomMessage(`Hello ${firstCert.recipientName || editableContactInfo.recipientName || "Participant"}!
-
-We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning your Certificate${recipientCertificates.length > 1 ? "s" : ""} of ${recipientCertificates.map(c => c.type || "Achievement").join(", ")} for completing ${programNames.length > 1 ? programNames.slice(0, -1).join(", ") + " and " + programNames.slice(-1) : programNames[0]} is a truly impressive milestone, showcasing your dedication and growth.
-
-Your well-deserved certificate${recipientCertificates.length > 1 ? "s are" : " is"} attached to this email, a testament to your hard work and commitment.
-
-We're incredibly excited about the connections you'll foster and the opportunities you'll unlock. We look forward to continuing our collaboration to create even greater impact together!
-
-Please feel free to share this with your friends, family and on-line connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do.
-
-Best regards,
-Lyle Benjamin
-Founder, One Planet – One People
-Working for the Betterment of Kids, People and the Planet!`);
+        if (data.messages && Array.isArray(data.messages)) {
+          setMessageOptions(data.messages);
+          if (data.messages.length > 0) {
+            setSelectedMessageId(data.messages[0].id);
+            setCustomMessage(data.messages[0].content);
+          }
         }
       } catch (err) {
-        // Fallback message
-        console.error("Failed to generate message:", err);
-        const firstName = recipient?.recipientName?.split(' ')[0] || "Participant";
-        const programNames = recipientCertificates.map(c => c.programName || "a program");
-        const formattedPrograms = programNames.length > 1 
-          ? programNames.slice(0, -1).join(", ") + " and " + programNames.slice(-1)
-          : programNames[0];
-        const formattedTypes = recipientCertificates.map(c => c.type || "Achievement").join(", ");
-        
-        setCustomMessage(`Hello ${firstName}!
-
-We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning your Certificate of ${formattedTypes} for completing ${formattedPrograms} is a truly impressive milestone, showcasing your dedication and growth.
-
-Your well-deserved certificate${recipientCertificates.length > 1 ? "s are" : " is"} attached to this email, a testament to your hard work and commitment.
-
-We're incredibly excited about the connections you'll foster and the opportunities you'll unlock. We look forward to continuing our collaboration to create even greater impact together!
-
-Please feel free to share this with your friends, family and on-line connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do
-
-Best regards,
-Lyle Benjamin
-Founder, One Planet – One People
-Working for the Betterment of Kids, People and the Planet!`);
+        // Fallback to empty message
+        console.error("Failed to generate messages:", err);
       } finally {
         setLoadingMessage(false);
       }
     };
 
-    generateMessage();
+    generateMessages();
   }, [isOpen]);
+
+  const handleMessageOptionSelect = (option: MessageOption) => {
+    setSelectedMessageId(option.id);
+    setCustomMessage(option.content);
+  };
 
   const handleShare = async () => {
     if (!recipientCertificates.length) {
@@ -213,13 +185,35 @@ Working for the Betterment of Kids, People and the Planet!`);
         </div>
       </div>
 
-    
+      {/* Message Options */}
+      {messageOptions.length > 0 && (
+        <div>
+          <label className="block font-medium mb-2">Choose a message</label>
+          <div className="space-y-2">
+            {messageOptions.map((option) => (
+              <div
+                key={option.id}
+                className={`border rounded px-3 py-2 cursor-pointer transition-colors ${
+                  selectedMessageId === option.id
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}
+                onClick={() => handleMessageOptionSelect(option)}
+              >
+                <div className="font-medium">{option.title}</div>
+                <div className="text-sm text-gray-600 line-clamp-2">{option.content}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Message */}
       <div>
         <label className="block font-medium mb-2">Message</label>
         {loadingMessage ? (
           <div className="border rounded px-3 py-4 text-gray-500 text-center italic">
-            Generating warm congratulatory message with AI...
+            Generating message options with AI...
           </div>
         ) : (
           <textarea

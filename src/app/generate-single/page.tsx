@@ -599,7 +599,6 @@ export default function GenerateSingle() {
           </div>
 
           {/* Certificate Preview */}
-          {/* Preview */}
                {formData && (
                  <PreviewSection
                    formData={formData}

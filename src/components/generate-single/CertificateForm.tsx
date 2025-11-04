@@ -59,7 +59,6 @@ const FIELD_OF_INTEREST_OPTIONS = [
   "AI Product Engineer",
 ];
 
-
 const CATEGORIES = [
   "Architecture & Design",
   "Business & Finance",
@@ -114,7 +113,6 @@ export default function CertificateForm({
 
   // --- derive program options safely ---
   const programOptions = useMemo(() => {
-
     const opts = (groups || []).map((g) => ({
       value: g.programName,
       label: g.programName,
@@ -133,6 +131,8 @@ export default function CertificateForm({
     setFormData((prev) => ({
       ...prev,
       programName: newProgram,
+      // Clear Field of Interest when Program Name is selected
+      fieldOfInterest: "",
       achievementText: defaults ? defaults.achievementText : prev.achievementText,
     }));
   };
@@ -253,6 +253,9 @@ useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       fieldOfInterest: selected?.value || "",
+      // Clear Program Name when Field of Interest is selected
+      programName: "",
+      achievementText: "",
     }));
   };
 
@@ -260,11 +263,23 @@ useEffect(() => {
 const handleSubmit = (e: React.FormEvent) => {
   e.preventDefault();
 
-// simple email validation
-    if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
-      alert("Please enter a valid email address.");
-      return;
-    }
+  // Validation: Ensure only one of Program Name or Field of Interest is selected
+  if (formData.programName && formData.fieldOfInterest) {
+    alert("Please select either Program Name OR Field of Interest, not both.");
+    return;
+  }
+
+  // Validation: Ensure at least one of Program Name or Field of Interest is selected
+  if (!formData.programName && !formData.fieldOfInterest) {
+    alert("Please select either Program Name OR Field of Interest.");
+    return;
+  }
+
+  // simple email validation
+  if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
+    alert("Please enter a valid email address.");
+    return;
+  }
 
   // check max lengths
   for (const key in MAX_LENGTHS) {
@@ -275,8 +290,6 @@ const handleSubmit = (e: React.FormEvent) => {
       return;
     }
   }
-
-
 
   onSubmit(formData);
 };
@@ -305,6 +318,12 @@ const filteredCategories = useMemo(() => {
 
   return Object.keys(categoryMap);
 }, [groups]);
+
+  // Determine when to show each field
+  const showProgramName = !formData.fieldOfInterest;
+  const showFieldOfInterest = !formData.programName && 
+                              selectedCategory !== "Gaming & Development" && 
+                              !isKarmaClubSelected;
 
   return (
     <form
@@ -339,33 +358,35 @@ const filteredCategories = useMemo(() => {
     )}
 
 
-      {/* Program Name */}
-      <div>
-        <label className="block font-semibold mb-1">Program Name</label>
-        <Select
-          options={[
-            { value: "", label: "-- Search or Select Program Name --" },
-            ...filteredProgramOptions,
-          ]}
-          value={
-            formData.programName
-              ? { value: formData.programName, label: formData.programName }
-              : { value: "", label: "-- Search or Select Program Name --" }
-          }
-          onChange={handleProgramSelect}
-          isClearable={false}
-          isLoading={!groups || groups.length === 0}
-          noOptionsMessage={() =>
-            !groups || groups.length === 0
-              ? "Loading programs..."
-              : "No programs match this category"
-          }
-        />
-      </div>
+      {/* Program Name - Only show when Field of Interest is not selected */}
+      {showProgramName && (
+        <div>
+          <label className="block font-semibold mb-1">Program Name</label>
+          <Select
+            options={[
+              { value: "", label: "-- Search or Select Program Name --" },
+              ...filteredProgramOptions,
+            ]}
+            value={
+              formData.programName
+                ? { value: formData.programName, label: formData.programName }
+                : { value: "", label: "-- Search or Select Program Name --" }
+            }
+            onChange={handleProgramSelect}
+            isClearable={false}
+            isLoading={!groups || groups.length === 0}
+            noOptionsMessage={() =>
+              !groups || groups.length === 0
+                ? "Loading programs..."
+                : "No programs match this category"
+            }
+          />
+        </div>
+      )}
 
       
-  {/* Field of Interest - Hide for Gaming & Development AND Karma Club */}
-  {selectedCategory !== "Gaming & Development" && !isKarmaClubSelected && (
+  {/* Field of Interest - Only show when Program Name is not selected and not restricted by category/Karma Club */}
+  {showFieldOfInterest && (
     <div>
       <label className="block font-semibold mb-1">Field of Interest</label>
       <Select
@@ -380,7 +401,6 @@ const filteredCategories = useMemo(() => {
         }
         onChange={handleFieldOfInterestChange}
         isClearable={false}
-        required
       />
     </div>
   )}
