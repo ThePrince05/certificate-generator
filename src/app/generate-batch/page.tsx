@@ -73,15 +73,12 @@ export default function GenerateBatch() {
   const [validatedBatch, setValidatedBatch] = useState<CertificateDataWithValidation[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
-  const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
+
   const [formData, setFormData] = useState<CertificateData | null>(null);
   const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
-  const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
-  const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
+ 
   const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isDownloadingMulti, setIsDownloadingMulti] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);  
 
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -194,12 +191,6 @@ const doDownloadJPEG = (item: any) => {
 }, [selectedOrg]);
 
 
-  useEffect(() => {
-    if (selectedPersons.length > 0 && personCertificates.length > 0) {
-      setShowCSVSection(false);
-    }
-  }, [selectedPersons, personCertificates]); // Changed from selectedPerson
-
   const validateBatch = (
     data: CertificateData[]
   ): { validated: CertificateDataWithValidation[]; invalidRows: string[] } => {
@@ -307,46 +298,6 @@ const doDownloadJPEG = (item: any) => {
     }
   };
 
-  const handleMultiDownloadAction = async (type: "pdf" | "jpeg") => {
-    const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-    if (selected.length === 0) return;
-    
-    setIsDownloadingMulti(true);
-    try {
-      await handleMultiDownload(
-        selected,
-        type,
-        selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg"
-      );
-    } finally {
-      setIsDownloadingMulti(false);
-    }
-  };
-
-  const handleShareSelected = () => {
-    const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-    if (selected.length === 0) return;
-
-    const newHistoryEntries = selected.map((c) => ({
-      ...c,
-      id: uuidv4(),
-      generatedAt: new Date().toISOString(),
-    })).filter((newItem) => 
-      !history.some(
-        (h) =>
-          h.recipientName === newItem.recipientName &&
-          h.programName === newItem.programName &&
-          h.email === newItem.email
-      )
-    );
-
-    if (newHistoryEntries.length > 0) {
-      saveHistory([...newHistoryEntries, ...history]);
-    }
-
-    setShareTarget({ type: "person", data: selected });
-    setIsShareModalOpen(true);
-  };
 
   const handleDownloadCertificate = (cert: DemoCertificate, type: "pdf" | "jpeg") => {
     console.log("[DEBUG] handleDownloadCertificate called:", { cert, type });
@@ -494,234 +445,7 @@ const doDownloadJPEG = (item: any) => {
     </div>
   );
 
-  const PersonCertificatesSection = () => {
-  if (personCertificates.length === 0) return null;
-
-  // Group certificates by recipient name
-  const certificatesByPerson = useMemo(() => {
-    const grouped: Record<string, DemoCertificate[]> = {};
-    
-    personCertificates.forEach(cert => {
-      if (!grouped[cert.recipientName]) {
-        grouped[cert.recipientName] = [];
-      }
-      grouped[cert.recipientName].push(cert);
-    });
-    
-    return grouped;
-  }, [personCertificates]);
-
-  const personNames = Object.keys(certificatesByPerson);
-  const displayNames = personNames.join(', ');
-
-  return (
-    <div className="person-certificates-section">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-semibold text-gray-800">
-          {personNames.length === 1 
-            ? `${displayNames}'s Certificates` 
-            : `Certificates for ${personNames.length} People`}
-        </h3>
-
-        <div className="flex gap-4 items-center">
-          <button
-            onClick={() =>
-              setSelectedCertificates(
-                selectedCertificates.length === personCertificates.length
-                  ? []
-                  : personCertificates.map((c) => c.id)
-              )
-            }
-            className="text-blue-600 hover:underline text-sm font-medium"
-          >
-            {selectedCertificates.length === personCertificates.length ? "Unselect All" : "Select All"}
-          </button>
-
-          <button
-            onClick={() => setCertificatesCollapsed((prev) => !prev)}
-            className="text-blue-600 hover:underline text-sm font-medium"
-          >
-            {certificatesCollapsed ? "Show Certificates" : "Hide Certificates"}
-          </button>
-        </div>
-      </div>
-
-      <AnimatePresence initial={false}>
-        {!certificatesCollapsed && (
-          <motion.div
-            key="certificates-list"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25 }}
-            className="space-y-6 overflow-hidden"
-          >
-            {personNames.map((personName) => {
-              const personCerts = certificatesByPerson[personName];
-              const allSelected = personCerts.every(cert => selectedCertificates.includes(cert.id));
-              const someSelected = personCerts.some(cert => selectedCertificates.includes(cert.id));
-
-              return (
-                <div key={personName} className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                  {/* Person Header - Fixed alignment */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          ref={(input) => {
-                            if (input) {
-                              input.indeterminate = someSelected && !allSelected;
-                            }
-                          }}
-                          onChange={() => {
-                            if (allSelected) {
-                              // Deselect all for this person
-                              const newSelection = selectedCertificates.filter(
-                                id => !personCerts.some(cert => cert.id === id)
-                              );
-                              setSelectedCertificates(newSelection);
-                            } else {
-                              // Select all for this person
-                              const personCertIds = personCerts.map(cert => cert.id);
-                              const newSelection = [...new Set([...selectedCertificates, ...personCertIds])];
-                              setSelectedCertificates(newSelection);
-                            }
-                          }}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                        />
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-lg font-bold text-gray-900">{personName}</h4>
-                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                            {personCerts.length} certificate{personCerts.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {someSelected && (
-                          <span className="text-blue-600 font-medium">
-                            {personCerts.filter(cert => selectedCertificates.includes(cert.id)).length} selected
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Certificates List */}
-                  <div className="divide-y divide-gray-100">
-                    {personCerts.map((cert) => {
-                      const isSelected = selectedCertificates.includes(cert.id);
-                      
-                      return (
-                        <div
-                          key={cert.id}
-                          onClick={(e) => {
-                            if ((e.target as HTMLElement).tagName !== "BUTTON" && 
-                                (e.target as HTMLElement).tagName !== "INPUT") {
-                              setFormData(cert);
-                            }
-                          }}
-                          className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                            isSelected ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-4 flex-1 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={() => {
-                                  const newSelection = isSelected 
-                                    ? selectedCertificates.filter((id) => id !== cert.id)
-                                    : [...selectedCertificates, cert.id];
-                                  setSelectedCertificates(newSelection);
-                                }}
-                                className="mt-0.5 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 flex-shrink-0"
-                              />
-                              
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-4 mb-2">
-                                  <p className="font-semibold text-gray-800 text-base leading-tight">
-                                    {cert.programName}
-                                  </p>
-                                  <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0">
-                                    {cert.category}
-                                  </span>
-                                </div>
-                                
-                                <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-                                  {cert.achievementText}
-                                </p>
-                                
-                                <div className="flex items-center gap-4 text-xs text-gray-500">
-                                  {cert.fieldOfInterest && (
-                                    <span className="bg-green-50 text-green-700 px-2 py-1 rounded">
-                                      {cert.fieldOfInterest}
-                                    </span>
-                                  )}
-                                  <span>{cert.certificateDate}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                              <DownloadDropdown
-                                onDownloadPDF={() => handleDownloadCertificate(cert, "pdf")}
-                                onDownloadJPEG={() => handleDownloadCertificate(cert, "jpeg")}
-                                fontSize="sm"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Selected Actions - Fixed button size */}
-      <AnimatePresence>
-        {selectedCertificates.length > 0 && (
-          <motion.div
-            key="selected-actions"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.18 }}
-            className="flex flex-wrap justify-center gap-4 mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200"
-          >
-            <div className="text-center mb-2 w-full">
-              <p className="text-blue-800 font-medium">
-                {selectedCertificates.length} certificate{selectedCertificates.length !== 1 ? 's' : ''} selected across {personNames.length} person{personNames.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-3">
-              <button
-                onClick={handleShareSelected}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2">
-                <FaShareAlt className="w-4 h-4" />
-                Share Selected
-              </button>
-
-              <MultiDownloadDropdown
-                isDownloading={isDownloadingMulti}
-                onDownloadPDF={() => handleMultiDownloadAction("pdf")}
-                onDownloadJPEG={() => handleMultiDownloadAction("jpeg")}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
+ 
 
   if (!selectedOrg) return <p className="p-8 text-center">Redirecting...</p>;
   const getTemplateUrl = (category?: string) => {
@@ -838,38 +562,11 @@ const doDownloadJPEG = (item: any) => {
 
         {/* Navigation */}
         <button
-          onClick={() => router.push("/generate")}
-          className="hidden md:inline-flex fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
-        >
-          ← Change Generation
-        </button>
-
-      {/* Person Search & Certificates */}
-      <div className="max-w-3xl mx-auto mb-6 px-4">
-        <PersonSearchBatch
-          dbCertificates={dbCertificates} 
-          contactInfoList={contactInfoList}
-          setSelectedPersons={setSelectedPersons}
-          setPersonCertificates={setPersonCertificates}
-          setFormData={setFormData}
-          history={history}
-          saveHistory={saveHistory}
-          getCertificateDate={getCertificateDate}
-        />
-        
-        {/* Updated conditions */}
-        {selectedPersons.length > 0 && personCertificates.length > 0 && <PersonCertificatesSection />}
-        
-        {selectedPersons.length > 0 && personCertificates.length === 0 && (
-          <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded">
-            <p className="text-orange-700">
-              No certificates found for {selectedPersons.join(', ')}. 
-              This might mean there's no match between the contact and certificate data.
-            </p>
-          </div>
-        )}
-      </div>
-
+        onClick={() => router.push("/generate")}
+        className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
+      >
+        ← Change Generation
+      </button>
       
         {/* CSV Upload & Batch Actions */}
         <CSVUploadSection />
@@ -877,49 +574,9 @@ const doDownloadJPEG = (item: any) => {
         {/* Batch Data Display - Now conditionally rendered */}
         <BatchDataDisplay />
 
-        {/* Mobile Navigation */}
-        <div className="px-4 block md:hidden">
-          <button
-            onClick={() => router.push("/generate")}
-            className="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded shadow-md"
-          >
-            ← Change Generation
-          </button>
-        </div>
+      
 
-       {/* Preview */}
-      {formData && (
-        <PreviewSection
-          formData={formData}
-          getTemplateUrl={getTemplateUrl}
-          getCertificateDate={getCertificateDate}
-          onShare={() => {
-            setShareTarget({ type: "history", data: formData });
-            setIsShareModalOpen(true);
-          }}
-          onDownloadPDF={() =>
-            generatePDF({
-              organization: -30,
-              programName: -14,
-              achievementText: -15,
-              recipientName: -16,
-              certificateDate: -10,
-              signatory: -10,
-            })
-          }
-          onDownloadJPEG={() =>
-            generateJPEG({
-              organization: -30,
-              programName: -14,
-              achievementText: -15,
-              recipientName: -16,
-              certificateDate: -10,
-              signatory: -10,
-            })
-          }
-        />
-      )}
-           
+              
           {/* History Section */}
           <HistoryToggle
             history={history}

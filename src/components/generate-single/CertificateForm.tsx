@@ -259,12 +259,6 @@ const handleSubmit = (e: React.FormEvent) => {
   }
 
 
-  // only validate Field of Interest if the dropdown is visible
-  if (selectedCategory !== "Gaming & Development" && !formData.fieldOfInterest) {
-    alert("Please select a Field of Interest.");
-    return;
-  }
-
 
   onSubmit(formData);
 };
