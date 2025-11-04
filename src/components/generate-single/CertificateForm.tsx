@@ -137,29 +137,47 @@ export default function CertificateForm({
     }));
   };
 
+  // Add this useMemo to check if a Karma Club program is selected
+  const isKarmaClubSelected = useMemo(() => {
+    return formData.programName.startsWith("The Karma Club");
+  }, [formData.programName]);
+
   // --- filtered program options with category filtering + debug ---
 const filteredProgramOptions = useMemo(() => {
+  const selected = selectedCategory?.toLowerCase() || "";
   
-  const selected = (selectedCategory || "").trim().toLowerCase();
-
-  const filtered = programOptions.filter((p) => {
+  return programOptions.filter((p) => {
     const group = groups.find((g) => g.programName === p.value);
-    if (!group) {
-     
-      return false;
-    }
+    if (!group) return false;
 
-    const groupCategory = (group.category || "").trim().toLowerCase();
-    const match = selected === "" || groupCategory === selected;
-
+    // Treat empty category as "uncategorized"
+    const groupCategory = (group.category?.trim() || "Uncategorized").toLowerCase();
     
-    return match;
+    // If no category selected, show all programs
+    if (!selected) return true;
+    
+    // Match the category (including "Uncategorized")
+    return groupCategory === selected;
   });
-
-
-  return filtered;
 }, [programOptions, groups, selectedCategory]);
 
+
+const shouldShowCategory = useMemo(() => {
+  if (!groups || groups.length === 0) return false;
+  
+  // Count distinct categories (treat empty/null as "Uncategorized")
+  const distinctCategories = new Set<string>();
+  
+  groups.forEach((group) => {
+    if (group.programName) {
+      const category = group.category?.trim() || "Uncategorized";
+      distinctCategories.add(category);
+    }
+  });
+  
+  // Only show category dropdown if we have more than one distinct category
+  return distinctCategories.size > 1;
+}, [groups]);
 
   // --- prevent clearing before groups are loaded ---
   useEffect(() => {
@@ -293,27 +311,32 @@ const filteredCategories = useMemo(() => {
       onSubmit={handleSubmit}
       className="space-y-4 w-full border rounded shadow p-6"
     >
-      {/* Category */}
+         {/* Category - Only show if there are categorized programs */}
+      {shouldShowCategory && (
       <div>
         <label className="block font-semibold mb-1">Category</label>
-      <Select
-        options={[
-          { value: "", label: "-- Search or Select a Category --" },
-          ...filteredCategories.map((c) => ({ value: c, label: c })),
-        ]}
-        value={
-          selectedCategory
-            ? { value: selectedCategory, label: selectedCategory }
-            : { value: "", label: "-- Search or Select a Category --" }
-        }
-        onChange={(selected) => {
-          const value = selected?.value || "";
-          setSelectedCategory(value);
-          setFormData(prev => ({ ...prev, category: value })); // <-- sync formData
-        }}
-        isClearable={false}
-      />
+        <Select
+          options={[
+            { value: "", label: "-- Search or Select a Category --" },
+            ...filteredCategories.map((c) => ({ 
+              value: c, 
+              label: c 
+            })),
+          ]}
+          value={
+            selectedCategory
+              ? { value: selectedCategory, label: selectedCategory }
+              : { value: "", label: "-- Search or Select a Category --" }
+          }
+          onChange={(selected) => {
+            const value = selected?.value || "";
+            setSelectedCategory(value);
+            setFormData(prev => ({ ...prev, category: value }));
+          }}
+          isClearable={false}
+        />
       </div>
+    )}
 
 
       {/* Program Name */}
@@ -341,27 +364,26 @@ const filteredCategories = useMemo(() => {
       </div>
 
       
-    {/* Field of Interest */}
-    {selectedCategory !== "Gaming & Development" && (
-      <div>
-        <label className="block font-semibold mb-1">Field of Interest</label>
-        <Select
-          options={[
-            { value: "", label: "-- Search or Select Field of Interest --" },
-            ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
-          ]}
-          value={
-            formData.fieldOfInterest
-              ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
-              : { value: "", label: "-- Search or Select Field of Interest --" }
-          }
-          onChange={handleFieldOfInterestChange}
-          isClearable={false}
-          required
-        />
-      </div>
-    )}
-      
+  {/* Field of Interest - Hide for Gaming & Development AND Karma Club */}
+  {selectedCategory !== "Gaming & Development" && !isKarmaClubSelected && (
+    <div>
+      <label className="block font-semibold mb-1">Field of Interest</label>
+      <Select
+        options={[
+          { value: "", label: "-- Search or Select Field of Interest --" },
+          ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
+        ]}
+        value={
+          formData.fieldOfInterest
+            ? { value: formData.fieldOfInterest, label: formData.fieldOfInterest }
+            : { value: "", label: "-- Search or Select Field of Interest --" }
+        }
+        onChange={handleFieldOfInterestChange}
+        isClearable={false}
+        required
+      />
+    </div>
+  )}
 
       {/* Achievement Text */}
       <div>
