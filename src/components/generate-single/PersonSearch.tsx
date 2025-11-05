@@ -29,62 +29,83 @@ export default function PersonSearch({
 }: PersonSearchProps) {
   const [dbSearch, setDbSearch] = useState("");
 
+  // Improved suggestions that combine data from both sources
   const suggestions = useMemo(() => {
     const map = new Map<string, { name: string; email: string }>();
 
-    for (const contact of contactInfoList) {
-      const name = contact?.recipientName?.trim();
+    // First, add all unique people from dbCertificates
+    dbCertificates.forEach(cert => {
+      const name = cert.recipientName?.trim();
+      const email = cert.email?.trim();
+      
+      if (name && email) {
+        const key = `${name.toLowerCase()}|${email.toLowerCase()}`;
+        if (!map.has(key)) {
+          map.set(key, { name, email });
+        }
+      }
+    });
+
+    // Then add from contactInfoList (will overwrite if same key exists)
+    contactInfoList.forEach(contact => {
+      const name = contact?.recipientName?.trim() || contact?.name?.trim();
       const email = contact?.email?.trim();
       
-      if (!name || !email) continue;
-
-      const key = email.toLowerCase();
-      if (!map.has(key)) {
+      if (name && email) {
+        const key = `${name.toLowerCase()}|${email.toLowerCase()}`;
         map.set(key, { name, email });
       }
-    }
+    });
 
     return Array.from(map.values());
-  }, [contactInfoList]);
+  }, [dbCertificates, contactInfoList]);
 
   const filteredPersons = useMemo(() => {
-    if (!dbSearch) return suggestions;
+    if (!dbSearch.trim()) return suggestions;
     
-    const q = dbSearch.toLowerCase();
+    const query = dbSearch.toLowerCase().trim();
     return suggestions.filter((s) => {
-      const nameMatch = s.name.toLowerCase().includes(q);
-      const emailMatch = s.email && s.email.toLowerCase().includes(q);
+      const nameMatch = s.name.toLowerCase().includes(query);
+      const emailMatch = s.email.toLowerCase().includes(query);
       return nameMatch || emailMatch;
     });
   }, [dbSearch, suggestions]);
 
-  const handleSelect = (s: { name: string; email?: string }) => {
-    setSelectedPerson(s.name);
+  const handleSelect = (person: { name: string; email: string }) => {
+    console.log("Selected person:", person);
+    setSelectedPerson(person.name);
     setDbSearch("");
 
-    const searchName = s.name.toLowerCase().trim();
-    const searchEmail = s.email?.toLowerCase().trim();
+    // More flexible matching - check both name and email with normalization
+    const normalizedName = person.name.toLowerCase().trim();
+    const normalizedEmail = person.email.toLowerCase().trim();
 
-    const certs = dbCertificates.filter((c) => {
-      const certEmail = c.email?.toLowerCase().trim() || "";
-      const certName = c.recipientName?.toLowerCase().trim() || "";
+    const matchingCerts = dbCertificates.filter((cert) => {
+      const certName = cert.recipientName?.toLowerCase().trim() || "";
+      const certEmail = cert.email?.toLowerCase().trim() || "";
 
-      const emailMatch = searchEmail && certEmail === searchEmail;
-      const nameMatch = searchName && certName === searchName;
+      // Match if either name OR email matches (with some flexibility)
+      const nameMatch = certName === normalizedName || 
+                       certName.includes(normalizedName) || 
+                       normalizedName.includes(certName);
       
-      return emailMatch || nameMatch;
+      const emailMatch = certEmail === normalizedEmail;
+
+      return nameMatch || emailMatch;
     });
 
-    setPersonCertificates(certs);
+    console.log("Found matching certificates:", matchingCerts);
+    setPersonCertificates(matchingCerts);
 
-    if (certs.length > 0) {
+    if (matchingCerts.length > 0) {
       const firstCert: DemoCertificate = {
-        ...certs[0],
-        certificateDate: certs[0].certificateDate || getCertificateDate(),
+        ...matchingCerts[0],
+        certificateDate: matchingCerts[0].certificateDate || getCertificateDate(),
       };
 
       setFormData(firstCert);
 
+      // Add to history if not exists
       const alreadyExists = history.some(
         (h) =>
           h.recipientName === firstCert.recipientName &&
@@ -102,6 +123,7 @@ export default function PersonSearch({
       }
     } else {
       setFormData(null);
+      console.log("No certificates found for:", person);
     }
   };
 
@@ -117,18 +139,18 @@ export default function PersonSearch({
 
       {dbSearch && filteredPersons.length > 0 && (
         <ul className="border rounded max-h-60 overflow-y-auto divide-y divide-gray-200">
-          {filteredPersons.map((s, index) => (
+          {filteredPersons.map((person, index) => (
             <li
-              key={`${s.email}-${index}`}
-              onClick={() => handleSelect(s)}
+              key={`${person.email}-${index}`}
+              onClick={() => handleSelect(person)}
               className="p-3 hover:bg-gray-50 cursor-pointer text-gray-700 transition-colors"
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <span className="font-semibold">{s.name}</span>
-                  {s.email && (
+                  <span className="font-semibold">{person.name}</span>
+                  {person.email && (
                     <span className="text-sm text-gray-500 ml-2">
-                      ({s.email})
+                      ({person.email})
                     </span>
                   )}
                 </div>
@@ -140,12 +162,14 @@ export default function PersonSearch({
 
       {dbSearch && filteredPersons.length === 0 && (
         <div className="text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded">
-          <div className="font-semibold">No matching contacts found for "{dbSearch}".</div>
+          <div className="font-semibold">No matching contacts found for "{dbSearch}"</div>
           <div className="text-xs mt-2 text-gray-400">
-            Try searching by name or email address.
+            Try searching by name or email address. Found {suggestions.length} total contacts in database.
           </div>
         </div>
       )}
+
+   
     </div>
   );
 }
