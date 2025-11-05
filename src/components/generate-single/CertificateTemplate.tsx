@@ -45,7 +45,8 @@ export default function CertificateTemplate({
     isPreview ? 0 : pdfOffsets?.[key] ?? 0;
 
   // 🧠 Choose either programName OR fieldOfInterest (programName takes priority)
-  const displayText = programName || fieldOfInterest;
+const displayText = `Certificate Of Achievement\n${programName || fieldOfInterest}`;
+
 
   // 🧠 Detect actual line wrapping in the DOM
   const programRef = useRef<HTMLHeadingElement>(null);
@@ -133,6 +134,7 @@ export default function CertificateTemplate({
             fontWeight: 600,
             lineHeight: 1.4,
             fontSize: "20px",
+            whiteSpace: "pre-line",
           }}
         >
           {displayText}
