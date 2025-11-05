@@ -6,24 +6,33 @@ export function loadCSVData(): Promise<string> {
 
 export function parseCSVData(csvContent: string, organizationName: string): any[] {
   if (!csvContent.trim()) return [];
-  
+
   const lines = csvContent.split('\n').filter(line => line.trim() !== '');
   if (lines.length === 0) return [];
 
-  const headers = lines[0].split(';');
-  
+  // 🔹 Read headers dynamically (case-insensitive)
+  const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+
   return lines.slice(1).map((line) => {
     const cols = line.split(';');
+
+    const get = (name: string) => {
+      const idx = headers.indexOf(name.toLowerCase());
+      return idx >= 0 ? cols[idx]?.trim() || '' : '';
+    };
+
     return {
-      recipientName: cols[0]?.trim() || '',
-      programName: cols[1]?.trim() || '',
-      category: cols[2]?.trim() || '',
-      achievementText: cols[3]?.trim() || '',
-      email: cols[4]?.trim().toLowerCase() || '',
+      recipientName: get('recipientname'),
+      programName: get('programname'),
+      category: get('category'),
+      achievementText: get('achievementtext'),
+      email: get('email').toLowerCase(),
+      type: get('type') || 'Achievement', // ✅ Added field with default fallback
       organization: organizationName,
     };
   });
 }
+
 
 export function parseCSVDataForSharing(csvContent: string, organizationName: string): any[] {
   if (!csvContent.trim()) return [];
@@ -33,23 +42,30 @@ export function parseCSVDataForSharing(csvContent: string, organizationName: str
 
   const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
 
+  const get = (cols: string[], name: string) => {
+    const idx = headers.indexOf(name.toLowerCase());
+    return idx >= 0 ? cols[idx]?.trim() || '' : '';
+  };
+
   return lines.slice(1).map((line) => {
     const cols = line.split(';');
 
     const recipient: any = {
-      recipientName: cols[0]?.trim() || '',
-      programName: cols[1]?.trim() || '',
-      category: cols[2]?.trim() || '',
-      achievementText: cols[3]?.trim() || '',
-     email: cols[4]?.trim().toLowerCase() || '',
+      recipientName: get(cols, 'recipientname'),
+      programName: get(cols, 'programname'),
+      category: get(cols, 'category'),
+      achievementText: get(cols, 'achievementtext'),
+      email: get(cols, 'email').toLowerCase(),
+      type: get(cols, 'type') || 'Achievement', // ✅ Added
       organization: organizationName,
     };
 
-    if (headers.includes('whatsapp')) recipient.whatsapp = cols[headers.indexOf('whatsapp')]?.trim() || '';
-    if (headers.includes('phone')) recipient.phone = cols[headers.indexOf('phone')]?.trim() || '';
-    if (headers.includes('facebook')) recipient.facebook = cols[headers.indexOf('facebook')]?.trim() || '';
-    if (headers.includes('linkedin')) recipient.linkedin = cols[headers.indexOf('linkedin')]?.trim() || '';
-    if (headers.includes('twitter')) recipient.twitter = cols[headers.indexOf('twitter')]?.trim() || '';
+    // Optional social/contact fields
+    if (headers.includes('whatsapp')) recipient.whatsapp = get(cols, 'whatsapp');
+    if (headers.includes('phone')) recipient.phone = get(cols, 'phone');
+    if (headers.includes('facebook')) recipient.facebook = get(cols, 'facebook');
+    if (headers.includes('linkedin')) recipient.linkedin = get(cols, 'linkedin');
+    if (headers.includes('twitter')) recipient.twitter = get(cols, 'twitter');
 
     return recipient;
   });

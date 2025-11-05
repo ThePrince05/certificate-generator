@@ -73,7 +73,7 @@ export default function PersonSearch({
 
   const handleSelect = (person: { name: string; email: string }) => {
     console.log("Selected person:", person);
-    setSelectedPerson(person.name);
+    setSelectedPerson(person.email);
     setDbSearch("");
 
     // More flexible matching - check both name and email with normalization

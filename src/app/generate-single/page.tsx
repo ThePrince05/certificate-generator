@@ -120,22 +120,26 @@ export default function GenerateSingle() {
       const parsedData = parseCSVData(csvContent, selectedOrg.name);
 
       const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
-        const emailFromCSV = (item.recipientName || "").trim();
-        const contact = contactInfoList.find(
-          (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
-        );
+       const emailFromCSV = (item.email || "").trim(); // use the actual email column
+const nameFromCSV = (item.recipientName || "").trim(); // the name column
 
-        return {
-          id: uuidv4(),
-          recipientName: contact?.recipientName || (contact as any)?.name || "Unknown",
-          email: emailFromCSV || contact?.email || "",
-          programName: item.programName || "",
-          category: item.category || "",
-          achievementText: item.achievementText || "",
-          fieldOfInterest: item.fieldOfInterest ?? "",
-          certificateDate: item.certificateDate || getCertificateDate(),
-          organization: item.organization || selectedOrg.name,
-        };
+const contact = contactInfoList.find(
+  (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
+);
+
+return {
+  id: uuidv4(),
+  recipientName: nameFromCSV || contact?.recipientName || "Unknown",
+  email: emailFromCSV || contact?.email || "",
+  programName: item.programName || "",
+  category: item.category || "",
+  achievementText: item.achievementText || "",
+  fieldOfInterest: item.fieldOfInterest ?? "",
+  certificateDate: item.certificateDate || getCertificateDate(),
+  organization: item.organization || selectedOrg.name,
+  type: item.type || "Achievement",
+};
+
       });
 
       setDbCertificates(demoCertificates);
@@ -255,6 +259,7 @@ export default function GenerateSingle() {
       const n = c.recipientName?.trim().toLowerCase();
       if (n) normalizedNames.push(n);
     }
+
 
     for (const contact of contactInfoList) {
       const name = contact.recipientName?.trim();
