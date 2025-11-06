@@ -119,27 +119,29 @@ export default function GenerateSingle() {
       const csvContent = await loadCSVData();
       const parsedData = parseCSVData(csvContent, selectedOrg.name);
 
-      const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
-       const emailFromCSV = (item.email || "").trim(); // use the actual email column
-const nameFromCSV = (item.recipientName || "").trim(); // the name column
+      // First, filter the data by selected organization
+      const filteredData = parsedData.filter(item => item.organization === selectedOrg.name);
+      
+      const demoCertificates: DemoCertificate[] = filteredData.map((item) => {
+        const emailFromCSV = (item.email || "").trim();
+        const nameFromCSV = (item.recipientName || "").trim();
 
-const contact = contactInfoList.find(
-  (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
-);
+        const contact = contactInfoList.find(
+          (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
+        );
 
-return {
-  id: uuidv4(),
-  recipientName: nameFromCSV || contact?.recipientName || "Unknown",
-  email: emailFromCSV || contact?.email || "",
-  programName: item.programName || "",
-  category: item.category || "",
-  achievementText: item.achievementText || "",
-  fieldOfInterest: item.fieldOfInterest ?? "",
-  certificateDate: item.certificateDate || getCertificateDate(),
-  organization: item.organization || "One Planet-One People", // Default to One Planet-One People
-  type: item.type || "Achievement",
-};
-
+        return {
+          id: uuidv4(),
+          recipientName: nameFromCSV || contact?.recipientName || "Unknown",
+          email: emailFromCSV || contact?.email || "",
+          programName: item.programName || "",
+          category: item.category || "",
+          achievementText: item.achievementText || "",
+          fieldOfInterest: item.fieldOfInterest ?? "",
+          certificateDate: item.certificateDate || getCertificateDate(),
+          organization: item.organization,
+          type: item.type || "Achievement",
+        };
       });
 
       setDbCertificates(demoCertificates);
@@ -354,6 +356,7 @@ return {
             history={history}
             saveHistory={saveHistory}
             getCertificateDate={getCertificateDate}
+            organization={selectedOrg.name}
           />
 
             {/* Person Certificates */}

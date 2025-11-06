@@ -27,8 +27,8 @@ export function parseCSVData(csvContent: string, organizationName: string): any[
       category: get('category'),
       achievementText: get('achievementtext'),
       email: get('email').toLowerCase(),
-      type: get('type') || 'Achievement', // ✅ Added field with default fallback
-      organization: organizationName,
+      type: get('type') || 'Achievement',
+      organization: get('organization'), // Use organization from CSV data
     };
   });
 }
@@ -56,8 +56,8 @@ export function parseCSVDataForSharing(csvContent: string, organizationName: str
       category: get(cols, 'category'),
       achievementText: get(cols, 'achievementtext'),
       email: get(cols, 'email').toLowerCase(),
-      type: get(cols, 'type') || 'Achievement', // ✅ Added
-      organization: organizationName,
+      type: get(cols, 'type') || 'Achievement',
+      organization: get(cols, 'organization'),
     };
 
     // Optional social/contact fields

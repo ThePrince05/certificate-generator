@@ -15,6 +15,7 @@ interface PersonSearchProps {
   history: any[];
   saveHistory: (items: any[]) => void;
   getCertificateDate: () => string;
+  organization?: string;
 }
 
 export default function PersonSearch({
@@ -26,6 +27,7 @@ export default function PersonSearch({
   history,
   saveHistory,
   getCertificateDate,
+  organization,
 }: PersonSearchProps) {
   const [dbSearch, setDbSearch] = useState("");
 
@@ -35,7 +37,7 @@ export default function PersonSearch({
 
     // First, filter certificates by selected organization and add unique people
     dbCertificates
-      .filter(cert => cert.organization === "One Planet-One People") // Filter by organization
+      .filter(cert => cert.organization === organization) // Filter by organization passed as prop
       .forEach(cert => {
         const name = cert.recipientName?.trim();
         const email = cert.email?.trim();
@@ -88,7 +90,7 @@ export default function PersonSearch({
 
     const matchingCerts = dbCertificates.filter((cert) => {
       // First check if the certificate belongs to the correct organization
-      if (cert.organization !== "One Planet-One People") {
+      if (cert.organization !== organization) {
         return false;
       }
 
