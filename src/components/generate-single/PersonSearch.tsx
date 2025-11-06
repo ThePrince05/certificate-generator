@@ -33,25 +33,31 @@ export default function PersonSearch({
   const suggestions = useMemo(() => {
     const map = new Map<string, { name: string; email: string }>();
 
-    // First, add all unique people from dbCertificates
-    dbCertificates.forEach(cert => {
-      const name = cert.recipientName?.trim();
-      const email = cert.email?.trim();
-      
-      if (name && email) {
-        const key = `${name.toLowerCase()}|${email.toLowerCase()}`;
-        if (!map.has(key)) {
-          map.set(key, { name, email });
+    // First, filter certificates by selected organization and add unique people
+    dbCertificates
+      .filter(cert => cert.organization === "One Planet-One People") // Filter by organization
+      .forEach(cert => {
+        const name = cert.recipientName?.trim();
+        const email = cert.email?.trim();
+        
+        if (name && email) {
+          const key = `${name.toLowerCase()}|${email.toLowerCase()}`;
+          if (!map.has(key)) {
+            map.set(key, { name, email });
+          }
         }
-      }
-    });
+      });
 
-    // Then add from contactInfoList (will overwrite if same key exists)
+    // Then add matching contacts from contactInfoList
+    const validEmails = new Set(
+      Array.from(map.values()).map(person => person.email.toLowerCase())
+    );
+
     contactInfoList.forEach(contact => {
       const name = contact?.recipientName?.trim() || contact?.name?.trim();
       const email = contact?.email?.trim();
       
-      if (name && email) {
+      if (name && email && validEmails.has(email.toLowerCase())) {
         const key = `${name.toLowerCase()}|${email.toLowerCase()}`;
         map.set(key, { name, email });
       }
@@ -81,6 +87,11 @@ export default function PersonSearch({
     const normalizedEmail = person.email.toLowerCase().trim();
 
     const matchingCerts = dbCertificates.filter((cert) => {
+      // First check if the certificate belongs to the correct organization
+      if (cert.organization !== "One Planet-One People") {
+        return false;
+      }
+
       const certName = cert.recipientName?.toLowerCase().trim() || "";
       const certEmail = cert.email?.toLowerCase().trim() || "";
 

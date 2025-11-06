@@ -136,8 +136,8 @@ return {
   achievementText: item.achievementText || "",
   fieldOfInterest: item.fieldOfInterest ?? "",
   certificateDate: item.certificateDate || getCertificateDate(),
-  organization: item.organization || selectedOrg.name,
-  type: item.type || "generate-single",
+  organization: item.organization || "One Planet-One People", // Default to One Planet-One People
+  type: item.type || "Achievement",
 };
 
       });
