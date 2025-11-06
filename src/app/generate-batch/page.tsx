@@ -218,32 +218,32 @@ const doDownloadJPEG = (item: any) => {
   };
 
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedOrg) return;
+  const file = e.target.files?.[0];
+  if (!file || !selectedOrg) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rawData = (results.data as CertificateData[]).map((item) => ({
-          ...item,
-          organization: selectedOrg.name,
-          category: item.category || "General",
-          fieldOfInterest:
-            item.category === "Gaming & Development" ? "" : item.fieldOfInterest || "Unspecified",
-        }));
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      const rawData = (results.data as CertificateData[]).map((item) => ({
+        ...item,
+        organization: selectedOrg.name,
+        category: item.category || "General",
+        fieldOfInterest:
+          item.category === "Gaming & Development" ? "" : item.fieldOfInterest || "Unspecified",
+      }));
 
-        const { validated, invalidRows } = validateBatch(rawData);
-        const validatedWithIds = validated.map((row) => ({
-          ...row,
-          id: (row as any).id ?? uuidv4(),
-        }));
+      const { validated, invalidRows } = validateBatch(rawData);
+      const validatedWithIds = validated.map((row) => ({
+        ...row,
+        id: (row as any).id ?? uuidv4(),
+      }));
 
-        setValidatedBatch(validatedWithIds);
-        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
-      },
-    });
-  };
+      setValidatedBatch(validatedWithIds);
+      setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
+    },
+  });
+};
 
   const handleGenerateFromDatabase = (cert: DemoCertificate) => {
     const newItem = {
