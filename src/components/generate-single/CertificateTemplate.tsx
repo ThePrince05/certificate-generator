@@ -22,7 +22,7 @@ interface CertificateProps {
   templateUrl?: string;
   pdfOffsets?: PDFOffsets;
   isPreview?: boolean;
-  certificateType?: string;
+  type?: string;
 }
 
 const SIGNATURE_PATH = "/signature.png";
@@ -38,6 +38,7 @@ export default function CertificateTemplate({
   templateUrl,
   pdfOffsets,
   isPreview = false,
+  type,
 }: CertificateProps) {
   const mainColor = "#695511";
 
@@ -45,7 +46,8 @@ export default function CertificateTemplate({
     isPreview ? 0 : pdfOffsets?.[key] ?? 0;
 
   // 🧠 Choose either programName OR fieldOfInterest (programName takes priority)
-const displayText = `Certificate Of Achievement\n${programName || fieldOfInterest}`;
+  // Display certificate type on top, then programName/fieldOfInterest
+  const displayText = `Certificate Of ${type || "CertificateTemplate"}\n${programName || fieldOfInterest}`;
 
 
   // 🧠 Detect actual line wrapping in the DOM

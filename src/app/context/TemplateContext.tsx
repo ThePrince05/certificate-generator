@@ -9,7 +9,8 @@ export interface TemplateGroup {
   programName: string;
   achievementText: string;
   category: string;
-  fieldOfInterest: string; // ✅ Added field
+  fieldOfInterest: string;
+  type: string;
 }
 
 interface Template {
@@ -68,7 +69,7 @@ const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
         achievementText: row.achievementText.trim(),
         category: row.category?.trim() || "General",
         fieldOfInterest: row.fieldOfInterest?.trim() || "Unspecified",
-        type: row.type?.trim() || "Achievement", // Add this with default
+        type: row.type?.trim() || "TemplateContext", // Add this with default
       }));
   } catch {
     return [];

@@ -17,6 +17,7 @@ interface FormFields {
   fieldOfInterest: string;
   signature?: string;
   signatory?: string;
+  certificateType?: string;
 }
 
 const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
@@ -123,17 +124,18 @@ export default function CertificateForm({
 
   // --- handle program selection ---
   const handleProgramSelect = (selected: { value: string; label: string } | null) => {
-    const newProgram = selected?.value || "";
-   
+    const newProgram = selected?.value || '';
+    
     const defaults = groups.find((g) => g.programName === newProgram);
     
-
     setFormData((prev) => ({
       ...prev,
       programName: newProgram,
       // Clear Field of Interest when Program Name is selected
       fieldOfInterest: "",
       achievementText: defaults ? defaults.achievementText : prev.achievementText,
+      // Set the type directly
+      type: defaults?.type || "Achievement",
     }));
   };
 
@@ -291,7 +293,7 @@ const handleSubmit = (e: React.FormEvent) => {
     }
   }
 
-  onSubmit(formData);
+  onSubmit(formData,);
 };
 
   const renderCounter = (fieldName: keyof FormFields) => {

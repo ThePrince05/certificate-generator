@@ -137,7 +137,7 @@ return {
   fieldOfInterest: item.fieldOfInterest ?? "",
   certificateDate: item.certificateDate || getCertificateDate(),
   organization: item.organization || selectedOrg.name,
-  type: item.type || "Achievement",
+  type: item.type || "generate-single",
 };
 
       });
@@ -169,6 +169,8 @@ return {
   const handleGenerateFromDatabase = (cert: DemoCertificate) => {
     const newItem = {
       ...cert,
+      certificateType: cert.type || "Achievement", // Add certificateType here
+      type: cert.type || "generate-single",
       id: uuidv4(),
       generatedAt: new Date().toISOString(),
     };
@@ -184,7 +186,11 @@ return {
       saveHistory([newItem, ...history]);
     }
 
-    setFormData(cert);
+    // Make sure certificateType is included
+    setFormData({
+      ...cert,
+      type: cert.type || "generate-single",
+    });
   };
 
   const getCertificateDate = () => {
@@ -194,25 +200,31 @@ return {
     return `Awarded ${month} ${year}`;
   };
 
-  const handleGenerate = (data: CleanCertificateData) => {
-    const exists = history.some(
-      (h) =>
-        h.recipientName === data.recipientName &&
-        h.programName === data.programName
-    );
+ const handleGenerate = (data: CleanCertificateData) => {
+  const exists = history.some(
+    (h) =>
+      h.recipientName === data.recipientName &&
+      h.programName === data.programName
+  );
 
-    if (!exists) {
-      const item = {
-        ...data,
-        id: uuidv4(),
-        generatedAt: new Date().toISOString(),
-      };
-      const updatedHistory = [item, ...history];
-      saveHistory(updatedHistory);
-    }
-
-    setFormData(data);
+  // Set the type directly from the data
+  const formDataWithType = {
+    ...data,
+    type: data.type || "Achievement" // Use the existing type field
   };
+
+  if (!exists) {
+    const item = {
+      ...formDataWithType,
+      id: uuidv4(),
+      generatedAt: new Date().toISOString(),
+    };
+    const updatedHistory = [item, ...history];
+    saveHistory(updatedHistory);
+  }
+
+  setFormData(formDataWithType);
+};
 
   const handleDeleteHistory = (id: string) => {
     saveHistory(history.filter((h) => h.id !== id));

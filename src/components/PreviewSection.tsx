@@ -30,11 +30,13 @@ export const PreviewSection: React.FC<PreviewSectionProps> = ({
       <div className="w-full flex justify-center overflow-x-auto py-4">
         <div className="flex-shrink-0 max-w-full sm:max-w-[90%] md:max-w-[80%] lg:max-w-[70%]">
           <CertificateTemplate
-            {...formData}
-            templateUrl={getTemplateUrl(formData.category)}
-            isPreview
-            certificateDate={formData.certificateDate ?? getCertificateDate()}
-          />
+          {...formData}
+          templateUrl={getTemplateUrl(formData.category)}
+          isPreview
+          certificateDate={formData.certificateDate ?? getCertificateDate()}
+          type={formData.type} 
+        />
+
         </div>
       </div>
 
