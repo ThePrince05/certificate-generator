@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { headingFont, bodyFont } from "../../app/utils/fonts";
+import { headingFont, bodyFont } from "../app/utils/fonts";
 
 interface PDFOffsets {
   organization?: number;
@@ -47,7 +47,7 @@ export default function CertificateTemplate({
 
   // 🧠 Choose either programName OR fieldOfInterest (programName takes priority)
   // Display certificate type on top, then programName/fieldOfInterest
-  const displayText = `Certificate Of ${type || "CertificateTemplate"}\n${programName || fieldOfInterest}`;
+  const displayText = `Certificate Of ${type || "Achievement"}\n${programName || fieldOfInterest}`;
 
 
   // 🧠 Detect actual line wrapping in the DOM

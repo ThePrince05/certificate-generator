@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { FaShareAlt, FaDownload,  FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 // Components
-import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
+import CertificateTemplate from "@/components/CertificateTemplate";
 import PersonSearchBatch from "@/components/generate-batch/PersonSearchBatch";
 
 // Contexts
@@ -502,27 +502,17 @@ const doDownloadJPEG = (item: any) => {
                   />
                 </div>
 
-                <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-0">
-                  {validatedBatch.length > 0 && (
-                    <>
-                      <button
-                        onClick={() => handleBatchDownload("pdf")}
-                        disabled={isDownloading}
-                        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow transition-all"
-                      >
-                        {isDownloading ? "Downloading..." : `Download PDF (${validatedBatch.length})`}
-                      </button>
-
-                      <button
-                        onClick={() => handleBatchDownload("jpeg")}
-                        disabled={isDownloading}
-                        className="w-full md:w-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded shadow transition-all"
-                      >
-                        {isDownloading ? "Downloading..." : `Download JPEG (${validatedBatch.length})`}
-                      </button>
-                    </>
-                  )}
-                </div>
+               <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-0">
+                {validatedBatch.length > 0 && (
+                  <DownloadDropdown
+                    onDownloadPDF={() => handleBatchDownload("pdf")}
+                    onDownloadJPEG={() => handleBatchDownload("jpeg")}
+                    isDownloading={isDownloading}
+                    batchCount={validatedBatch.length}
+                    fontSize="base"
+                  />
+                )}
+              </div>
               </div>
             </motion.div>
           )}

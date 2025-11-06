@@ -13,7 +13,7 @@ import { useTemplates } from "../context/TemplateContext";
 
 // Components
 import CertificateForm from "@/components/generate-single/CertificateForm";
-import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
+import CertificateTemplate from "@/components/CertificateTemplate";
 import { ShareModal } from "@/components/generate-single/ShareModal";
 
 // Utilities

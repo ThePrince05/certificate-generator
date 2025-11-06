@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import ReactDOM from "react-dom/client";
-import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
+import CertificateTemplate from "@/components/CertificateTemplate";
 import { CertificateData as AppCertificateData } from "@/types/certificates";
 
 // Local type for rendering

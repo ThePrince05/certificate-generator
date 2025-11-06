@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { FaShareAlt } from "react-icons/fa";
-import CertificateTemplate from "@/components/generate-single/CertificateTemplate";
+import CertificateTemplate from "@/components/CertificateTemplate";
 import { DownloadDropdown } from "@/components/DownloadDropdown";
 import { CleanCertificateData } from "@/types/certificates";
 
