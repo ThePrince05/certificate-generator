@@ -1,4 +1,4 @@
-import { FaShareAlt, FaEnvelope, FaWhatsapp } from "react-icons/fa";
+import { FaShareAlt, FaEnvelope } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import { ShareableCertificate, ContactInfo } from "@/types/certificates";
 import { sendCertificatesEmail, ClientAttachment } from "@/app/utils/sharing";
@@ -30,7 +30,6 @@ export const ShareModal = ({
   const [editableContactInfo, setEditableContactInfo] = useState<ContactInfo>({
     email: defaultEmail || recipient?.contactInfo?.email || recipient?.email || "",
     recipientName: recipient?.contactInfo?.recipientName || recipient?.recipientName || "Unknown",
-    whatsapp: recipient?.contactInfo?.whatsapp || "",
   });
 
   const [customMessage, setCustomMessage] = useState("");
@@ -56,35 +55,83 @@ export const ShareModal = ({
         const firstCert = recipientCertificates[0];
         const programNames = recipientCertificates.map(c => c.programName || "a program");
 
-       const res = await fetch("/api/generate-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipientName: firstCert.recipientName || editableContactInfo.recipientName || "Participant",
-          programs: programNames,
-          organization: firstCert.organization || "our organization",
-          certificateTypes: recipientCertificates.map(c => c.type || "Achievement") // Add this line
-        }),
-      });
+        const res = await fetch("/api/generate-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientName: firstCert.recipientName || editableContactInfo.recipientName || "Participant",
+            programs: programNames,
+            organization: firstCert.organization || "our organization",
+            certificateTypes: recipientCertificates.map(c => c.type || "Achievement")
+          }),
+        });
 
+        console.log("🔍 API Response status:", res.status);
         const data = await res.json();
-        if (data.messages && Array.isArray(data.messages)) {
+        console.log("🔍 API Response data:", data);
+
+        // FIX: Handle both single message and array format
+        if (data.message) {
+          // Single message format from backend
+          const messageOption = {
+            id: data.message.id || "1",
+            title: data.message.title || "Warm Congratulations",
+            content: data.message.content
+          };
+          setMessageOptions([messageOption]);
+          setSelectedMessageId(messageOption.id);
+          setCustomMessage(messageOption.content);
+        } else if (data.messages && Array.isArray(data.messages)) {
+          // Array format (backward compatibility)
           setMessageOptions(data.messages);
           if (data.messages.length > 0) {
             setSelectedMessageId(data.messages[0].id);
             setCustomMessage(data.messages[0].content);
           }
+        } else {
+          // Fallback if no message is generated
+          console.warn("No message generated, using fallback");
+          const fallbackMessage = {
+            id: "1",
+            title: "Congratulations",
+            content: `Hello ${firstCert.recipientName || 'Participant'}!
+
+We're excited to share your certificate${recipientCertificates.length > 1 ? 's' : ''} for completing ${programNames.length > 1 ? programNames.slice(0, -1).join(", ") + " and " + programNames.slice(-1) : programNames[0]}.
+
+Your certificate${recipientCertificates.length > 1 ? 's are' : ' is'} attached to this email.
+
+Best regards,
+The Team`
+          };
+          setMessageOptions([fallbackMessage]);
+          setSelectedMessageId(fallbackMessage.id);
+          setCustomMessage(fallbackMessage.content);
         }
       } catch (err) {
-        // Fallback to empty message
         console.error("Failed to generate messages:", err);
+        // Fallback message on error
+        const fallbackMessage = {
+          id: "1",
+          title: "Congratulations",
+          content: `Hello ${recipient?.recipientName || 'Participant'}!
+
+We're pleased to share your certificate${recipientCertificates.length > 1 ? 's' : ''} with you.
+
+Your certificate${recipientCertificates.length > 1 ? 's are' : ' is'} attached to this email.
+
+Best regards,
+The Team`
+        };
+        setMessageOptions([fallbackMessage]);
+        setSelectedMessageId(fallbackMessage.id);
+        setCustomMessage(fallbackMessage.content);
       } finally {
         setLoadingMessage(false);
       }
     };
 
     generateMessages();
-  }, [isOpen]);
+  }, [isOpen, recipientCertificates, editableContactInfo.recipientName]);
 
   const handleMessageOptionSelect = (option: MessageOption) => {
     setSelectedMessageId(option.id);
@@ -94,6 +141,12 @@ export const ShareModal = ({
   const handleShare = async () => {
     if (!recipientCertificates.length) {
       alert("No certificates to share");
+      return;
+    }
+
+    // Validate email
+    if (!editableContactInfo.email || !editableContactInfo.email.includes('@')) {
+      alert("Please enter a valid email address");
       return;
     }
 
@@ -172,17 +225,6 @@ export const ShareModal = ({
             onChange={(e) => setEditableContactInfo(prev => ({ ...prev, email: e.target.value }))}
           />
         </div>
-
-        <div className="flex items-center gap-3">
-          <FaWhatsapp className="text-green-500 text-xl" />
-          <input
-            type="text"
-            className="border rounded px-3 py-2 w-full"
-            value={editableContactInfo.whatsapp}
-            placeholder="WhatsApp number (optional)"
-            onChange={(e) => setEditableContactInfo(prev => ({ ...prev, whatsapp: e.target.value }))}
-          />
-        </div>
       </div>
 
       {/* Message Options */}
@@ -237,6 +279,7 @@ export const ShareModal = ({
         <button
           className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
           onClick={handleShare}
+          disabled={loadingMessage}
         >
           <FaShareAlt className="w-4 h-4" />
           Share
