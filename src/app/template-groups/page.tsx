@@ -11,22 +11,54 @@ const MAX_LENGTHS = { programName: 65, achievementText: 260 };
 export default function TemplateGroupsPage() {
   const router = useRouter();
   const { selectedOrg } = useOrganization();
-  const { groups, loadGroups, addGroup, updateGroup, deleteGroup } = useTemplates();
+  const { groups, loadGroups, addGroup, updateGroup, deleteGroup, syncStatus } = useTemplates();
 
-  // ✅ Include category and fieldOfInterest with defaults
+  // ✅ Use 'type' instead of 'certificateType'
   const [newGroup, setNewGroup] = useState({
     programName: "",
     achievementText: "",
     category: "",
-    fieldOfInterest: "",
+    type: "",
   });
 
-    // New search query state
+  // New search query state
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // ✅ State for dialogs and loading
+  const [editingGroup, setEditingGroup] = useState<TemplateGroup | null>(null);
+  const [deletingGroup, setDeletingGroup] = useState<TemplateGroup | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  
+  // ✅ Track if we're doing an action (add/edit/delete) vs initial load
+  const [isPerformingAction, setIsPerformingAction] = useState(false);
+
+  // ✅ Form validation state - now includes all fields
+  const [formErrors, setFormErrors] = useState({
+    programName: "",
+    achievementText: "",
+    category: "",
+    type: ""
+  });
 
   useEffect(() => {
-    if (selectedOrg) loadGroups(selectedOrg.id);
+    if (selectedOrg) {
+      // Initial load - don't show the action loading overlay
+      loadGroups(selectedOrg.id);
+    }
   }, [selectedOrg, loadGroups]);
+
+  // ✅ Effect to track when we're performing actions vs initial loading
+  useEffect(() => {
+    // Only show action loading overlay when syncStatus is loading AND we're performing an action
+    if (syncStatus === 'loading' && isPerformingAction) {
+      // Keep the loading state
+    } else if (syncStatus === 'success' || syncStatus === 'error') {
+      // Reset action state when operation completes
+      setIsPerformingAction(false);
+    }
+  }, [syncStatus, isPerformingAction]);
 
   if (!selectedOrg) {
     return (
@@ -42,26 +74,122 @@ export default function TemplateGroupsPage() {
     );
   }
 
-  const handleAddGroup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroup.programName.trim()) return alert("Program Name is required.");
+  const validateForm = (): boolean => {
+    const errors = {
+      programName: "",
+      achievementText: "",
+      category: "",
+      type: ""
+    };
 
-    // ✅ Pass all required fields for TemplateGroup
+    if (!newGroup.programName.trim()) {
+      errors.programName = "Program Name is required";
+    }
+
+    if (!newGroup.achievementText.trim()) {
+      errors.achievementText = "Achievement Text is required";
+    }
+
+    if (!newGroup.category.trim()) {
+      errors.category = "Category is required";
+    }
+
+    if (!newGroup.type.trim()) {
+      errors.type = "Certificate Type is required";
+    }
+
+    setFormErrors(errors);
+    return !errors.programName && !errors.achievementText && !errors.category && !errors.type;
+  };
+
+  const validateEditForm = (group: TemplateGroup): boolean => {
+    const errors = {
+      programName: "",
+      achievementText: "",
+      category: "",
+      type: ""
+    };
+
+    if (!group.programName.trim()) {
+      errors.programName = "Program Name is required";
+    }
+
+    if (!group.achievementText.trim()) {
+      errors.achievementText = "Achievement Text is required";
+    }
+
+    if (!group.category.trim()) {
+      errors.category = "Category is required";
+    }
+
+    if (!group.type.trim()) {
+      errors.type = "Certificate Type is required";
+    }
+
+    setFormErrors(errors);
+    return !errors.programName && !errors.achievementText && !errors.category && !errors.type;
+  };
+
+  const handleAddGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsPerformingAction(true); // ✅ Set action flag
     const group: TemplateGroup = {
       id: uuidv4(),
       programName: newGroup.programName.trim(),
       achievementText: newGroup.achievementText.trim(),
       category: newGroup.category.trim(),
-      fieldOfInterest: newGroup.fieldOfInterest.trim(),
+      type: newGroup.type.trim(),
     };
 
-    addGroup(group, selectedOrg.id);
+    await addGroup(group, selectedOrg.id);
     setNewGroup({
       programName: "",
       achievementText: "",
       category: "",
-      fieldOfInterest: "",
+      type: "",
     });
+    setFormErrors({ programName: "", achievementText: "", category: "", type: "" });
+  };
+
+  const handleEditGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingGroup || !validateEditForm(editingGroup)) {
+      return;
+    }
+
+    setIsPerformingAction(true); // ✅ Set action flag
+    await updateGroup(editingGroup.id, editingGroup, selectedOrg.id);
+    setIsEditDialogOpen(false);
+    setEditingGroup(null);
+    setFormErrors({ programName: "", achievementText: "", category: "", type: "" });
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!deletingGroup) return;
+
+    setIsPerformingAction(true); // ✅ Set action flag
+    setIsDeleting(deletingGroup.id);
+    await deleteGroup(deletingGroup.id, selectedOrg.id);
+    setIsDeleteDialogOpen(false);
+    setDeletingGroup(null);
+    setIsDeleting(null);
+  };
+
+  const openEditDialog = (group: TemplateGroup) => {
+    setEditingGroup({ ...group });
+    setIsEditDialogOpen(true);
+    setFormErrors({ programName: "", achievementText: "", category: "", type: "" });
+  };
+
+  const openDeleteDialog = (group: TemplateGroup) => {
+    setDeletingGroup(group);
+    setIsDeleteDialogOpen(true);
   };
 
   const renderCounter = (field: keyof typeof newGroup, value: string) => {
@@ -75,58 +203,31 @@ export default function TemplateGroupsPage() {
     );
   };
 
-  // top of the file
-const FIELD_OF_INTEREST_OPTIONS = [
-  "AI Based Communication and Journalism",
-  "AI Assisted Business Development Managers",
-  "HR Recruiter - HR Specialist (AI Assisted)",
-  "AI Public Relations / Publicist",
-  "AI Based Project Management Volunteer",
-  "Web Development Volunteer or Intern",
-  "AI Assisted Research Specialist or Research Manager",
-  "AI Based Human Resources Recruitment, On-Boarding & Management",
-  "Military & Service Veteran Volunteers",
-  "AI BASED Video Editor/Producer",
-  "PUBLICIST - BOOKS, AUTHOR",
-  "AI BASED Graphic Designer/Illustrator/Editor",
-  "AI Assisted Applications Developer",
-  "AI Assisted WORD PRESS WEBSITE DEVELOPER",
-  "Product Development Engineer",
-  "(UNSDG) Project Management Volunteer",
-  "AI Based Database Management Volunteer or Intern",
-  "Retired Volunteers for CSR, HR, PR & Social Responsibility Entrepreneurship",
-  "AI Based Business/Marketing Management Specialist",
-  "AI Based Social Media Volunteer or Intern",
-  "AI Assisted Marketing Manager",
-  "AI Assisted PHP Developer",
-  "AI Assisted Meeting & Event Planning",
-  "TEDx Coach & Coordinator",
-  "AI Based Business Development Management",
-  "AI Assisted Grant Writing",
-  "Publicist for Ground-Breaking CSR, HR & PR Programs",
-  "AI Assisted Volunteer Coordinator",
-  "AI Assisted Product Development Engineer",
-];
+  // ✅ Certificate types for the dropdown
+  const CERTIFICATE_TYPES = [
+    "Achievement",
+    "Appreciation",
+    "Partnership",
+  ];
 
-const CATEGORIES = [
-  "Architecture & Design",
-  "Business & Finance",
-  "Creative & Media",
-  "Education",
-  "Engineering & Product",
-  "Entrepreneurship",
-  "Human Services",
-  "Marketing & Communications",
-  "Professional Services",
-  "Social Impact & Policy",
-  "Technology & Digital",
-  "Gaming & Development",
-];
+  const CATEGORIES = [
+    "Architecture & Design",
+    "Business & Finance",
+    "Creative & Media",
+    "Education",
+    "Engineering & Product",
+    "Entrepreneurship",
+    "Human Services",
+    "Marketing & Communications",
+    "Professional Services",
+    "Social Impact & Policy",
+    "Technology & Digital",
+    "Gaming & Development",
+  ];
 
-
- // Filter groups based on search query
+  // ✅ Update search to include type
   const filteredGroups = groups.filter((group) =>
-    [group.programName, group.category, group.fieldOfInterest]
+    [group.programName, group.category, group.type]
       .join(" ")
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
@@ -134,12 +235,170 @@ const CATEGORIES = [
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-          <button
-            onClick={() => router.push("/generate-single")}
-            className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
-          >
-            ← Single Certificate
-          </button>
+      {/* ✅ Global Loading Overlay - Only show for actions, not initial load */}
+      {(syncStatus === 'loading' && isPerformingAction) && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full mx-4 border">
+            <div className="flex items-center space-x-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              <p className="text-gray-700">Saving changes...</p>
+            </div>
+            <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-500 h-2 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Edit Group Dialog - No dimming effect */}
+      {isEditDialogOpen && editingGroup && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border">
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4">Edit Template Group</h2>
+              <form onSubmit={handleEditGroup} className="space-y-4">
+                <div>
+                  <label className="block font-semibold mb-2">Program Name</label>
+                  <input
+                    type="text"
+                    value={editingGroup.programName}
+                    onChange={(e) =>
+                      setEditingGroup(prev => prev ? {
+                        ...prev,
+                        programName: e.target.value.slice(0, MAX_LENGTHS.programName)
+                      } : null)
+                    }
+                    className={`border p-3 w-full rounded ${formErrors.programName ? 'border-red-500' : ''}`}
+                    required
+                  />
+                  {formErrors.programName && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.programName}</p>
+                  )}
+                  {renderCounter("programName", editingGroup.programName)}
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-2">Achievement Text</label>
+                  <textarea
+                    value={editingGroup.achievementText}
+                    onChange={(e) =>
+                      setEditingGroup(prev => prev ? {
+                        ...prev,
+                        achievementText: e.target.value.slice(0, MAX_LENGTHS.achievementText)
+                      } : null)
+                    }
+                    className={`border p-3 w-full rounded resize-none ${formErrors.achievementText ? 'border-red-500' : ''}`}
+                    rows={4}
+                    required
+                  />
+                  {formErrors.achievementText && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.achievementText}</p>
+                  )}
+                  {renderCounter("achievementText", editingGroup.achievementText)}
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="w-1/2">
+                    <label className="block font-semibold mb-2">Category</label>
+                    <Select
+                      options={[{ value: "", label: "-- Select a Category --" }, ...CATEGORIES.map((c) => ({ value: c, label: c }))]}
+                      value={editingGroup.category ? { value: editingGroup.category, label: editingGroup.category } : { value: "", label: "-- Select a Category --" }}
+                      onChange={(selected) => setEditingGroup(prev => prev ? { ...prev, category: selected?.value || "" } : null)}
+                      isClearable={false}
+                    />
+                    {formErrors.category && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.category}</p>
+                    )}
+                  </div>
+
+                  <div className="w-1/2">
+                    <label className="block font-semibold mb-2">Certificate Type</label>
+                    <Select
+                      options={[{ value: "", label: "-- Select Certificate Type --" }, ...CERTIFICATE_TYPES.map((f) => ({ value: f, label: f }))]}
+                      value={editingGroup.type ? { value: editingGroup.type, label: editingGroup.type } : { value: "", label: "-- Select Certificate Type --" }}
+                      onChange={(selected) => setEditingGroup(prev => prev ? { ...prev, type: selected?.value || "" } : null)}
+                      isClearable={false}
+                    />
+                    {formErrors.type && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.type}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditDialogOpen(false);
+                      setEditingGroup(null);
+                      setFormErrors({ programName: "", achievementText: "", category: "", type: "" });
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2"
+                  >
+                    {syncStatus === 'loading' && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    )}
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Delete Confirmation Dialog */}
+      {isDeleteDialogOpen && deletingGroup && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full border">
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4 text-red-600">Delete Template Group</h2>
+              <p className="text-gray-700 mb-6">
+                Are you sure you want to delete the template group <strong>"{deletingGroup.programName}"</strong>? 
+                This action cannot be undone.
+              </p>
+              
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteDialogOpen(false);
+                    setDeletingGroup(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition"
+                  disabled={syncStatus === 'loading'}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteGroup}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition flex items-center gap-2"
+                  disabled={syncStatus === 'loading'}
+                >
+                  {(syncStatus === 'loading' && isDeleting === deletingGroup.id) && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  )}
+                  {(syncStatus === 'loading' && isDeleting === deletingGroup.id) ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => router.push("/generate-single")}
+        className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-40"
+      >
+        ← Single Certificate
+      </button>
+      
       {/* Add New Template Form */}
       <section className="bg-white border rounded shadow p-6 mb-20">
         <h1 className="text-2xl font-bold text-center mb-6">
@@ -147,6 +406,7 @@ const CATEGORIES = [
         </h1>
         <form onSubmit={handleAddGroup} className="space-y-4">
           <div>
+            <label className="block font-semibold mb-1">Program Name</label>
             <input
               type="text"
               placeholder="Program Name"
@@ -157,13 +417,17 @@ const CATEGORIES = [
                   programName: e.target.value.slice(0, MAX_LENGTHS.programName),
                 }))
               }
-              className="border p-3 w-full rounded mb-1"
+              className={`border p-3 w-full rounded mb-1 ${formErrors.programName ? 'border-red-500' : ''}`}
               required
             />
+            {formErrors.programName && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.programName}</p>
+            )}
             {renderCounter("programName", newGroup.programName)}
           </div>
 
           <div>
+            <label className="block font-semibold mb-1">Achievement Text</label>
             <textarea
               placeholder="Achievement Text"
               value={newGroup.achievementText}
@@ -173,9 +437,13 @@ const CATEGORIES = [
                   achievementText: e.target.value.slice(0, MAX_LENGTHS.achievementText),
                 }))
               }
-              className="border p-3 w-full rounded resize-none"
+              className={`border p-3 w-full rounded resize-none ${formErrors.achievementText ? 'border-red-500' : ''}`}
               rows={4}
+              required
             />
+            {formErrors.achievementText && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.achievementText}</p>
+            )}
             {renderCounter("achievementText", newGroup.achievementText)}
           </div>
 
@@ -188,23 +456,39 @@ const CATEGORIES = [
                 onChange={(selected) => setNewGroup((prev) => ({ ...prev, category: selected?.value || "" }))}
                 isClearable={false}
               />
+              {formErrors.category && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.category}</p>
+              )}
             </div>
 
+            {/* ✅ Certificate Type dropdown - Required */}
             <div className="w-1/2">
-              <label className="block font-semibold mb-1">Field of Interest</label>
+              <label className="block font-semibold mb-1">Certificate Type</label>
               <Select
-                options={[{ value: "", label: "-- Search or Select Field of Interest --" }, ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f }))]}
-                value={newGroup.fieldOfInterest ? { value: newGroup.fieldOfInterest, label: newGroup.fieldOfInterest } : { value: "", label: "-- Search or Select Field of Interest --" }}
-                onChange={(selected) => setNewGroup((prev) => ({ ...prev, fieldOfInterest: selected?.value || "" }))}
+                options={[{ value: "", label: "-- Select Certificate Type --" }, ...CERTIFICATE_TYPES.map((f) => ({ value: f, label: f }))]}
+                value={newGroup.type ? { value: newGroup.type, label: newGroup.type } : { value: "", label: "-- Select Certificate Type --" }}
+                onChange={(selected) => setNewGroup((prev) => ({ ...prev, type: selected?.value || "" }))}
                 isClearable={false}
               />
+              {formErrors.type && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.type}</p>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-3 mt-4">
-            <div className="flex-1" />
-            <button type="submit" className="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600 transition">
-              Add Group
+            <div className="flex-1">
+              <p className="text-sm text-gray-500">All fields are required</p>
+            </div>
+            <button 
+              type="submit" 
+              className="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600 transition flex items-center gap-2"
+              disabled={syncStatus === 'loading'}
+            >
+              {syncStatus === 'loading' && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              )}
+              {syncStatus === 'loading' ? 'Adding...' : 'Add Group'}
             </button>
           </div>
         </form>
@@ -241,22 +525,25 @@ const CATEGORIES = [
                   <div>
                     <h3 className="font-bold">{group.programName}</h3>
                     <p className="text-xs text-gray-500">
-                      {group.category}
+                      {group.category} • {group.type}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        const programName = prompt("Edit program name:", group.programName);
-                        if (!programName) return;
-                        const achievementText = prompt("Edit achievement text:", group.achievementText) || "";
-                        updateGroup(group.id, { ...group, programName, achievementText }, selectedOrg.id);
-                      }}
-                      className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 border rounded transition"
+                      onClick={() => openEditDialog(group)}
+                      disabled={syncStatus === 'loading'}
+                      className="text-blue-500 hover:text-blue-700 text-sm px-3 py-1 border rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                     >
+                      {syncStatus === 'loading' && (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                      )}
                       Edit
                     </button>
-                    <button onClick={() => deleteGroup(group.id, selectedOrg.id)} className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border rounded transition">
+                    <button 
+                      onClick={() => openDeleteDialog(group)}
+                      disabled={syncStatus === 'loading'}
+                      className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
                       Delete
                     </button>
                   </div>

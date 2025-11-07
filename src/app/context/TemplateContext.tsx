@@ -2,14 +2,12 @@
 
 import { createContext, useContext, useState, ReactNode, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
-import Papa from "papaparse";
 
 export interface TemplateGroup {
   id: string;
   programName: string;
   achievementText: string;
   category: string;
-  fieldOfInterest: string;
   type: string;
 }
 
@@ -20,96 +18,163 @@ interface Template {
 
 interface TemplateContextType {
   groups: TemplateGroup[];
-  addGroup: (group: TemplateGroup, orgId: string) => void;
-  updateGroup: (id: string, updated: TemplateGroup, orgId: string) => void;
-  deleteGroup: (id: string, orgId: string) => void;
+  addGroup: (group: TemplateGroup, orgId: string) => Promise<boolean>;
+  updateGroup: (id: string, updated: TemplateGroup, orgId: string) => Promise<boolean>;
+  deleteGroup: (id: string, orgId: string) => Promise<boolean>;
   setGroups: (groups: TemplateGroup[], orgId: string) => void;
   loadGroups: (orgId: string) => Promise<void>;
-
-   // ✅ Add these for background template switching
   selectedTemplate: Template;
   setTemplate: React.Dispatch<React.SetStateAction<Template>>;
+  syncStatus: 'idle' | 'loading' | 'success' | 'error';
 }
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
 
-const fetchGroupsFromCSV = async (orgId: string): Promise<TemplateGroup[]> => {
-  console.debug(`🔍 fetchGroupsFromCSV called for orgId: ${orgId}`);
-  
-  // Google Sheets published to web URLs
-  const fileMap: Record<string, string> = {
-    opop: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRStK-QgO2W0MK8hPHrZiB5YUL2hJ2JWzOgSwvsu_bnaKDQrYcPJ7XilrmcgBjAZA/pub?output=csv",
-    pak: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRs9NPi-odMP89D-VQtJVLv8pW0tuoM4KRqSvHflMq8B5WdH-qahTqOw4-y7lxJmA/pub?output=csv",
-  };
+// ⚠️ REPLACE WITH YOUR GOOGLE APPS SCRIPT URL ⚠️
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqWzg-h9NGaJnXtqhXl73m8kzJsivN_G6TF1X8pBQmraLSh4r7ZJS2kPaVbujUmI3xYg/exec";
 
-  const url = fileMap[orgId];
-  console.debug(`🌐 Fetching from URL: ${url}`);
-  
-  if (!url) {
-    console.debug(`❌ No URL found for orgId: ${orgId}`);
-    return [];
-  }
-
+// Function to fetch groups from Google Apps Script
+// Function to fetch groups from Google Apps Script
+const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> => {
   try {
-    console.debug(`🚀 Starting fetch request...`);
+    console.debug(`🔍 fetchGroupsFromSheets called for orgId: ${orgId}`);
+    
+    const url = `${SCRIPT_URL}?action=getGroups&orgId=${orgId}`;
+    console.debug(`🌐 Fetching from URL: ${url}`);
+    
     const response = await fetch(url);
     console.debug(`📡 Response status: ${response.status} ${response.statusText}`);
     
     if (!response.ok) {
-      console.error(`❌ Failed to fetch CSV: ${response.status}`);
+      console.error(`❌ Failed to fetch from Google Sheets: ${response.status}`);
       return [];
     }
 
-    const csvText = await response.text();
-    console.debug(`📄 CSV text length: ${csvText.length} characters`);
-    console.debug(`📄 First 200 chars of CSV:`, csvText.substring(0, 200));
+    const result = await response.json();
+    console.debug(`📊 API Response:`, result);
 
-    console.debug(`🔨 Parsing CSV with PapaParse...`);
-    const parsed = Papa.parse<{
-      programName: string;
-      achievementText: string;
-      category?: string;
-      fieldOfInterest?: string;
-      type?: string;
-    }>(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter: ",",
-    });
+    if (!result.success) {
+      console.error(`❌ Google Sheets error: ${result.error}`);
+      return [];
+    }
 
-    console.debug(`📊 Parse results:`, {
-      dataLength: parsed.data.length,
-      errors: parsed.errors,
-      meta: parsed.meta
-    });
-
-    const filteredData = parsed.data.filter((row) => row.programName && row.achievementText);
-    console.debug(`🎯 Filtered data: ${filteredData.length} rows (from ${parsed.data.length} total)`);
-
-    const finalResult = filteredData.map((row) => ({
-      id: uuidv4(),
-      programName: row.programName.trim(),
-      achievementText: row.achievementText.trim(),
-      category: row.category?.trim() || "General",
-      fieldOfInterest: row.fieldOfInterest?.trim() || "Unspecified",
-      type: row.type?.trim() || "TemplateContext",
-    }));
-
-    console.debug(`✨ Final result: ${finalResult.length} TemplateGroup objects created`);
-    console.debug(`📋 Sample result:`, finalResult.length > 0 ? finalResult[0] : 'No results');
+    console.debug(`✨ Successfully fetched ${result.groups?.length || 0} groups from Google Sheets`);
     
-    return finalResult;
+    // Debug the first group to see all fields
+    if (result.groups && result.groups.length > 0) {
+      console.log('🔍 Sample group from Google Sheets:', result.groups[0]);
+      console.log('Sample group fields:', {
+        programName: result.groups[0].programName,
+        achievementText: result.groups[0].achievementText,
+        category: result.groups[0].category,
+        fieldOfInterest: result.groups[0].fieldOfInterest,
+        type: result.groups[0].type
+      });
+    }
+    
+    return result.groups || [];
   } catch (error) {
-    console.error(`💥 Error loading CSV:`, error);
+    console.error(`💥 Error loading from Google Sheets:`, error);
     return [];
+  }
+};
+
+// Function to add group to Google Sheets
+const addGroupToSheets = async (orgId: string, group: TemplateGroup): Promise<boolean> => {
+  try {
+    console.log('📤 SENDING TO GOOGLE APPS SCRIPT:');
+    console.log('Organization:', orgId);
+    console.log('Group data being sent:', group);
+    
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `action=addGroup&orgId=${orgId}&groupData=${encodeURIComponent(JSON.stringify(group))}`
+    });
+
+    console.log('📡 Response status:', response.status, response.statusText);
+    
+    const result = await response.json();
+    console.log('📊 Google Apps Script response:', result);
+
+    if (result.success) {
+      console.log('✅ Successfully added group to Google Sheets');
+      return true;
+    } else {
+      console.error(`❌ Failed to add group: ${result.error}`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`💥 Error adding group to Google Sheets:`, error);
+    return false;
+  }
+};
+
+// Function to update group in Google Sheets
+const updateGroupInSheets = async (orgId: string, groupId: string, group: TemplateGroup): Promise<boolean> => {
+  try {
+    console.debug(`✏️ Updating group in Google Sheets: ${groupId}`);
+    
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `action=updateGroup&orgId=${orgId}&groupId=${groupId}&groupData=${encodeURIComponent(JSON.stringify(group))}`
+    });
+
+    const result = await response.json();
+    console.debug(`📊 Update group response:`, result);
+
+    if (result.success) {
+      console.debug(`✅ Successfully updated group in Google Sheets`);
+      return true;
+    } else {
+      console.error(`❌ Failed to update group: ${result.error}`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`💥 Error updating group in Google Sheets:`, error);
+    return false;
+  }
+};
+
+// Function to delete group from Google Sheets
+const deleteGroupFromSheets = async (orgId: string, groupId: string): Promise<boolean> => {
+  try {
+    console.debug(`🗑️ Deleting group from Google Sheets: ${groupId}`);
+    
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `action=deleteGroup&orgId=${orgId}&groupId=${groupId}`
+    });
+
+    const result = await response.json();
+    console.debug(`📊 Delete group response:`, result);
+
+    if (result.success) {
+      console.debug(`✅ Successfully deleted group from Google Sheets`);
+      return true;
+    } else {
+      console.error(`❌ Failed to delete group: ${result.error}`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`💥 Error deleting group from Google Sheets:`, error);
+    return false;
   }
 };
 
 export const TemplateProvider = ({ children }: { children: ReactNode }) => {
   const [groups, setGroupsState] = useState<TemplateGroup[]>([]);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-
-    // ✅ Add template state
+  // ✅ Add template state
   const [selectedTemplate, setTemplate] = useState<Template>({
     backgroundUrl: "/templates/one-planet-one-people/certificate-template.jpg",
     name: "Default Template",
@@ -123,51 +188,145 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const loadGroups = useCallback(async (orgId: string) => {
-    const saved = localStorage.getItem("templateGroupsByOrg");
-    const parsed: Record<string, TemplateGroup[]> = saved ? JSON.parse(saved) : {};
-    let groupsForOrg = parsed[orgId] || [];
+    setSyncStatus('loading');
+    try {
+      console.debug(`🔄 loadGroups called for orgId: ${orgId}`);
+      
+      // Try to load from Google Sheets first
+      let groupsForOrg = await fetchGroupsFromSheets(orgId);
+      
+      // Fallback to localStorage if Google Sheets is empty or fails
+      if (groupsForOrg.length === 0) {
+        console.debug(`📦 Falling back to localStorage for ${orgId}`);
+        const saved = localStorage.getItem("templateGroupsByOrg");
+        const parsed: Record<string, TemplateGroup[]> = saved ? JSON.parse(saved) : {};
+        groupsForOrg = parsed[orgId] || [];
+      }
 
-    if (groupsForOrg.length === 0) {
-      groupsForOrg = await fetchGroupsFromCSV(orgId);
-      parsed[orgId] = groupsForOrg;
-      localStorage.setItem("templateGroupsByOrg", JSON.stringify(parsed));
+      setGroupsState(groupsForOrg);
+      saveGroups(groupsForOrg, orgId);
+      setSyncStatus('success');
+      console.debug(`✅ Loaded ${groupsForOrg.length} groups for ${orgId}`);
+    } catch (error) {
+      console.error(`💥 Error in loadGroups:`, error);
+      setSyncStatus('error');
     }
+  }, [saveGroups]);
 
-    setGroupsState(groupsForOrg);
-  }, []);
+ const addGroup = useCallback(async (group: TemplateGroup, orgId: string): Promise<boolean> => {
+  console.log('🚀 SENDING GROUP DATA TO GOOGLE SHEETS:');
+  console.log('Full group object:', group);
+  console.log('programName:', group.programName);
+  console.log('achievementText:', group.achievementText);
+  console.log('category:', group.category);
 
-  const addGroup = useCallback(
-    (group: TemplateGroup, orgId: string) => {
+  console.log('type:', group.type);
+  
+  setSyncStatus('loading');
+  try {
+    // Try to add to Google Sheets first
+    const sheetsSuccess = await addGroupToSheets(orgId, group);
+    
+    if (sheetsSuccess) {
+      console.log('✅ Successfully added to Google Sheets, refreshing data...');
+      // Success! Refresh data from Google Sheets to get the updated list
+      const updatedGroups = await fetchGroupsFromSheets(orgId);
+      console.log('🔄 Refreshed groups from Google Sheets:', updatedGroups);
+      
+      // Check if the new data includes all fields
+      if (updatedGroups.length > 0) {
+        const latestGroup = updatedGroups[updatedGroups.length - 1];
+        console.log('📊 Latest group from Google Sheets:', latestGroup);
+        console.log('Fields check - achievementText:', latestGroup.achievementText);
+        console.log('Fields check - category:', latestGroup.category);
+      }
+      
+      setGroupsState(updatedGroups);
+      saveGroups(updatedGroups, orgId);
+      setSyncStatus('success');
+      return true;
+    } else {
+      // Fallback to localStorage only
+      console.debug(`📦 Google Sheets add failed, using localStorage fallback`);
+      console.log('💾 Saving to localStorage:', group);
       setGroupsState((prev) => {
         const updated = [...prev, group];
         saveGroups(updated, orgId);
         return updated;
       });
-    },
-    [saveGroups]
-  );
+      setSyncStatus('success');
+      return true;
+    }
+  } catch (error) {
+    console.error(`💥 Error in addGroup:`, error);
+    setSyncStatus('error');
+    return false;
+  }
+}, [saveGroups]);
 
-  const updateGroup = useCallback(
-    (id: string, updatedGroup: TemplateGroup, orgId: string) => {
-      setGroupsState((prev) => {
-        const updated = prev.map((g) => (g.id === id ? updatedGroup : g));
-        saveGroups(updated, orgId);
-        return updated;
-      });
-    },
-    [saveGroups]
-  );
+  const updateGroup = useCallback(async (id: string, updatedGroup: TemplateGroup, orgId: string): Promise<boolean> => {
+    setSyncStatus('loading');
+    try {
+      // Try to update in Google Sheets first
+      const sheetsSuccess = await updateGroupInSheets(orgId, id, updatedGroup);
+      
+      if (sheetsSuccess) {
+        // Update local state
+        setGroupsState((prev) => {
+          const updated = prev.map((g) => (g.id === id ? updatedGroup : g));
+          saveGroups(updated, orgId);
+          return updated;
+        });
+        setSyncStatus('success');
+        return true;
+      } else {
+        // Fallback to localStorage
+        setGroupsState((prev) => {
+          const updated = prev.map((g) => (g.id === id ? updatedGroup : g));
+          saveGroups(updated, orgId);
+          return updated;
+        });
+        setSyncStatus('success');
+        return true;
+      }
+    } catch (error) {
+      console.error(`💥 Error in updateGroup:`, error);
+      setSyncStatus('error');
+      return false;
+    }
+  }, [saveGroups]);
 
-  const deleteGroup = useCallback(
-    (id: string, orgId: string) => {
-      setGroupsState((prev) => {
-        const updated = prev.filter((g) => g.id !== id);
-        saveGroups(updated, orgId);
-        return updated;
-      });
-    },
-    [saveGroups]
-  );
+  const deleteGroup = useCallback(async (id: string, orgId: string): Promise<boolean> => {
+    setSyncStatus('loading');
+    try {
+      // Try to delete from Google Sheets first
+      const sheetsSuccess = await deleteGroupFromSheets(orgId, id);
+      
+      if (sheetsSuccess) {
+        // Update local state
+        setGroupsState((prev) => {
+          const updated = prev.filter((g) => g.id !== id);
+          saveGroups(updated, orgId);
+          return updated;
+        });
+        setSyncStatus('success');
+        return true;
+      } else {
+        // Fallback to localStorage
+        setGroupsState((prev) => {
+          const updated = prev.filter((g) => g.id !== id);
+          saveGroups(updated, orgId);
+          return updated;
+        });
+        setSyncStatus('success');
+        return true;
+      }
+    } catch (error) {
+      console.error(`💥 Error in deleteGroup:`, error);
+      setSyncStatus('error');
+      return false;
+    }
+  }, [saveGroups]);
 
   const setGroups = useCallback(
     (newGroups: TemplateGroup[], orgId: string) => {
@@ -179,7 +338,7 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     [saveGroups]
   );
 
-   return (
+  return (
     <TemplateContext.Provider
       value={{
         groups,
@@ -188,10 +347,9 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
         deleteGroup,
         setGroups,
         loadGroups,
-
-        // ✅ Provide template state
         selectedTemplate,
         setTemplate,
+        syncStatus,
       }}
     >
       {children}
