@@ -7,18 +7,15 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 function convertTextToHtml(text: string): string {
   if (!text) return "";
   
-  // Convert line breaks to HTML paragraphs and line breaks
   const htmlContent = text
     .split('\n\n') // Split on double line breaks for paragraphs
     .map(paragraph => {
       if (paragraph.trim() === '') return '';
-      // Convert single line breaks to <br> within paragraphs
       const withLineBreaks = paragraph.replace(/\n/g, '<br>');
       return `<p style="margin: 0 0 16px 0; line-height: 1.5; font-family: Arial, sans-serif; color: #333; text-align: left;">${withLineBreaks}</p>`;
     })
     .join('');
   
-  // Wrap in a proper email container (remove centering)
   return `
     <div style="max-width: 600px; margin: 0; padding: 20px; font-family: Arial, sans-serif; line-height: 1.6; color: #333; text-align: left;">
       ${htmlContent}
@@ -31,9 +28,7 @@ function groupCertificatesByType(programs: string[], certificateTypes: string[])
   
   programs.forEach((program, index) => {
     const type = certificateTypes[index] || "Achievement";
-    if (!grouped[type]) {
-      grouped[type] = [];
-    }
+    if (!grouped[type]) grouped[type] = [];
     grouped[type].push(program);
   });
   
@@ -42,26 +37,22 @@ function groupCertificatesByType(programs: string[], certificateTypes: string[])
 
 function formatCertificateList(groupedCertificates: { [key: string]: string[] }): string {
   const types = Object.keys(groupedCertificates);
-  
   if (types.length === 0) return "your certificates";
-  
+
   const typeList = types.map(type => {
     const programs = groupedCertificates[type];
-    const programText = programs.length > 1 
+    const isPlural = programs.length > 1;
+    const programText = isPlural
       ? programs.slice(0, -1).join(", ") + " and " + programs.slice(-1)
       : programs[0];
-    
-    return `Certificate of ${type} for ${programText}`;
+    return `Certificate${isPlural ? "s" : ""} of ${type} for ${programText}`;
   });
-  
-  if (typeList.length === 1) {
-    return typeList[0];
-  } else if (typeList.length === 2) {
-    return typeList.join(" and ");
-  } else {
-    return typeList.slice(0, -1).join(", ") + ", and " + typeList.slice(-1);
-  }
+
+  if (typeList.length === 1) return typeList[0];
+  if (typeList.length === 2) return typeList.join(" and ");
+  return typeList.slice(0, -1).join(", ") + ", and " + typeList.slice(-1);
 }
+
 
 function formatCertificateSummary(groupedCertificates: { [key: string]: string[] }): string {
   const totalCertificates = Object.values(groupedCertificates).flat().length;
@@ -90,7 +81,6 @@ async function generateGeminiMessage({
 }) {
   const firstName = recipientName.split(' ')[0];
   
-  // Group certificates by type
   const groupedCertificates = groupCertificatesByType(programs, certificateTypes);
   const certificateList = formatCertificateList(groupedCertificates);
   const certificateSummary = formatCertificateSummary(groupedCertificates);
@@ -98,6 +88,8 @@ async function generateGeminiMessage({
   const isMultipleCertificates = programs.length > 1;
   const certificateText = isMultipleCertificates ? "certificates" : "certificate";
   const areIs = isMultipleCertificates ? "are" : "is";
+  const milestoneText = isMultipleCertificates ? "milestones" : "milestone";
+  const thisThese = isMultipleCertificates ? "these" : "this";
 
   const prompt = `
     Generate ONE warm and enthusiastic message to ${firstName} congratulating them on earning ${certificateSummary}.
@@ -108,13 +100,13 @@ async function generateGeminiMessage({
     
     "Hello ${firstName}!
     
-    We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning ${certificateList} ${isMultipleCertificates ? 'are' : 'is'} a truly impressive milestone, showcasing your dedication and growth.
+    We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning your ${certificateList} ${areIs} a truly impressive ${milestoneText}, showcasing your dedication and growth.
     
     Your well-deserved ${certificateText} ${areIs} attached to this email, a testament to your hard work and commitment.
     
     We're incredibly excited about the connections you'll foster and the opportunities you'll unlock. We look forward to continuing our collaboration to create even greater impact together!
     
-    Please feel free to share this with your friends, family and on-line connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do
+    Please feel free to share ${thisThese} with your friends, family, and online connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do.
     
     Best regards,
     Lyle Benjamin
@@ -128,16 +120,15 @@ async function generateGeminiMessage({
     - Use the exact certificate list provided: "${certificateList}"
   `;
 
-  // Create both plain text and HTML versions for the fallback
   const plainTextContent = `Hello ${firstName}!
 
-We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning ${certificateList} ${isMultipleCertificates ? 'are' : 'is'} a truly impressive milestone, showcasing your dedication and growth.
+We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning your ${certificateList} ${areIs} a truly impressive ${milestoneText}, showcasing your dedication and growth.
 
 Your well-deserved ${certificateText} ${areIs} attached to this email, a testament to your hard work and commitment.
 
 We're incredibly excited about the connections you'll foster and the opportunities you'll unlock. We look forward to continuing our collaboration to create even greater impact together!
 
-Please feel free to share this with your friends, family and on-line connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do
+Please feel free to share ${thisThese} with your friends, family, and online connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do.
 
 Best regards,
 Lyle Benjamin
@@ -159,19 +150,12 @@ Working for the Betterment of Kids, People and the Planet!`;
     
     console.log("Gemini raw response:", text);
     
-    // Clean up the response to ensure it follows the template
-    let cleanContent = text
-      .replace(/\*\*/g, '')
-      .trim();
-    
-    // Ensure it starts with Hello and has proper formatting
+    let cleanContent = text.replace(/\*\*/g, '').trim();
     if (!cleanContent.startsWith('Hello')) {
       cleanContent = `Hello ${firstName}!\n\n${cleanContent}`;
     }
     
-    // Ensure proper sign-off format
     const signOff = `Best regards,\nLyle Benjamin\nFounder, One Planet – One People\nWorking for the Betterment of Kids, People and the Planet!`;
-    
     if (!cleanContent.includes('Best regards,')) {
       cleanContent += `\n\n${signOff}`;
     }
@@ -179,8 +163,8 @@ Working for the Betterment of Kids, People and the Planet!`;
     return {
       id: "1",
       title: "Warm Congratulations", 
-      content: cleanContent, // Keep plain text for display
-      htmlContent: convertTextToHtml(cleanContent) // Add HTML version for email
+      content: cleanContent,
+      htmlContent: convertTextToHtml(cleanContent)
     };
     
   } catch (err: any) {
@@ -209,13 +193,6 @@ export async function POST(req: Request) {
     });
     
     console.log("✅ Generated message successfully");
-    console.log("📝 Message formats:", {
-      hasPlainText: !!message.content,
-      hasHtml: !!message.htmlContent,
-      plainTextLength: message.content?.length,
-      htmlLength: message.htmlContent?.length
-    });
-    
     return NextResponse.json({ message });
   } catch (err) {
     console.error("❌ generate-email route error:", err);
@@ -224,22 +201,23 @@ export async function POST(req: Request) {
       const { recipientName, programs, certificateTypes = [] } = await req.json();
       const firstName = recipientName.split(' ')[0];
       
-      // Use the same grouping logic for fallback
       const groupedCertificates = groupCertificatesByType(programs, certificateTypes);
       const certificateList = formatCertificateList(groupedCertificates);
       const isMultipleCertificates = programs.length > 1;
       const certificateText = isMultipleCertificates ? "certificates" : "certificate";
       const areIs = isMultipleCertificates ? "are" : "is";
+      const milestoneText = isMultipleCertificates ? "milestones" : "milestone";
+      const thisThese = isMultipleCertificates ? "these" : "this";
       
       const plainTextContent = `Hello ${firstName}!
 
-We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning ${certificateList} ${isMultipleCertificates ? 'are' : 'is'} a truly impressive milestone, showcasing your dedication and growth.
+We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning your ${certificateList} ${areIs} a truly impressive ${milestoneText}, showcasing your dedication and growth.
 
 Your well-deserved ${certificateText} ${areIs} attached to this email, a testament to your hard work and commitment.
 
 We're incredibly excited about the connections you'll foster and the opportunities you'll unlock. We look forward to continuing our collaboration to create even greater impact together!
 
-Please feel free to share this with your friends, family and on-line connections (LinkedIn, SocialMedia Platforms) so they can appreciate the work you do
+Please feel free to share ${thisThese} with your friends, family, and online connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do.
 
 Best regards,
 Lyle Benjamin
