@@ -3,6 +3,29 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+// Helper function to convert plain text to HTML with proper formatting
+function convertTextToHtml(text: string): string {
+  if (!text) return "";
+  
+  // Convert line breaks to HTML paragraphs and line breaks
+  const htmlContent = text
+    .split('\n\n') // Split on double line breaks for paragraphs
+    .map(paragraph => {
+      if (paragraph.trim() === '') return '';
+      // Convert single line breaks to <br> within paragraphs
+      const withLineBreaks = paragraph.replace(/\n/g, '<br>');
+      return `<p style="margin: 0 0 16px 0; line-height: 1.5; font-family: Arial, sans-serif; color: #333; text-align: left;">${withLineBreaks}</p>`;
+    })
+    .join('');
+  
+  // Wrap in a proper email container (remove centering)
+  return `
+    <div style="max-width: 600px; margin: 0; padding: 20px; font-family: Arial, sans-serif; line-height: 1.6; color: #333; text-align: left;">
+      ${htmlContent}
+    </div>
+  `;
+}
+
 function groupCertificatesByType(programs: string[], certificateTypes: string[]) {
   const grouped: { [key: string]: string[] } = {};
   
@@ -105,10 +128,8 @@ async function generateGeminiMessage({
     - Use the exact certificate list provided: "${certificateList}"
   `;
 
-  const fallbackMessage = {
-    id: "1",
-    title: "Warm Congratulations",
-    content: `Hello ${firstName}!
+  // Create both plain text and HTML versions for the fallback
+  const plainTextContent = `Hello ${firstName}!
 
 We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning ${certificateList} ${isMultipleCertificates ? 'are' : 'is'} a truly impressive milestone, showcasing your dedication and growth.
 
@@ -121,7 +142,13 @@ Please feel free to share this with your friends, family and on-line connections
 Best regards,
 Lyle Benjamin
 Founder, One Planet – One People
-Working for the Betterment of Kids, People and the Planet!`
+Working for the Betterment of Kids, People and the Planet!`;
+
+  const fallbackMessage = {
+    id: "1",
+    title: "Warm Congratulations",
+    content: plainTextContent,
+    htmlContent: convertTextToHtml(plainTextContent)
   };
 
   try {
@@ -152,7 +179,8 @@ Working for the Betterment of Kids, People and the Planet!`
     return {
       id: "1",
       title: "Warm Congratulations", 
-      content: cleanContent
+      content: cleanContent, // Keep plain text for display
+      htmlContent: convertTextToHtml(cleanContent) // Add HTML version for email
     };
     
   } catch (err: any) {
@@ -181,6 +209,12 @@ export async function POST(req: Request) {
     });
     
     console.log("✅ Generated message successfully");
+    console.log("📝 Message formats:", {
+      hasPlainText: !!message.content,
+      hasHtml: !!message.htmlContent,
+      plainTextLength: message.content?.length,
+      htmlLength: message.htmlContent?.length
+    });
     
     return NextResponse.json({ message });
   } catch (err) {
@@ -197,10 +231,7 @@ export async function POST(req: Request) {
       const certificateText = isMultipleCertificates ? "certificates" : "certificate";
       const areIs = isMultipleCertificates ? "are" : "is";
       
-      const fallbackMessage = {
-        id: "1",
-        title: "Warm Congratulations",
-        content: `Hello ${firstName}!
+      const plainTextContent = `Hello ${firstName}!
 
 We are absolutely thrilled to congratulate you on this fantastic accomplishment! Earning ${certificateList} ${isMultipleCertificates ? 'are' : 'is'} a truly impressive milestone, showcasing your dedication and growth.
 
@@ -208,12 +239,18 @@ Your well-deserved ${certificateText} ${areIs} attached to this email, a testame
 
 We're incredibly excited about the connections you'll foster and the opportunities you'll unlock. We look forward to continuing our collaboration to create even greater impact together!
 
-Please feel free to share this with your friends, family and on-line connections (LinkedIn, Social Media Platforms) so they can appreciate the work you do
+Please feel free to share this with your friends, family and on-line connections (LinkedIn, SocialMedia Platforms) so they can appreciate the work you do
 
 Best regards,
 Lyle Benjamin
 Founder, One Planet – One People
-Working for the Betterment of Kids, People and the Planet!`
+Working for the Betterment of Kids, People and the Planet!`;
+      
+      const fallbackMessage = {
+        id: "1",
+        title: "Warm Congratulations",
+        content: plainTextContent,
+        htmlContent: convertTextToHtml(plainTextContent)
       };
       
       return NextResponse.json({ message: fallbackMessage });

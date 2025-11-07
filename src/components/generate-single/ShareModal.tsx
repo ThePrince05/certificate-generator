@@ -227,28 +227,7 @@ The Team`
         </div>
       </div>
 
-      {/* Message Options */}
-      {messageOptions.length > 0 && (
-        <div>
-          <label className="block font-medium mb-2">Choose a message</label>
-          <div className="space-y-2">
-            {messageOptions.map((option) => (
-              <div
-                key={option.id}
-                className={`border rounded px-3 py-2 cursor-pointer transition-colors ${
-                  selectedMessageId === option.id
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-                onClick={() => handleMessageOptionSelect(option)}
-              >
-                <div className="font-medium">{option.title}</div>
-                <div className="text-sm text-gray-600 line-clamp-2">{option.content}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+ 
 
       {/* Message */}
       <div>
