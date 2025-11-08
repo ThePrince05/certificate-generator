@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTemplates } from "../../app/context/TemplateContext";
 import { CleanCertificateData } from "../../types/certificates";
 import Select from "react-select";
+import { useFieldOfInterest } from "../../app/hooks/useFieldOfInterest"; 
 
 interface FormFields {
   organization: string;
@@ -27,38 +28,6 @@ const MAX_LENGTHS: Partial<Record<keyof FormFields, number>> = {
   email: 100,
   certificateDate: 22,
 };
-
-const FIELD_OF_INTEREST_OPTIONS = [
-  "AI Communication & Journalism",
-  "AI Business Development",
-  "AI HR Recruiter / Specialist",
-  "AI Public Relations",
-  "AI Project Management",
-  "Web Developer / Intern",
-  "AI Research Specialist",
-  "AI HR & Onboarding",
-  "Military & Veteran Volunteers",
-  "AI Video Editor / Producer",
-  "Book Publicist / Author PR",
-  "AI Graphic Designer",
-  "AI App Developer",
-  "AI WordPress Developer",
-  "Product Development Engineer",
-  "UNSDG Project Manager",
-  "AI Database Manager / Intern",
-  "Retired CSR / HR / PR Volunteers",
-  "AI Marketing Specialist",
-  "AI Social Media Intern",
-  "AI Marketing Manager",
-  "AI PHP Developer",
-  "AI Event Planner",
-  "TEDx Coach / Coordinator",
-  "AI Biz Dev Manager",
-  "AI Grant Writer",
-  "CSR / HR / PR Publicist",
-  "AI Volunteer Coordinator",
-  "AI Product Engineer",
-];
 
 const CATEGORIES = [
   "Architecture & Design",
@@ -85,6 +54,8 @@ export default function CertificateForm({
   const router = useRouter();
   const { groups } = useTemplates();
   const { selectedTemplate, setTemplate } = useTemplates();
+
+  const { fieldOfInterestOptions, loading: fieldOfInterestLoading } = useFieldOfInterest('opop');
 
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
@@ -293,7 +264,7 @@ const handleSubmit = (e: React.FormEvent) => {
     }
   }
 
-  onSubmit(formData,);
+  onSubmit(formData);
 };
 
   const renderCounter = (fieldName: keyof FormFields) => {
@@ -320,6 +291,11 @@ const filteredCategories = useMemo(() => {
 
   return Object.keys(categoryMap);
 }, [groups]);
+
+  // Create filtered field of interest options for the dropdown
+  const filteredFieldOfInterestOptions = useMemo(() => {
+    return fieldOfInterestOptions.map((f) => ({ value: f, label: f }));
+  }, [fieldOfInterestOptions]);
 
   // Determine when to show each field
   const showProgramName = !formData.fieldOfInterest;
@@ -394,7 +370,7 @@ const filteredCategories = useMemo(() => {
       <Select
         options={[
           { value: "", label: "-- Search or Select Field of Interest --" },
-          ...FIELD_OF_INTEREST_OPTIONS.map((f) => ({ value: f, label: f })),
+          ...filteredFieldOfInterestOptions,
         ]}
         value={
           formData.fieldOfInterest
@@ -403,7 +379,16 @@ const filteredCategories = useMemo(() => {
         }
         onChange={handleFieldOfInterestChange}
         isClearable={false}
+        isLoading={fieldOfInterestLoading}
+        noOptionsMessage={() => 
+          fieldOfInterestLoading 
+            ? "Loading field of interest options..." 
+            : "No field of interest options found"
+        }
       />
+      {fieldOfInterestLoading && (
+        <p className="text-xs text-gray-500 mt-1">Loading field of interest options...</p>
+      )}
     </div>
   )}
 
