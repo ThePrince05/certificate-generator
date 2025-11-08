@@ -1,7 +1,7 @@
 // app/api/google-sheets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxk2SAOnG9gzjcIYZG1h4GNsu_PPv1qAjJDrbHujGnZiMJiNAtm0CKLwezy9JOfUMbLEA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOTu8hPKWlPq88i5w6_pGyQtigdakPKnI-vk5oMHiY5TWcSRc7vGAqgF9j-x-uI3eMaQ/exec";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -98,24 +98,36 @@ export async function POST(request: NextRequest) {
     const bodyText = await request.text();
     console.log('📤 POST raw body:', bodyText);
     
-    let body;
+    let requestBody = '';
     
     // Check if the content type is form data
     if (request.headers.get('content-type')?.includes('application/x-www-form-urlencoded')) {
       // Parse URL-encoded form data
       const params = new URLSearchParams(bodyText);
-      body = params.get('groupData');
-      console.log('📤 Parsed form data - groupData:', body);
+      
+      // Handle different data parameters based on action
+      if (action === 'saveHistory') {
+        const historyData = params.get('historyData');
+        console.log('📤 Parsed form data - historyData:', historyData);
+        requestBody = historyData ? `historyData=${encodeURIComponent(historyData)}` : '';
+      } else {
+        // Default to groupData for other actions (saveGroup, updateGroup, etc.)
+        const groupData = params.get('groupData');
+        console.log('📤 Parsed form data - groupData:', groupData);
+        requestBody = groupData ? `groupData=${encodeURIComponent(groupData)}` : '';
+      }
     } else {
-      // Assume JSON
-      body = bodyText;
+      // Assume JSON - determine parameter name based on action
+      if (action === 'saveHistory') {
+        requestBody = `historyData=${encodeURIComponent(bodyText)}`;
+      } else {
+        requestBody = `groupData=${encodeURIComponent(bodyText)}`;
+      }
     }
     
-    // If we have groupData from form, use it, otherwise use the raw body
-    const requestBody = body ? `groupData=${encodeURIComponent(body)}` : `groupData=${encodeURIComponent(bodyText)}`;
-    
     console.log('🔁 Proxying POST to:', url);
-    console.log('📤 Final request body:', requestBody);
+    console.log('📤 Final request body length:', requestBody.length);
+    console.log('📤 Final request body preview:', requestBody.substring(0, 200) + '...');
     
     const response = await fetch(url, {
       method: 'POST',
@@ -126,8 +138,11 @@ export async function POST(request: NextRequest) {
     });
     
     console.log('📡 POST Response status:', response.status);
+    console.log('📡 POST Response ok:', response.ok);
     
     const responseText = await response.text();
+    console.log('📄 POST Raw response length:', responseText.length);
+    console.log('📄 POST Raw response preview:', responseText.substring(0, 200) + '...');
     
     if (responseText.trim().startsWith('<!DOCTYPE') || responseText.includes('<html')) {
       console.error('❌ Google Script returned HTML error for POST');
@@ -142,13 +157,16 @@ export async function POST(request: NextRequest) {
     
     try {
       const data = JSON.parse(responseText);
+      console.log('✅ POST Successfully parsed JSON response from Google Script');
       return NextResponse.json(data);
     } catch (jsonError) {
       console.error('❌ POST JSON parse error:', jsonError);
+      console.error('❌ Raw response that failed to parse:', responseText);
       return NextResponse.json(
         { 
           error: 'Invalid JSON response from Google Script',
-          success: false
+          success: false,
+          rawResponse: responseText.substring(0, 500)
         },
         { status: 502 }
       );

@@ -12,42 +12,74 @@ export interface TemplateGroup {
   type: string;
 }
 
+export interface HistoryItem {
+  id: string;
+  organization: string;
+  recipientName: string;
+  email?: string;
+  programName: string;
+  category: string;
+  fieldOfInterest: string;
+  achievementText: string;
+  certificateDate?: string;
+  type?: string;
+  generatedAt: string;
+  createdAt?: string;
+  contactInfo?: any;
+}
+
 interface DataContextType {
   // Data states
   groups: TemplateGroup[];
   fieldOfInterestOptions: string[];
   certificateTypes: string[];
+  history: HistoryItem[];
   
   // Loading states
   loading: {
     groups: boolean;
     fieldOfInterest: boolean;
     certificateTypes: boolean;
+    history: boolean;
+    deletingHistory: boolean; // NEW: Separate loading for delete operations
   };
   
-  // ✅ ADDED: Individual refresh functions
+  // Individual refresh functions
   refreshGroups: () => void;
   refreshCertificateTypes: () => void;
   refreshFieldOfInterest: () => void;
+  refreshHistory: () => void;
   
   // Error states
   errors: {
     groups: string | null;
     fieldOfInterest: string | null;
     certificateTypes: string | null;
+    history: string | null;
   };
   
   // Actions
   refreshData: () => void;
   isDataLoaded: boolean;
+  
+  // History actions
+  saveHistory: (items: HistoryItem | HistoryItem[]) => Promise<boolean>;
+  deleteHistoryItem: (id: string) => Promise<boolean>;
+  clearHistory: () => Promise<boolean>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// ⚠️ REPLACE WITH YOUR GOOGLE APPS SCRIPT URL ⚠️
 const SCRIPT_URL = "/api/google-sheets";
 
-// Fetch functions (moved from TemplateContext)
+// Helper function to get the correct organization identifier
+const getOrgIdentifier = (orgId: string, orgName: string): string => {
+  // For history operations, use the organization name
+  // For other operations, use the original orgId to maintain compatibility
+  return orgName || orgId;
+};
+
+// Existing fetch functions - KEEP ORIGINAL orgId FOR COMPATIBILITY
 const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> => {
   try {
     console.debug(`🔍 fetchGroupsFromSheets called for orgId: ${orgId}`);
@@ -61,6 +93,11 @@ const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> =>
 
     const result = await response.json();
     if (!result.success) {
+      // Handle "Sheet not found" gracefully
+      if (result.error?.includes('Sheet not found')) {
+        console.log(`📝 No groups sheet found for ${orgId}, returning empty array`);
+        return [];
+      }
       console.error(`❌ Google Sheets error: ${result.error}`);
       return [];
     }
@@ -86,6 +123,11 @@ const fetchFieldOfInterestOptions = async (orgId: string): Promise<string[]> => 
     if (data.success && data.fieldOfInterestOptions) {
       return data.fieldOfInterestOptions;
     } else {
+      // Handle "Sheet not found" gracefully
+      if (data.error?.includes('Sheet not found')) {
+        console.log(`📝 No field of interest sheet found for ${orgId}, returning empty array`);
+        return [];
+      }
       throw new Error(data.error || 'Failed to load field of interest options');
     }
   } catch (error) {
@@ -105,6 +147,11 @@ const fetchCertificateTypesFromSheets = async (orgId: string): Promise<string[]>
 
     const result = await response.json();
     if (!result.success) {
+      // Handle "Sheet not found" gracefully
+      if (result.error?.includes('Sheet not found')) {
+        console.log(`📝 No certificate types sheet found for ${orgId}, returning empty array`);
+        return [];
+      }
       console.error(`❌ Google Sheets error: ${result.error}`);
       return [];
     }
@@ -116,6 +163,111 @@ const fetchCertificateTypesFromSheets = async (orgId: string): Promise<string[]>
   }
 };
 
+// HISTORY FUNCTIONS - USE ORGANIZATION NAME FOR COMPATIBILITY WITH GOOGLE SCRIPT
+const fetchHistoryFromSheets = async (orgName: string): Promise<HistoryItem[]> => {
+  try {
+    console.log('🔄 fetchHistoryFromSheets called for orgName:', orgName);
+    const url = `${SCRIPT_URL}?action=getHistory&orgId=${encodeURIComponent(orgName)}`;
+    console.log('🔗 Fetching from URL:', url);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.error(`❌ Failed to fetch history: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch history: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('📄 History API response:', data);
+    
+    if (data.success && data.history) {
+      console.log(`✅ Successfully loaded ${data.history.length} history items`);
+      return data.history;
+    } else {
+      console.error('❌ API returned success: false', data.error);
+      throw new Error(data.error || 'Failed to load history');
+    }
+  } catch (error) {
+    console.error('💥 Error fetching history:', error);
+    return [];
+  }
+};
+
+const saveHistoryToSheets = async (orgName: string, historyData: HistoryItem | HistoryItem[]): Promise<boolean> => {
+  console.log('🌐 saveHistoryToSheets called');
+  console.log('🔑 Organization Name:', orgName);
+  console.log('📦 History data to save:', historyData);
+  
+  try {
+    const url = `${SCRIPT_URL}?action=saveHistory&orgId=${encodeURIComponent(orgName)}`;
+    console.log('🔗 Making request to:', url);
+    
+    const requestBody = `historyData=${encodeURIComponent(JSON.stringify(historyData))}`;
+    console.log('📤 Request body prepared, length:', requestBody.length);
+    
+    console.log('🔄 Sending fetch request...');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: requestBody
+    });
+
+    console.log('📡 Response received');
+    console.log('✅ Response status:', response.status);
+    console.log('✅ Response ok:', response.ok);
+    
+    if (!response.ok) {
+      console.error('❌ Fetch response not OK');
+      return false;
+    }
+    
+    console.log('📄 Parsing response JSON...');
+    const result = await response.json();
+    console.log('📄 Response data:', result);
+    
+    if (result.success) {
+      console.log('✅ API call successful - history saved to Google Sheets');
+      return true;
+    } else {
+      console.error('❌ API returned success: false');
+      return false;
+    }
+  } catch (error) {
+    console.error('💥 Fetch error occurred:', error);
+    return false;
+  }
+};
+
+const deleteHistoryItemFromSheets = async (orgName: string, historyId: string): Promise<boolean> => {
+  try {
+    const url = `${SCRIPT_URL}?action=deleteHistoryItem&orgId=${encodeURIComponent(orgName)}&historyId=${historyId}`;
+    console.log('🗑️ Deleting history item:', { orgName, historyId });
+    
+    const response = await fetch(url);
+    const result = await response.json();
+    
+    console.log('✅ Delete response:', result);
+    return result.success === true;
+  } catch (error) {
+    console.error('Error deleting history item:', error);
+    return false;
+  }
+};
+
+const clearHistoryFromSheets = async (orgName: string): Promise<boolean> => {
+  try {
+    const url = `${SCRIPT_URL}?action=clearHistory&orgId=${encodeURIComponent(orgName)}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    return result.success === true;
+  } catch (error) {
+    console.error('Error clearing history:', error);
+    return false;
+  }
+};
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const { selectedOrg } = useOrganization();
   
@@ -123,22 +275,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [groups, setGroups] = useState<TemplateGroup[]>([]);
   const [fieldOfInterestOptions, setFieldOfInterestOptions] = useState<string[]>([]);
   const [certificateTypes, setCertificateTypes] = useState<string[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   
-  // Loading states
+  // Loading states - ADDED deletingHistory state
   const [loading, setLoading] = useState({
     groups: false,
     fieldOfInterest: false,
-    certificateTypes: false
+    certificateTypes: false,
+    history: false,
+    deletingHistory: false // NEW: Track delete operations separately
   });
   
   // Error states
   const [errors, setErrors] = useState({
     groups: null as string | null,
     fieldOfInterest: null as string | null,
-    certificateTypes: null as string | null
+    certificateTypes: null as string | null,
+    history: null as string | null
   });
 
-  // Individual fetch functions
+  // Individual fetch functions - KEEP ORIGINAL orgId FOR COMPATIBILITY
   const fetchGroups = async (orgId: string): Promise<TemplateGroup[]> => {
     try {
       setLoading(prev => ({ ...prev, groups: true }));
@@ -148,7 +304,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return groupsData;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setErrors(prev => ({ ...prev, groups: errorMessage }));
+      // Only set error if it's not an expected empty state
+      if (!errorMessage.includes('Sheet not found')) {
+        setErrors(prev => ({ ...prev, groups: errorMessage }));
+      }
       console.error('Error fetching groups:', error);
       return [];
     } finally {
@@ -165,7 +324,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return fieldOfInterestData;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setErrors(prev => ({ ...prev, fieldOfInterest: errorMessage }));
+      if (!errorMessage.includes('Sheet not found')) {
+        setErrors(prev => ({ ...prev, fieldOfInterest: errorMessage }));
+      }
       console.error('Error fetching field of interest options:', error);
       return [];
     } finally {
@@ -182,7 +343,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return certificateTypesData;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setErrors(prev => ({ ...prev, certificateTypes: errorMessage }));
+      if (!errorMessage.includes('Sheet not found')) {
+        setErrors(prev => ({ ...prev, certificateTypes: errorMessage }));
+      }
       console.error('Error fetching certificate types:', error);
       return [];
     } finally {
@@ -190,7 +353,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ✅ ADDED: Individual refresh functions
+  // History fetch function - USE ORGANIZATION NAME
+  const fetchHistory = async (orgName: string): Promise<HistoryItem[]> => {
+    try {
+      setLoading(prev => ({ ...prev, history: true }));
+      setErrors(prev => ({ ...prev, history: null }));
+      
+      const historyData = await fetchHistoryFromSheets(orgName);
+      return historyData;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setErrors(prev => ({ ...prev, history: errorMessage }));
+      console.error('Error fetching history:', error);
+      return [];
+    } finally {
+      setLoading(prev => ({ ...prev, history: false }));
+    }
+  };
+
+  // Individual refresh functions - MIXED: Use orgId for groups/fields/types, orgName for history
   const refreshGroups = useCallback(async () => {
     if (selectedOrg?.id) {
       console.log('🔄 Refreshing groups data...');
@@ -215,62 +396,148 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedOrg?.id]);
 
-  // Main data loading function
-  const loadOrganizationData = async (orgId: string) => {
-    if (!orgId) return;
+  // Refresh history function - USE ORGANIZATION NAME
+  const refreshHistory = useCallback(async () => {
+    if (selectedOrg?.name) {
+      console.log('🔄 Refreshing history data...');
+      const historyData = await fetchHistory(selectedOrg.name);
+      setHistory(historyData);
+    }
+  }, [selectedOrg?.name]);
 
-    console.log(`🔄 Loading data for organization: ${orgId}`);
+  // History actions
+  const generateId = (): string => {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  };
+
+  const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Promise<boolean> => {
+    if (!selectedOrg?.name) return false;
     
-    // Fetch all data in parallel for better performance
-    const [groupsData, fieldOfInterestData, certificateTypesData] = await Promise.all([
-      fetchGroups(orgId),
-      fetchFieldOfInterest(orgId),
-      fetchCertificateTypesData(orgId)
+    try {
+      const itemsToSave = Array.isArray(items) 
+        ? items.map(item => ({
+            ...item,
+            id: item.id || generateId(),
+            organization: selectedOrg.name,
+            createdAt: item.createdAt || new Date().toISOString()
+          }))
+        : {
+            ...items,
+            id: items.id || generateId(),
+            organization: selectedOrg.name,
+            createdAt: items.createdAt || new Date().toISOString()
+          };
+      
+      const success = await saveHistoryToSheets(selectedOrg.name, itemsToSave);
+      if (success) {
+        await refreshHistory();
+      }
+      return success;
+    } catch (error) {
+      console.error('Error saving history:', error);
+      return false;
+    }
+  }, [selectedOrg, refreshHistory]);
+
+  // Enhanced deleteHistoryItem with loading state
+  const deleteHistoryItem = useCallback(async (id: string): Promise<boolean> => {
+    if (!selectedOrg?.name) return false;
+    
+    try {
+      setLoading(prev => ({ ...prev, deletingHistory: true }));
+      const success = await deleteHistoryItemFromSheets(selectedOrg.name, id);
+      if (success) {
+        setHistory(prev => prev.filter(item => item.id !== id));
+      }
+      return success;
+    } catch (error) {
+      console.error('Error deleting history item:', error);
+      return false;
+    } finally {
+      setLoading(prev => ({ ...prev, deletingHistory: false }));
+    }
+  }, [selectedOrg?.name]);
+
+  const clearHistory = useCallback(async (): Promise<boolean> => {
+    if (!selectedOrg?.name) return false;
+    
+    try {
+      setLoading(prev => ({ ...prev, deletingHistory: true }));
+      const success = await clearHistoryFromSheets(selectedOrg.name);
+      if (success) {
+        setHistory([]);
+      }
+      return success;
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      return false;
+    } finally {
+      setLoading(prev => ({ ...prev, deletingHistory: false }));
+    }
+  }, [selectedOrg?.name]);
+
+  // Main data loading function - MIXED: Use orgId for groups/fields/types, orgName for history
+  const loadOrganizationData = async (orgId: string, orgName: string) => {
+    if (!orgId || !orgName) return;
+
+    console.log(`🔄 Loading data for organization: ${orgName} (ID: ${orgId})`);
+    
+    // Fetch all data in parallel
+    const [groupsData, fieldOfInterestData, certificateTypesData, historyData] = await Promise.all([
+      fetchGroups(orgId),           // Use orgId for compatibility
+      fetchFieldOfInterest(orgId),  // Use orgId for compatibility
+      fetchCertificateTypesData(orgId), // Use orgId for compatibility
+      fetchHistory(orgName)         // Use orgName for history compatibility
     ]);
 
     setGroups(groupsData);
     setFieldOfInterestOptions(fieldOfInterestData);
     setCertificateTypes(certificateTypesData);
+    setHistory(historyData);
 
-    console.log(`✅ Data loaded for ${orgId}:`, {
+    console.log(`✅ Data loaded for ${orgName}:`, {
       groups: groupsData.length,
       fieldOfInterestOptions: fieldOfInterestData.length,
-      certificateTypes: certificateTypesData.length
+      certificateTypes: certificateTypesData.length,
+      history: historyData.length
     });
   };
 
-  // ✅ UPDATED: refreshData now uses individual refresh functions
   const refreshData = useCallback(() => {
-    if (selectedOrg?.id) {
+    if (selectedOrg?.id && selectedOrg?.name) {
       console.log('🔄 Refreshing all data...');
-      loadOrganizationData(selectedOrg.id);
+      loadOrganizationData(selectedOrg.id, selectedOrg.name);
     }
-  }, [selectedOrg?.id]);
+  }, [selectedOrg?.id, selectedOrg?.name]);
 
-  // Check if all essential data is loaded
   const isDataLoaded = 
     !loading.groups && 
     !loading.fieldOfInterest && 
-    !loading.certificateTypes;
+    !loading.certificateTypes &&
+    !loading.history;
 
   // Load data when organization changes
   useEffect(() => {
     if (selectedOrg) {
-      loadOrganizationData(selectedOrg.id);
+      loadOrganizationData(selectedOrg.id, selectedOrg.name);
     } else {
       // Clear data when no organization is selected
       setGroups([]);
       setFieldOfInterestOptions([]);
       setCertificateTypes([]);
+      setHistory([]);
       setLoading({
         groups: false,
         fieldOfInterest: false,
-        certificateTypes: false
+        certificateTypes: false,
+        history: false,
+        deletingHistory: false
       });
       setErrors({
         groups: null,
         fieldOfInterest: null,
-        certificateTypes: null
+        certificateTypes: null,
+        history: null
       });
     }
   }, [selectedOrg]);
@@ -280,14 +547,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       groups,
       fieldOfInterestOptions,
       certificateTypes,
+      history,
       loading,
       errors,
-      // ✅ ADDED: Individual refresh functions
       refreshGroups,
       refreshCertificateTypes,
       refreshFieldOfInterest,
+      refreshHistory,
       refreshData,
-      isDataLoaded
+      isDataLoaded,
+      saveHistory,
+      deleteHistoryItem,
+      clearHistory
     }}>
       {children}
     </DataContext.Provider>

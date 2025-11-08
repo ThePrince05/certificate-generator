@@ -69,8 +69,16 @@ export default function GenerateSingle() {
   const router = useRouter();
   const isDesktop = useIsDesktop();
   const { selectedOrg } = useOrganization();
-  const { selectedTemplate } = useTemplates(); // Remove loadGroups
-  const { groups, isDataLoaded, loading } = useData(); // Add DataContext
+  const { selectedTemplate } = useTemplates();
+  const { 
+    groups, 
+    isDataLoaded, 
+    loading, 
+    history, // Get history from DataContext
+    saveHistory, // Get saveHistory from DataContext
+    deleteHistoryItem, // Get deleteHistoryItem from DataContext
+    clearHistory // Get clearHistory from DataContext
+  } = useData();
 
   // State
   const [isDownloadingMulti, setIsDownloadingMulti] = useState(false);
@@ -79,7 +87,7 @@ export default function GenerateSingle() {
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
   const [dbSearch, setDbSearch] = useState("");
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
   const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
@@ -88,19 +96,17 @@ export default function GenerateSingle() {
   const [searchQuery, setSearchQuery] = useState("");
   const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
 
-  const [history, setHistory] = useState<any[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem("certificateHistory_v1");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-
   // Derived state
   const certificatesToShare = personCertificates.filter(cert =>
     selectedCertificates.includes(cert.id)
+  );
+
+  // Filtered history based on search query
+  const filteredHistory = history.filter((h) =>
+    [h.recipientName, h.programName, h.category, h.fieldOfInterest, h.email]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
   );
 
   // Effects - Data is now automatically loaded by DataContext when selectedOrg changes
@@ -110,8 +116,7 @@ export default function GenerateSingle() {
       return;
     }
     // Data loading is now handled automatically by DataContext
-    // Remove: loadGroups(selectedOrg.id);
-  }, [selectedOrg, router]); // Remove loadGroups dependency
+  }, [selectedOrg, router]);
 
   useEffect(() => {
     const loadDemoData = async () => {
@@ -159,25 +164,28 @@ export default function GenerateSingle() {
     }
   }, [selectedPerson]);
 
-  // Handlers
-  const saveHistory = (items: any[]) => {
-    setHistory(items);
-    try {
-      localStorage.setItem("certificateHistory_v1", JSON.stringify(items));
-    } catch (e) {
-      // console.error("Failed to save history:", e);
-    }
-  };
+useEffect(() => {
+  console.log('🔍 History state:', history);
+  console.log('🔍 History length:', history.length);
+  console.log('🔍 Show history:', showHistory);
+}, [history, showHistory]);
 
-  const handleGenerateFromDatabase = (cert: DemoCertificate) => {
+// Debug when certificates are generated
+useEffect(() => {
+  console.log('🔍 Form data updated:', formData);
+}, [formData]);
+
+  // Handlers - Updated to use DataContext history functions
+  const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
     const newItem = {
       ...cert,
-      certificateType: cert.type || "Achievement", // Add certificateType here
+      certificateType: cert.type || "Achievement",
       type: cert.type || "generate-single",
       id: uuidv4(),
       generatedAt: new Date().toISOString(),
     };
 
+    // Check if already exists in history
     const alreadyExists = history.some(
       (h) =>
         h.recipientName === cert.recipientName &&
@@ -186,7 +194,7 @@ export default function GenerateSingle() {
     );
 
     if (!alreadyExists) {
-      saveHistory([newItem, ...history]);
+      await saveHistory([newItem]);
     }
 
     // Make sure certificateType is included
@@ -203,34 +211,74 @@ export default function GenerateSingle() {
     return `Awarded ${month} ${year}`;
   };
 
- const handleGenerate = (data: CleanCertificateData) => {
+ const handleGenerate = async (data: CleanCertificateData) => {
+  console.log('🚀 handleGenerate called with data:', data);
+  
+  // Check if already exists in history
+  console.log('📊 Checking if certificate exists in history...');
+  console.log('📋 Current history:', history);
+  
   const exists = history.some(
     (h) =>
       h.recipientName === data.recipientName &&
       h.programName === data.programName
   );
 
+  console.log('✅ Certificate exists in history:', exists);
+
   // Set the type directly from the data
   const formDataWithType = {
     ...data,
-    type: data.type || "Achievement" // Use the existing type field
+    type: data.type || "Achievement"
   };
+  console.log('🎯 Form data with type:', formDataWithType);
 
   if (!exists) {
+    console.log('💾 Creating new history item (certificate not in history)...');
+    
     const item = {
       ...formDataWithType,
       id: uuidv4(),
       generatedAt: new Date().toISOString(),
     };
-    const updatedHistory = [item, ...history];
-    saveHistory(updatedHistory);
+    
+    console.log('📦 History item to save:', item);
+    console.log('🔍 Item organization:', item.organization);
+    console.log('🔍 Item type:', item.type);
+    console.log('🔍 Item certificateDate:', item.certificateDate);
+
+    try {
+      console.log('💾 Calling saveHistory with item...');
+      const saveResult = await saveHistory([item]);
+      console.log('✅ saveHistory returned:', saveResult);
+      
+      if (saveResult) {
+        console.log('🎉 Successfully saved to history!');
+        console.log('🔄 History should refresh automatically via DataContext');
+      } else {
+        console.log('❌ saveHistory returned false - check DataContext logs');
+      }
+    } catch (error) {
+      console.error('💥 Error in saveHistory call:', error);
+      console.error('💥 Error details:', error instanceof Error ? error.message : 'Unknown error');
+    }
+  } else {
+    console.log('⏩ Certificate already exists in history, skipping save');
   }
 
+  console.log('🎯 Setting form data for preview...');
   setFormData(formDataWithType);
+  console.log('✅ Form data set, preview should show');
 };
 
-  const handleDeleteHistory = (id: string) => {
-    saveHistory(history.filter((h) => h.id !== id));
+  const handleDeleteHistory = async (id: string) => {
+    await deleteHistoryItem(id);
+  };
+
+  const handleClearHistory = async () => {
+    if (window.confirm('Are you sure you want to clear all history?')) {
+      await clearHistory();
+    }
   };
 
   const doDownloadPDF = (item: any) => {
@@ -304,13 +352,6 @@ export default function GenerateSingle() {
       (s.email && s.email.toLowerCase().includes(q))
     );
   });
-
-  const filteredHistory = history.filter((h) =>
-    [h.recipientName, h.programName, h.category, h.fieldOfInterest, h.email]
-      .join(" ")
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
 
   const getTemplateUrl = (category?: string) => {
     if (!category) return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
@@ -507,7 +548,7 @@ export default function GenerateSingle() {
                       className="flex flex-wrap justify-center gap-4 mt-6"
                     >
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
                           if (selected.length === 0) return;
 
@@ -526,7 +567,7 @@ export default function GenerateSingle() {
                           );
 
                           if (newHistoryEntries.length > 0) {
-                            saveHistory([...newHistoryEntries, ...history]);
+                            await saveHistory(newHistoryEntries);
                           }
 
                           setShareTarget({ type: "person", data: selected });
@@ -724,7 +765,7 @@ export default function GenerateSingle() {
           setShowHistory={setShowHistory}
           setSearchQuery={setSearchQuery}
           setFormData={setFormData}
-          saveHistory={saveHistory}
+          saveHistory={handleClearHistory} // Use clearHistory for the "Clear all" button
           handleDeleteHistory={handleDeleteHistory}
           doDownloadPDF={doDownloadPDF}
           doDownloadJPEG={doDownloadJPEG}

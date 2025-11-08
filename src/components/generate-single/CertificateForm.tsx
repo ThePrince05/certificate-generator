@@ -219,24 +219,32 @@ export default function CertificateForm({
   };
 
   // --- form submission ---
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+// In your CertificateForm component, add debug logs:
 
-    // Validation: Ensure only one of Program Name or Field of Interest is selected
-    if (formData.programName && formData.fieldOfInterest) {
-      alert("Please select either Program Name OR Field of Interest, not both.");
-      return;
-    }
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+  console.log('🚀 CertificateForm: Form submitted!');
+  console.log('📝 Form data being submitted:', formData);
 
-    // Validation: Ensure at least one of Program Name or Field of Interest is selected
-    if (!formData.programName && !formData.fieldOfInterest) {
-      alert("Please select either Program Name OR Field of Interest.");
-      return;
-    }
+  // Validation: Ensure only one of Program Name or Field of Interest is selected
+  if (formData.programName && formData.fieldOfInterest) {
+    console.log('❌ Validation failed: Both program and field selected');
+    alert("Please select either Program Name OR Field of Interest, not both.");
+    return;
+  }
 
-    // Submit the form data
-    onSubmit(formData);
-  };
+  // Validation: Ensure at least one of Program Name or Field of Interest is selected
+  if (!formData.programName && !formData.fieldOfInterest) {
+    console.log('❌ Validation failed: Neither program nor field selected');
+    alert("Please select either Program Name OR Field of Interest.");
+    return;
+  }
+
+  console.log('✅ Validation passed, calling onSubmit...');
+  
+  // Submit the form data
+  onSubmit(formData);
+};
 
   // --- character counter function ---
   const renderCounter = (fieldName: keyof FormFields) => {
