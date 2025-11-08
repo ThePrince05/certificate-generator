@@ -28,12 +28,26 @@ export interface HistoryItem {
   contactInfo?: any;
 }
 
+// UPDATED: Make recipientName required since it's now in your CSV
+export interface DemoCertificateData {
+  recipientName: string; // CHANGED: from optional to required
+  email: string;
+  programName: string;
+  category: string;
+  achievementText: string;
+  type: string;
+  organization: string;
+  fieldOfInterest?: string;
+  certificateDate?: string;
+}
+
 interface DataContextType {
   // Data states
   groups: TemplateGroup[];
   fieldOfInterestOptions: string[];
   certificateTypes: string[];
   history: HistoryItem[];
+  demoData: DemoCertificateData[]; 
   
   // Loading states
   loading: {
@@ -42,6 +56,7 @@ interface DataContextType {
     certificateTypes: boolean;
     history: boolean;
     deletingHistory: boolean;
+    demoData: boolean;
   };
   
   // Individual refresh functions
@@ -49,6 +64,7 @@ interface DataContextType {
   refreshCertificateTypes: () => void;
   refreshFieldOfInterest: () => void;
   refreshHistory: () => void;
+  refreshDemoData: () => void;
   
   // Error states
   errors: {
@@ -56,6 +72,7 @@ interface DataContextType {
     fieldOfInterest: string | null;
     certificateTypes: string | null;
     history: string | null;
+    demoData: string | null;
   };
   
   // Actions
@@ -72,7 +89,47 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const SCRIPT_URL = "/api/google-sheets";
 
-// Existing fetch functions - KEEP ORIGINAL orgId FOR COMPATIBILITY
+// UPDATED: Enhanced fetch function with better type handling
+const fetchDemoDataFromSheets = async (orgId: string): Promise<DemoCertificateData[]> => {
+  try {
+    console.debug(`🔍 [DEMO DATA] fetchDemoDataFromSheets called for orgId: ${orgId}`);
+    const url = `${SCRIPT_URL}?action=getDemoData&orgId=${encodeURIComponent(orgId)}`;
+    console.debug(`🔗 [DEMO DATA] Fetching from URL: ${url}`);
+    
+    const response = await fetch(url);
+    console.debug(`📡 [DEMO DATA] Response status: ${response.status}, ok: ${response.ok}`);
+    
+    if (!response.ok) {
+      console.error(`❌ [DEMO DATA] Failed to fetch demo data: ${response.status} ${response.statusText}`);
+      return [];
+    }
+
+    const result = await response.json();
+    console.debug(`📄 [DEMO DATA] Full API response:`, result);
+    
+    if (!result.success) {
+      console.error(`❌ [DEMO DATA] API returned success: false`, result.error);
+      return [];
+    }
+
+    const demoDataCount = result.demoData?.length || 0;
+    console.debug(`✨ [DEMO DATA] API returned ${demoDataCount} records`);
+    
+    if (demoDataCount > 0) {
+      console.debug(`📊 [DEMO DATA] First record:`, result.demoData[0]);
+      console.debug(`🏢 [DEMO DATA] All organizations:`, [...new Set(result.demoData.map((item: DemoCertificateData) => item.organization))]);
+      
+      // UPDATED: Log recipient names to verify data structure
+      console.debug(`👥 [DEMO DATA] Sample recipient names:`, result.demoData.slice(0, 3).map((item: DemoCertificateData) => item.recipientName));
+    }
+    
+    return result.demoData || [];
+  } catch (error) {
+    console.error(`💥 [DEMO DATA] Fetch error:`, error);
+    return [];
+  }
+};
+
 const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> => {
   try {
     console.debug(`🔍 fetchGroupsFromSheets called for orgId: ${orgId}`);
@@ -313,6 +370,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [fieldOfInterestOptions, setFieldOfInterestOptions] = useState<string[]>([]);
   const [certificateTypes, setCertificateTypes] = useState<string[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [demoData, setDemoData] = useState<DemoCertificateData[]>([]);
   
   // Loading states - ADDED deletingHistory state
   const [loading, setLoading] = useState({
@@ -320,7 +378,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     fieldOfInterest: false,
     certificateTypes: false,
     history: false,
-    deletingHistory: false
+    deletingHistory: false,
+    demoData: false 
   });
   
   // Error states
@@ -328,10 +387,42 @@ export function DataProvider({ children }: { children: ReactNode }) {
     groups: null as string | null,
     fieldOfInterest: null as string | null,
     certificateTypes: null as string | null,
-    history: null as string | null
+    history: null as string | null,
+    demoData: null as string | null 
   });
 
-  // Individual fetch functions - KEEP ORIGINAL orgId FOR COMPATIBILITY
+  // UPDATED: Enhanced demo data fetch function with better logging
+  const fetchDemoData = async (orgId: string): Promise<DemoCertificateData[]> => {
+    try {
+      console.debug(`🔄 [DEMO DATA] Starting fetch for orgId: ${orgId}`);
+      setLoading(prev => ({ ...prev, demoData: true }));
+      setErrors(prev => ({ ...prev, demoData: null }));
+      
+      const demoDataResult = await fetchDemoDataFromSheets(orgId);
+      
+      console.debug(`✅ [DEMO DATA] Fetch completed. Result count: ${demoDataResult.length}`);
+      if (demoDataResult.length > 0) {
+        console.debug(`📋 [DEMO DATA] First record sample:`, demoDataResult[0]);
+        // UPDATED: Log recipient names to verify data structure
+        console.debug(`👥 [DEMO DATA] Recipient names found:`, demoDataResult.map(item => item.recipientName).slice(0, 5));
+      }
+      
+      return demoDataResult;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`💥 [DEMO DATA] Error in fetchDemoData:`, error);
+      
+      // Only set error if it's not an expected empty state
+      if (!errorMessage.includes('Sheet not found') && !errorMessage.includes('DemoData sheet not found')) {
+        setErrors(prev => ({ ...prev, demoData: errorMessage }));
+      }
+      return [];
+    } finally {
+      setLoading(prev => ({ ...prev, demoData: false }));
+      console.debug(`🏁 [DEMO DATA] Fetch process completed`);
+    }
+  };
+
   const fetchGroups = async (orgId: string): Promise<TemplateGroup[]> => {
     try {
       setLoading(prev => ({ ...prev, groups: true }));
@@ -442,6 +533,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedOrg?.name]);
 
+  const refreshDemoData = useCallback(async () => {
+    if (selectedOrg?.id) {
+      console.log('🔄 [DEMO DATA] Refreshing demo data...');
+      const demoDataResult = await fetchDemoData(selectedOrg.id);
+      console.log(`✅ [DEMO DATA] Setting demo data state with ${demoDataResult.length} records`);
+      setDemoData(demoDataResult);
+    }
+  }, [selectedOrg?.id]);
+
+  // ADDED: Main refreshData function
+  const refreshData = useCallback(() => {
+    if (selectedOrg?.id && selectedOrg?.name) {
+      console.log('🔄 Refreshing all data...');
+      loadOrganizationData(selectedOrg.id, selectedOrg.name);
+    }
+  }, [selectedOrg?.id, selectedOrg?.name]);
+
   // History actions
   const generateId = (): string => {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -529,68 +637,79 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedOrg?.name]);
 
-  // Main data loading function - MIXED: Use orgId for groups/fields/types, orgName for history
+  // UPDATED: Enhanced main data loading function with better demo data logging
   const loadOrganizationData = async (orgId: string, orgName: string) => {
     if (!orgId || !orgName) return;
 
-    console.log(`🔄 Loading data for organization: ${orgName} (ID: ${orgId})`);
+    console.log(`🔄 [DATA CONTEXT] Loading data for organization: ${orgName} (ID: ${orgId})`);
     
-    // Fetch all data in parallel
-    const [groupsData, fieldOfInterestData, certificateTypesData, historyData] = await Promise.all([
+    // Fetch all data in parallel (INCLUDING DEMO DATA)
+    const [groupsData, fieldOfInterestData, certificateTypesData, historyData, demoDataResult] = await Promise.all([
       fetchGroups(orgId),           // Use orgId for compatibility
       fetchFieldOfInterest(orgId),  // Use orgId for compatibility
       fetchCertificateTypesData(orgId), // Use orgId for compatibility
-      fetchHistory(orgName)         // Use orgName for history compatibility
+      fetchHistory(orgName),        // Use orgName for history compatibility
+      fetchDemoData(orgId)          // Fetch demo data using orgId
     ]);
 
     setGroups(groupsData);
     setFieldOfInterestOptions(fieldOfInterestData);
     setCertificateTypes(certificateTypesData);
     setHistory(historyData);
+    
+    // UPDATED: Enhanced demo data state setting with detailed logging
+    console.log(`✅ [DEMO DATA] Setting demo data state with ${demoDataResult.length} records`);
+    if (demoDataResult.length > 0) {
+      console.log(`📊 [DEMO DATA] Organizations in demo data:`, [...new Set(demoDataResult.map(item => item.organization))]);
+      console.log(`👥 [DEMO DATA] Unique recipients: ${[...new Set(demoDataResult.map(item => item.recipientName))].length}`);
+      console.log(`📧 [DEMO DATA] Sample emails:`, demoDataResult.slice(0, 3).map(item => item.email));
+    }
+    setDemoData(demoDataResult);
 
-    console.log(`✅ Data loaded for ${orgName}:`, {
+    console.log(`✅ [DATA CONTEXT] Data loaded for ${orgName}:`, {
       groups: groupsData.length,
       fieldOfInterestOptions: fieldOfInterestData.length,
       certificateTypes: certificateTypesData.length,
-      history: historyData.length
+      history: historyData.length,
+      demoData: demoDataResult.length
     });
   };
-
-  const refreshData = useCallback(() => {
-    if (selectedOrg?.id && selectedOrg?.name) {
-      console.log('🔄 Refreshing all data...');
-      loadOrganizationData(selectedOrg.id, selectedOrg.name);
-    }
-  }, [selectedOrg?.id, selectedOrg?.name]);
 
   const isDataLoaded = 
     !loading.groups && 
     !loading.fieldOfInterest && 
     !loading.certificateTypes &&
-    !loading.history;
+    !loading.history &&
+    !loading.demoData; // Include demo data in loaded check
 
-  // Load data when organization changes
+  // Enhanced data loading effect with demo data logging
   useEffect(() => {
     if (selectedOrg) {
+      console.log(`🏁 [DATA CONTEXT] Organization selected: ${selectedOrg.name} (${selectedOrg.id})`);
+      console.log(`🔄 [DATA CONTEXT] Starting data load...`);
       loadOrganizationData(selectedOrg.id, selectedOrg.name);
     } else {
+      console.log(`🏁 [DATA CONTEXT] No organization selected, clearing data`);
       // Clear data when no organization is selected
       setGroups([]);
       setFieldOfInterestOptions([]);
       setCertificateTypes([]);
       setHistory([]);
+      setDemoData([]); // Clear demo data
       setLoading({
         groups: false,
         fieldOfInterest: false,
         certificateTypes: false,
         history: false,
-        deletingHistory: false
+        deletingHistory: false,
+        demoData: false // Reset demo data loading
       });
       setErrors({
         groups: null,
         fieldOfInterest: null,
         certificateTypes: null,
-        history: null
+        history: null,
+        demoData: null // Reset demo data error
       });
     }
   }, [selectedOrg]);
@@ -601,13 +720,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       fieldOfInterestOptions,
       certificateTypes,
       history,
+      demoData, // Include demo data in context
       loading,
       errors,
       refreshGroups,
       refreshCertificateTypes,
       refreshFieldOfInterest,
       refreshHistory,
-      refreshData,
+      refreshDemoData, // Include refreshDemoData in context
+      refreshData, // Include refreshData in context
       isDataLoaded,
       saveHistory,
       deleteHistoryItem,

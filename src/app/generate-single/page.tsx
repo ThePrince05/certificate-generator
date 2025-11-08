@@ -9,7 +9,7 @@ import { FaShareAlt, FaFilePdf, FaFileImage, FaDownload } from "react-icons/fa";
 // Contexts
 import { useOrganization } from "../context/OrganizationContext";
 import { useTemplates } from "../context/TemplateContext";
-import { useData } from "../context/DataContext"; // Add DataContext import
+import { useData } from "../context/DataContext";
 
 // Components
 import CertificateForm from "@/components/generate-single/CertificateForm";
@@ -18,7 +18,6 @@ import { ShareModal } from "@/components/generate-single/ShareModal";
 // Utilities
 import { generatePDF, generateJPEG } from "../utils/generatePDF";
 import { handleMultiDownload } from "@/app/utils/multiDownload";
-import { loadCSVData, parseCSVData } from "../utils/csvLoader";
 
 // Types & Data
 import { CleanCertificateData } from "@/types/certificates";
@@ -63,6 +62,14 @@ function useIsDesktop() {
   return isDesktop;
 }
 
+// ADDED: getCertificateDate function
+const getCertificateDate = () => {
+  const today = new Date();
+  const month = today.toLocaleString("en-GB", { month: "long" });
+  const year = today.getFullYear();
+  return `Awarded ${month} ${year}`;
+};
+
 // Main Component
 export default function GenerateSingle() {
   const router = useRouter();
@@ -73,10 +80,11 @@ export default function GenerateSingle() {
     groups, 
     isDataLoaded, 
     loading, 
-    history, // Get history from DataContext
-    saveHistory, // Get saveHistory from DataContext
-    deleteHistoryItem, // Get deleteHistoryItem from DataContext
-    clearHistory // Get clearHistory from DataContext
+    history,
+    demoData,
+    saveHistory,
+    deleteHistoryItem,
+    clearHistory
   } = useData();
 
   // State
@@ -95,7 +103,6 @@ export default function GenerateSingle() {
   const [searchQuery, setSearchQuery] = useState("");
   const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
   const [isSharingSelected, setIsSharingSelected] = useState(false);
-
 
   // Derived state
   const certificatesToShare = personCertificates.filter(cert =>
@@ -119,43 +126,65 @@ export default function GenerateSingle() {
     // Data loading is now handled automatically by DataContext
   }, [selectedOrg, router]);
 
-  useEffect(() => {
-    const loadDemoData = async () => {
-      if (!selectedOrg) return;
+  // SIMPLIFIED: Process demo data with merged structure
+  // FIXED: Process demo data with proper type safety
+useEffect(() => {
+  const processDemoData = () => {
+    if (!selectedOrg || !demoData) {
+      console.log(`📭 No selectedOrg or demo data available`);
+      return;
+    }
 
-      const csvContent = await loadCSVData();
-      const parsedData = parseCSVData(csvContent, selectedOrg.name);
-
-      // First, filter the data by selected organization
-      const filteredData = parsedData.filter(item => item.organization === selectedOrg.name);
-      
-      const demoCertificates: DemoCertificate[] = filteredData.map((item) => {
-        const emailFromCSV = (item.email || "").trim();
-        const nameFromCSV = (item.recipientName || "").trim();
-
-        const contact = contactInfoList.find(
-          (c) => (c.email || "").toLowerCase() === emailFromCSV.toLowerCase()
-        );
-
+    console.log(`📊 Processing ${demoData.length} demo records for: ${selectedOrg.name}`);
+    
+    // FIXED: Ensure recipientName is always a string with proper type checking
+    const demoCertificates: DemoCertificate[] = demoData
+      .filter(item => {
+        // Flexible organization matching
+        const orgMatches = !item.organization || 
+                          item.organization === selectedOrg.name || 
+                          item.organization === selectedOrg.id;
+        
+        // FIXED: Use non-null assertion and ensure recipientName exists
+        const hasRequiredData = item.recipientName && item.email && item.programName;
+        
+        if (!hasRequiredData) {
+          console.warn('⚠️ Skipping incomplete record:', item);
+          return false;
+        }
+        
+        return orgMatches;
+      })
+      .map((item) => {
+        // FIXED: Ensure recipientName is always defined with fallback
+        const recipientName = item.recipientName!; // Non-null assertion since we filtered above
+        
         return {
           id: uuidv4(),
-          recipientName: nameFromCSV || contact?.recipientName || "Unknown",
-          email: emailFromCSV || contact?.email || "",
-          programName: item.programName || "",
-          category: item.category || "",
-          achievementText: item.achievementText || "",
-          fieldOfInterest: item.fieldOfInterest ?? "",
+          // FIXED: recipientName is now guaranteed to be a string
+          recipientName: recipientName,
+          email: item.email!,
+          programName: item.programName!,
+          category: item.category || "General",
+          achievementText: item.achievementText || "In recognition of your achievement",
+          fieldOfInterest: item.fieldOfInterest || item.category || "General",
           certificateDate: item.certificateDate || getCertificateDate(),
-          organization: item.organization,
+          organization: item.organization || selectedOrg.name,
           type: item.type || "Achievement",
         };
       });
 
-      setDbCertificates(demoCertificates);
-    };
+    console.log(`✅ Created ${demoCertificates.length} certificates from demo data`);
+    
+    if (demoCertificates.length > 0) {
+      console.log(`👥 Sample certificates:`, demoCertificates.slice(0, 2));
+    }
+    
+    setDbCertificates(demoCertificates);
+  };
 
-    loadDemoData();
-  }, [selectedOrg]);
+  processDemoData();
+}, [selectedOrg, demoData]);
 
   useEffect(() => {
     if (selectedPerson) {
@@ -165,134 +194,74 @@ export default function GenerateSingle() {
     }
   }, [selectedPerson]);
 
-useEffect(() => {
-  console.log('🔍 History state:', history);
-  console.log('🔍 History length:', history.length);
-  console.log('🔍 Show history:', showHistory);
-}, [history, showHistory]);
-
-// Debug when certificates are generated
-useEffect(() => {
-  console.log('🔍 Form data updated:', formData);
-}, [formData]);
-
-// Debug when history changes
-useEffect(() => {
-  console.log('🔍 History updated:', history);
-  console.log('🔍 History items count:', history.length);
-}, [history]);
-
-  // Handlers - Updated to use DataContext history functions
-const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
-  console.log('🚀 handleGenerateFromDatabase called with certificate:', cert);
-  
-  // Create the history item
-  const newItem = {
-    ...cert,
-    certificateType: cert.type || "Achievement",
-    type: cert.type || "generate-single",
-    id: uuidv4(),
-    generatedAt: new Date().toISOString(),
-  };
-
-  console.log('📦 Created history item:', newItem);
-
-  // Check if already exists in history
-  const alreadyExists = history.some(
-    (h) =>
-      h.recipientName === cert.recipientName &&
-      h.programName === cert.programName &&
-      h.email === cert.email
-  );
-
-  console.log('✅ Certificate already in history:', alreadyExists);
-
-  if (!alreadyExists) {
-    try {
-      console.log('💾 Saving to history...');
-      const saveResult = await saveHistory([newItem]);
-      console.log('✅ saveHistory result:', saveResult);
-    } catch (error) {
-      console.error('💥 Error saving to history:', error);
-    }
-  } else {
-    console.log('⏩ Certificate already in history, skipping save');
-  }
-
-  // Set form data for preview
-  console.log('🎯 Setting form data for preview...');
-  setFormData({
-    ...cert,
-    type: cert.type || "generate-single",
-  });
-};
-
-  const getCertificateDate = () => {
-    const today = new Date();
-    const month = today.toLocaleString("en-GB", { month: "long" });
-    const year = today.getFullYear();
-    return `Awarded ${month} ${year}`;
-  };
-
- const handleGenerate = async (data: CleanCertificateData) => {
-  console.log('🚀 handleGenerate called with data:', data);
-  
-  // Check if already exists in history
-  console.log('📊 Checking if certificate exists in history...');
-  console.log('📋 Current history:', history);
-  
-  const exists = history.some(
-    (h) =>
-      h.recipientName === data.recipientName &&
-      h.programName === data.programName
-  );
-
-  console.log('✅ Certificate exists in history:', exists);
-
-  // Set the type directly from the data
-  const formDataWithType = {
-    ...data,
-    type: data.type || "Achievement"
-  };
-  console.log('🎯 Form data with type:', formDataWithType);
-
-  if (!exists) {
-    console.log('💾 Creating new history item (certificate not in history)...');
+  // Handlers
+  const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
+    console.log('🚀 handleGenerateFromDatabase called with certificate:', cert);
     
-    const item = {
-      ...formDataWithType,
+    // Create the history item
+    const newItem = {
+      ...cert,
+      certificateType: cert.type || "Achievement",
+      type: cert.type || "generate-single",
       id: uuidv4(),
       generatedAt: new Date().toISOString(),
     };
-    
-    console.log('📦 History item to save:', item);
-    console.log('🔍 Item organization:', item.organization);
-    console.log('🔍 Item type:', item.type);
-    console.log('🔍 Item certificateDate:', item.certificateDate);
 
-    try {
-      console.log('💾 Calling saveHistory with item...');
-      const saveResult = await saveHistory([item]);
-      console.log('✅ saveHistory returned:', saveResult);
-      
-      if (saveResult) {
-        console.log('🎉 Successfully saved to history!');
-        console.log('🔄 History should refresh automatically via DataContext');
-      } else {
-        console.log('❌ saveHistory returned false - check DataContext logs');
+    // Check if already exists in history
+    const alreadyExists = history.some(
+      (h) =>
+        h.recipientName === cert.recipientName &&
+        h.programName === cert.programName &&
+        h.email === cert.email
+    );
+
+    if (!alreadyExists) {
+      try {
+        await saveHistory([newItem]);
+      } catch (error) {
+        console.error('💥 Error saving to history:', error);
       }
-    } catch (error) {
-      console.error('💥 Error in saveHistory call:', error);
-      console.error('💥 Error details:', error instanceof Error ? error.message : 'Unknown error');
     }
-  } else {
-    console.log('⏩ Certificate already exists in history, skipping save');
-  }
 
-  console.log('🎯 Setting form data for preview...');
-  setFormData(formDataWithType);
-  console.log('✅ Form data set, preview should show');
-};
+    // Set form data for preview
+    setFormData({
+      ...cert,
+      type: cert.type || "generate-single",
+    });
+  };
+
+  const handleGenerate = async (data: CleanCertificateData) => {
+    console.log('🚀 handleGenerate called with data:', data);
+    
+    // Check if already exists in history
+    const exists = history.some(
+      (h) =>
+        h.recipientName === data.recipientName &&
+        h.programName === data.programName
+    );
+
+    // Set the type directly from the data
+    const formDataWithType = {
+      ...data,
+      type: data.type || "Achievement"
+    };
+
+    if (!exists) {
+      const item = {
+        ...formDataWithType,
+        id: uuidv4(),
+        generatedAt: new Date().toISOString(),
+      };
+      
+      try {
+        await saveHistory([item]);
+      } catch (error) {
+        console.error('💥 Error in saveHistory call:', error);
+      }
+    }
+
+    setFormData(formDataWithType);
+  };
 
   const handleDeleteHistory = async (id: string) => {
     await deleteHistoryItem(id);
@@ -330,39 +299,20 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
     }, 250);
   };
 
-  // Helper functions
+  // SIMPLIFIED: Remove complex contact matching logic since we have recipientName in CSV
   const suggestions = (() => {
-    const map = new Map<string, { name: string; email: string }>();
-    const validEmails = new Set<string>();
-    const normalizedNames: string[] = [];
-
-    for (const c of dbCertificates) {
-      const e = c.email?.trim().toLowerCase();
-      if (e) validEmails.add(e);
-
-      const n = c.recipientName?.trim().toLowerCase();
-      if (n) normalizedNames.push(n);
-    }
-
-    for (const contact of contactInfoList) {
-      const name = contact.recipientName?.trim();
-      const email = contact.email?.trim();
-      if (!name || !email) continue;
-
-      const emailLower = email.toLowerCase();
-      const nameLower = name.toLowerCase();
-
-      const emailMatch = validEmails.has(emailLower);
-      const nameMatch = normalizedNames.some(
-        (n) => n.includes(nameLower) || nameLower.includes(n)
-      );
-
-      if ((emailMatch || nameMatch) && !map.has(emailLower)) {
-        map.set(emailLower, { name, email });
+    // Just extract unique recipient names from dbCertificates
+    const uniqueRecipients = new Map<string, { name: string; email: string }>();
+    
+    for (const cert of dbCertificates) {
+      const name = cert.recipientName?.trim();
+      const email = cert.email?.trim();
+      if (name && email && !uniqueRecipients.has(email)) {
+        uniqueRecipients.set(email, { name, email });
       }
     }
-
-    return Array.from(map.values());
+    
+    return Array.from(uniqueRecipients.values());
   })();
 
   const filteredPersons = suggestions.filter((s) => {
@@ -517,7 +467,6 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                             <div className="flex gap-2 flex-wrap">
                               <DownloadDropdown
                                 onDownloadPDF={() => {
-                                  console.log("[DEBUG] PDF download clicked for certificate:", cert);
                                   handleGenerateFromDatabase(cert); // This will add to history
                                   setTimeout(
                                     () =>
@@ -533,7 +482,6 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                                   );
                                 }}
                                 onDownloadJPEG={() => {
-                                  console.log("[DEBUG] JPEG download clicked for certificate:", cert);
                                   handleGenerateFromDatabase(cert); // This will add to history
                                   setTimeout(
                                     () =>
@@ -570,12 +518,12 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                     >
                       <button
                         onClick={async () => {
-                          if (isSharingSelected) return; // Prevent multiple clicks
+                          if (isSharingSelected) return;
                           
                           const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
                           if (selected.length === 0) return;
 
-                          setIsSharingSelected(true); // Start loading
+                          setIsSharingSelected(true);
                           
                           try {
                             // Add to history if not already there
@@ -593,7 +541,6 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                             );
 
                             if (newHistoryEntries.length > 0) {
-                              console.log('💾 Saving multiple certificates to history:', newHistoryEntries);
                               await saveHistory(newHistoryEntries);
                             }
 
@@ -602,7 +549,7 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                           } catch (error) {
                             console.error('Error sharing selected certificates:', error);
                           } finally {
-                            setIsSharingSelected(false); // End loading
+                            setIsSharingSelected(false);
                           }
                         }}
                         disabled={isSharingSelected}
@@ -630,7 +577,6 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                         onDownloadPDF={async () => {
                           const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
                           if (selected.length === 0) return;
-                          console.log("[DEBUG] Multi PDF download clicked for:", selected);
                           setIsDownloadingMulti(true);
                           try {
                             await handleMultiDownload(
@@ -645,7 +591,6 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                         onDownloadJPEG={async () => {
                           const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
                           if (selected.length === 0) return;
-                          console.log("[DEBUG] Multi JPEG download clicked for:", selected);
                           setIsDownloadingMulti(true);
                           try {
                             await handleMultiDownload(
@@ -694,7 +639,7 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
               )}
             </AnimatePresence>
 
-            {/* Manual Entry Form */}
+            {/* MANUAL ENTRY FORM */}
             <div className="p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-300">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Manual Entry</h3>
@@ -815,7 +760,6 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
           handleDeleteHistory={handleDeleteHistory}
           doDownloadPDF={doDownloadPDF}
           doDownloadJPEG={doDownloadJPEG}
-          // REMOVED: selectedPerson, setSelectedPerson, personCertificates
         />
       </motion.div>
     </AnimatePresence>

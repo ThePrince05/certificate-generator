@@ -1,7 +1,7 @@
 // app/api/google-sheets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOTu8hPKWlPq88i5w6_pGyQtigdakPKnI-vk5oMHiY5TWcSRc7vGAqgF9j-x-uI3eMaQ/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGOyCd4yC4iOQDkgZpxck6bSSKQ-ahePUEVw--Ls1ISdAq2RiVj4x4e5lzje8WBtPvcw/exec";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
