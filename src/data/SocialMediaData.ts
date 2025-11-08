@@ -231,21 +231,7 @@ Awarded: ${certificate.certificateDate}`;
   return baseMessage;
 }
 
-// Prepare certificate for sharing
-export function prepareCertificateForSharing(
-  certificate: CleanCertificateData,
-  downloadUrl?: string
-): ShareableCertificate {
- const contactInfo = getContactInfoByEmail(certificate.email);
-  const shareMessage = getCertificateShareMessage(certificate, downloadUrl);
-  
-  return {
-    ...certificate,
-    contactInfo,
-    downloadUrl,
-    shareMessage
-  };
-}
+
 
 // Share certificate via preferred method
 export function shareCertificate(
@@ -299,14 +285,4 @@ export function shareCertificate(
       window.open(twitterLink, '_blank');
       break;
   }
-}
-
-// Bulk share preparation
-export function prepareCertificatesForSharing(
-  certificates: CleanCertificateData[],
-  getDownloadUrl?: (certificate: CleanCertificateData) => string
-): ShareableCertificate[] {
-  return certificates.map(certificate => 
-    prepareCertificateForSharing(certificate, getDownloadUrl?.(certificate))
-  );
 }

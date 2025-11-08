@@ -13,7 +13,6 @@ import { useData } from "../context/DataContext"; // Add DataContext import
 
 // Components
 import CertificateForm from "@/components/generate-single/CertificateForm";
-import CertificateTemplate from "@/components/CertificateTemplate";
 import { ShareModal } from "@/components/generate-single/ShareModal";
 
 // Utilities
@@ -95,6 +94,8 @@ export default function GenerateSingle() {
   const [forcePreview, setForcePreview] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
+  const [isSharingSelected, setIsSharingSelected] = useState(false);
+
 
   // Derived state
   const certificatesToShare = personCertificates.filter(cert =>
@@ -569,35 +570,59 @@ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
                     >
                       <button
                         onClick={async () => {
+                          if (isSharingSelected) return; // Prevent multiple clicks
+                          
                           const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
                           if (selected.length === 0) return;
 
-                          // Add to history if not already there
-                          const newHistoryEntries = selected.map((c) => ({
-                            ...c,
-                            id: uuidv4(),
-                            generatedAt: new Date().toISOString(),
-                          })).filter((newItem) =>
-                            !history.some(
-                              (h) =>
-                                h.recipientName === newItem.recipientName &&
-                                h.programName === newItem.programName &&
-                                h.email === newItem.email
-                            )
-                          );
+                          setIsSharingSelected(true); // Start loading
+                          
+                          try {
+                            // Add to history if not already there
+                            const newHistoryEntries = selected.map((c) => ({
+                              ...c,
+                              id: uuidv4(),
+                              generatedAt: new Date().toISOString(),
+                            })).filter((newItem) =>
+                              !history.some(
+                                (h) =>
+                                  h.recipientName === newItem.recipientName &&
+                                  h.programName === newItem.programName &&
+                                  h.email === newItem.email
+                              )
+                            );
 
-                          if (newHistoryEntries.length > 0) {
-                            console.log('💾 Saving multiple certificates to history:', newHistoryEntries);
-                            await saveHistory(newHistoryEntries);
+                            if (newHistoryEntries.length > 0) {
+                              console.log('💾 Saving multiple certificates to history:', newHistoryEntries);
+                              await saveHistory(newHistoryEntries);
+                            }
+
+                            setShareTarget({ type: "person", data: selected });
+                            setIsShareModalOpen(true);
+                          } catch (error) {
+                            console.error('Error sharing selected certificates:', error);
+                          } finally {
+                            setIsSharingSelected(false); // End loading
                           }
-
-                          setShareTarget({ type: "person", data: selected });
-                          setIsShareModalOpen(true);
                         }}
-                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2"
+                        disabled={isSharingSelected}
+                        className={`px-4 py-2 rounded transition flex items-center gap-2 ${
+                          isSharingSelected 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-green-500 hover:bg-green-600 text-white'
+                        }`}
                       >
-                        <FaShareAlt className="w-4 h-4" />
-                        Share Selected
+                        {isSharingSelected ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <FaShareAlt className="w-4 h-4" />
+                            Share Selected
+                          </>
+                        )}
                       </button>
 
                       <MultiDownloadDropdown
