@@ -6,10 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaShareAlt, FaFilePdf, FaFileImage, FaDownload } from "react-icons/fa";
 
-
 // Contexts
 import { useOrganization } from "../context/OrganizationContext";
 import { useTemplates } from "../context/TemplateContext";
+import { useData } from "../context/DataContext"; // Add DataContext import
 
 // Components
 import CertificateForm from "@/components/generate-single/CertificateForm";
@@ -31,7 +31,6 @@ import DownloadDropdown from "@/components/DownloadDropdown";
 import MultiDownloadDropdown from "@/components/MultiDownloadDropdown";
 import HistoryToggle from "@/components/HistoryToggle";
 import HistorySection from "@/components/HistorySection";
-
 
 type DemoCertificate = CleanCertificateData & {
   id: string;
@@ -70,7 +69,8 @@ export default function GenerateSingle() {
   const router = useRouter();
   const isDesktop = useIsDesktop();
   const { selectedOrg } = useOrganization();
-  const { loadGroups, selectedTemplate } = useTemplates();
+  const { selectedTemplate } = useTemplates(); // Remove loadGroups
+  const { groups, isDataLoaded, loading } = useData(); // Add DataContext
 
   // State
   const [isDownloadingMulti, setIsDownloadingMulti] = useState(false);
@@ -103,14 +103,15 @@ export default function GenerateSingle() {
     selectedCertificates.includes(cert.id)
   );
 
-  // Effects
+  // Effects - Data is now automatically loaded by DataContext when selectedOrg changes
   useEffect(() => {
     if (!selectedOrg) {
       router.push("/generate");
       return;
     }
-    loadGroups(selectedOrg.id);
-  }, [selectedOrg, router, loadGroups]);
+    // Data loading is now handled automatically by DataContext
+    // Remove: loadGroups(selectedOrg.id);
+  }, [selectedOrg, router]); // Remove loadGroups dependency
 
   useEffect(() => {
     const loadDemoData = async () => {
@@ -274,7 +275,6 @@ export default function GenerateSingle() {
       if (n) normalizedNames.push(n);
     }
 
-
     for (const contact of contactInfoList) {
       const name = contact.recipientName?.trim();
       const email = contact.email?.trim();
@@ -322,7 +322,19 @@ export default function GenerateSingle() {
     return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
   };
 
+  // Show loading state while data is being fetched
   if (!selectedOrg) return <p className="p-8 text-center text-gray-600">Redirecting...</p>;
+
+  if (loading.groups && !isDataLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading {selectedOrg.name} data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -346,18 +358,25 @@ export default function GenerateSingle() {
             <h1 className="text-4xl font-bold text-center mb-4">Generate Single Certificate</h1>
             <h2 className="text-2xl text-center text-gray-600 mb-8">{selectedOrg.name}</h2>
 
-          {/* Person Search */}
-          <PersonSearch
-            dbCertificates={dbCertificates}
-            contactInfoList={contactInfoList}
-            setSelectedPerson={setSelectedPerson}
-            setPersonCertificates={setPersonCertificates}
-            setFormData={setFormData}
-            history={history}
-            saveHistory={saveHistory}
-            getCertificateDate={getCertificateDate}
-            organization={selectedOrg.name}
-          />
+            {/* Data Loading Indicator */}
+            {loading.groups && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <p className="text-blue-700">Loading programs and categories...</p>
+              </div>
+            )}
+
+            {/* Person Search */}
+            <PersonSearch
+              dbCertificates={dbCertificates}
+              contactInfoList={contactInfoList}
+              setSelectedPerson={setSelectedPerson}
+              setPersonCertificates={setPersonCertificates}
+              setFormData={setFormData}
+              history={history}
+              saveHistory={saveHistory}
+              getCertificateDate={getCertificateDate}
+              organization={selectedOrg.name}
+            />
 
             {/* Person Certificates */}
             {selectedPerson && personCertificates.length > 0 && (
@@ -556,37 +575,36 @@ export default function GenerateSingle() {
                   )}
                 </AnimatePresence>
               </div>
-
-              
             )}
-      <AnimatePresence>
-                  {isShareModalOpen && shareTarget?.type === "person" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0, y: -20 }}
-                      animate={{ opacity: 1, height: "auto", y: 0 }}
-                      exit={{ opacity: 0, height: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-6 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
-                    >
-                      <ShareModal
-                        isOpen={isShareModalOpen}
-                        onClose={() => {
-                          setIsShareModalOpen(false);
-                          setShareTarget(null);
-                        }}
-                      recipientCertificates={personCertificates
-                    .filter(c => selectedCertificates.includes(c.id))
-                    .map(c => ({
-                      ...c,
-                      contactInfo: contactInfoList.find(
-                        ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
-                      )  // Remove the "|| null" - find() returns undefined if not found
-                    }))}
-                        contactInfoList={contactInfoList}
-                        defaultEmail={personCertificates[0]?.email ?? ""}
-                      />
-                    </motion.div>
-                  )}
+
+            <AnimatePresence>
+              {isShareModalOpen && shareTarget?.type === "person" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, y: -20 }}
+                  animate={{ opacity: 1, height: "auto", y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-6 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+                >
+                  <ShareModal
+                    isOpen={isShareModalOpen}
+                    onClose={() => {
+                      setIsShareModalOpen(false);
+                      setShareTarget(null);
+                    }}
+                    recipientCertificates={personCertificates
+                  .filter(c => selectedCertificates.includes(c.id))
+                  .map(c => ({
+                    ...c,
+                    contactInfo: contactInfoList.find(
+                      ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
+                    )
+                  }))}
+                    contactInfoList={contactInfoList}
+                    defaultEmail={personCertificates[0]?.email ?? ""}
+                  />
+                </motion.div>
+              )}
             </AnimatePresence>
 
             {/* Manual Entry Form */}
@@ -619,38 +637,39 @@ export default function GenerateSingle() {
           </div>
 
           {/* Certificate Preview */}
-               {formData && (
-                 <PreviewSection
-                   formData={formData}
-                   getTemplateUrl={getTemplateUrl}
-                   getCertificateDate={getCertificateDate}
-                   onShare={() => {
-                     setShareTarget({ type: "history", data: formData });
-                     setIsShareModalOpen(true);
-                   }}
-                   onDownloadPDF={() =>
-                     generatePDF({
-                       organization: -30,
-                       programName: -14,
-                       achievementText: -15,
-                       recipientName: -16,
-                       certificateDate: -10,
-                       signatory: -10,
-                     })
-                   }
-                   onDownloadJPEG={() =>
-                     generateJPEG({
-                       organization: -30,
-                       programName: -14,
-                       achievementText: -15,
-                       recipientName: -16,
-                       certificateDate: -10,
-                       signatory: -10,
-                     })
-                   }
-                 />
-               )}
-             <AnimatePresence>
+          {formData && (
+            <PreviewSection
+              formData={formData}
+              getTemplateUrl={getTemplateUrl}
+              getCertificateDate={getCertificateDate}
+              onShare={() => {
+                setShareTarget({ type: "history", data: formData });
+                setIsShareModalOpen(true);
+              }}
+              onDownloadPDF={() =>
+                generatePDF({
+                  organization: -30,
+                  programName: -14,
+                  achievementText: -15,
+                  recipientName: -16,
+                  certificateDate: -10,
+                  signatory: -10,
+                })
+              }
+              onDownloadJPEG={() =>
+                generateJPEG({
+                  organization: -30,
+                  programName: -14,
+                  achievementText: -15,
+                  recipientName: -16,
+                  certificateDate: -10,
+                  signatory: -10,
+                })
+              }
+            />
+          )}
+
+          <AnimatePresence>
             {isShareModalOpen && shareTarget?.type === "history" && (
               <motion.div
                 initial={{ opacity: 0, height: 0, y: -20 }}
@@ -690,27 +709,26 @@ export default function GenerateSingle() {
           </AnimatePresence>
         </div>
 
-      {/* History Section */}
-      <HistoryToggle
-        history={history}
-        showHistory={showHistory}
-        setShowHistory={setShowHistory}
-      />
+        {/* History Section */}
+        <HistoryToggle
+          history={history}
+          showHistory={showHistory}
+          setShowHistory={setShowHistory}
+        />
 
-      <HistorySection
-        history={history}
-        showHistory={showHistory}
-        searchQuery={searchQuery}
-        filteredHistory={filteredHistory}
-        setShowHistory={setShowHistory}
-        setSearchQuery={setSearchQuery}
-        setFormData={setFormData}
-        saveHistory={saveHistory}
-        handleDeleteHistory={handleDeleteHistory}
-        doDownloadPDF={doDownloadPDF}
-        doDownloadJPEG={doDownloadJPEG}
-      />
-
+        <HistorySection
+          history={history}
+          showHistory={showHistory}
+          searchQuery={searchQuery}
+          filteredHistory={filteredHistory}
+          setShowHistory={setShowHistory}
+          setSearchQuery={setSearchQuery}
+          setFormData={setFormData}
+          saveHistory={saveHistory}
+          handleDeleteHistory={handleDeleteHistory}
+          doDownloadPDF={doDownloadPDF}
+          doDownloadJPEG={doDownloadJPEG}
+        />
       </motion.div>
     </AnimatePresence>
   );

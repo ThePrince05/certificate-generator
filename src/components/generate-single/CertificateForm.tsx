@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTemplates } from "../../app/context/TemplateContext";
 import { CleanCertificateData } from "../../types/certificates";
 import Select from "react-select";
-import { useFieldOfInterest } from "../../app/hooks/useFieldOfInterest"; 
+import { useData } from "../../app/context/DataContext";
 
 interface FormFields {
   organization: string;
@@ -52,10 +52,8 @@ export default function CertificateForm({
   onSubmit: (data: FormFields) => void;
 }) {
   const router = useRouter();
-  const { groups } = useTemplates();
   const { selectedTemplate, setTemplate } = useTemplates();
-
-  const { fieldOfInterestOptions, loading: fieldOfInterestLoading } = useFieldOfInterest('opop');
+  const { groups, fieldOfInterestOptions, loading } = useData();
 
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
@@ -303,6 +301,10 @@ const filteredCategories = useMemo(() => {
                               selectedCategory !== "Gaming & Development" && 
                               !isKarmaClubSelected;
 
+  // Loading states from DataContext
+  const groupsLoading = loading.groups;
+  const fieldOfInterestLoading = loading.fieldOfInterest;
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -352,13 +354,16 @@ const filteredCategories = useMemo(() => {
             }
             onChange={handleProgramSelect}
             isClearable={false}
-            isLoading={!groups || groups.length === 0}
+            isLoading={groupsLoading}
             noOptionsMessage={() =>
-              !groups || groups.length === 0
+              groupsLoading
                 ? "Loading programs..."
                 : "No programs match this category"
             }
           />
+          {groupsLoading && (
+            <p className="text-xs text-gray-500 mt-1">Loading programs...</p>
+          )}
         </div>
       )}
 

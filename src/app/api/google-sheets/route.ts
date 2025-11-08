@@ -94,15 +94,35 @@ export async function POST(request: NextRequest) {
       url += `&groupId=${encodeURIComponent(groupId)}`;
     }
     
-    const body = await request.json();
-    console.log('📤 POST body:', body);
+    // Get the body as text first to handle both JSON and form data
+    const bodyText = await request.text();
+    console.log('📤 POST raw body:', bodyText);
+    
+    let body;
+    
+    // Check if the content type is form data
+    if (request.headers.get('content-type')?.includes('application/x-www-form-urlencoded')) {
+      // Parse URL-encoded form data
+      const params = new URLSearchParams(bodyText);
+      body = params.get('groupData');
+      console.log('📤 Parsed form data - groupData:', body);
+    } else {
+      // Assume JSON
+      body = bodyText;
+    }
+    
+    // If we have groupData from form, use it, otherwise use the raw body
+    const requestBody = body ? `groupData=${encodeURIComponent(body)}` : `groupData=${encodeURIComponent(bodyText)}`;
+    
+    console.log('🔁 Proxying POST to:', url);
+    console.log('📤 Final request body:', requestBody);
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `groupData=${encodeURIComponent(JSON.stringify(body))}`
+      body: requestBody
     });
     
     console.log('📡 POST Response status:', response.status);

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTemplates, TemplateGroup } from "../context/TemplateContext";
 import { useOrganization } from "../context/OrganizationContext";
+import { useData } from "../context/DataContext"; // Add DataContext import
 import { v4 as uuidv4 } from "uuid";
 
 const MAX_LENGTHS = { programName: 65, achievementText: 260 };
@@ -12,15 +13,12 @@ export default function TemplateGroupsPage() {
   const router = useRouter();
   const { selectedOrg } = useOrganization();
   const { 
-    groups, 
-    loadGroups, 
     addGroup, 
     updateGroup, 
     deleteGroup, 
     syncStatus,
-    certificateTypes, 
-    loadCertificateTypes
-  } = useTemplates();
+  } = useTemplates(); // Remove groups, loadGroups, certificateTypes, loadCertificateTypes
+  const { groups, certificateTypes, loading } = useData(); // Add DataContext
 
   // ✅ Use 'type' instead of 'certificateType'
   const [newGroup, setNewGroup] = useState({
@@ -51,13 +49,8 @@ export default function TemplateGroupsPage() {
     type: ""
   });
 
-  useEffect(() => {
-    if (selectedOrg) {
-      // Initial load - don't show the action loading overlay
-      loadGroups(selectedOrg.id);
-      loadCertificateTypes(selectedOrg.id); // ✅ Load certificate types from spreadsheet
-    }
-  }, [selectedOrg, loadGroups, loadCertificateTypes]); // ✅ Add loadCertificateTypes to dependencies
+  // Data is now automatically loaded by DataContext when selectedOrg changes
+  // Remove the manual loadGroups and loadCertificateTypes calls
 
   // ✅ Effect to track when we're performing actions vs initial loading
   useEffect(() => {
@@ -80,6 +73,18 @@ export default function TemplateGroupsPage() {
         >
           Select Organization
         </button>
+      </div>
+    );
+  }
+
+  // Show loading state while data is being fetched
+  if (loading.groups || loading.certificateTypes) {
+    return (
+      <div className="max-w-3xl mx-auto p-6">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading template data for {selectedOrg.name}...</p>
+        </div>
       </div>
     );
   }
@@ -213,8 +218,6 @@ export default function TemplateGroupsPage() {
     );
   };
 
-  // ✅ REMOVE the hardcoded CERTIFICATE_TYPES array - we now use certificateTypes from context
-
   const CATEGORIES = [
     "Architecture & Design",
     "Business & Finance",
@@ -321,7 +324,7 @@ export default function TemplateGroupsPage() {
                     <Select
                       options={[
                         { value: "", label: "-- Select Certificate Type --" }, 
-                        ...certificateTypes.map((type: string) => ({ value: type, label: type })) // ✅ Use dynamic certificateTypes
+                        ...certificateTypes.map((type: string) => ({ value: type, label: type })) // ✅ Use dynamic certificateTypes from DataContext
                       ]}
                       value={editingGroup.type ? { value: editingGroup.type, label: editingGroup.type } : { value: "", label: "-- Select Certificate Type --" }}
                       onChange={(selected) => setEditingGroup(prev => prev ? { ...prev, type: selected?.value || "" } : null)}
@@ -469,13 +472,13 @@ export default function TemplateGroupsPage() {
               )}
             </div>
 
-            {/* ✅ Certificate Type dropdown - Now uses dynamic certificateTypes */}
+            {/* ✅ Certificate Type dropdown - Now uses dynamic certificateTypes from DataContext */}
             <div className="w-1/2">
               <label className="block font-semibold mb-1">Certificate Type</label>
               <Select
                 options={[
                   { value: "", label: "-- Select Certificate Type --" }, 
-                  ...certificateTypes.map((type: string) => ({ value: type, label: type })) // ✅ Use dynamic certificateTypes
+                  ...certificateTypes.map((type: string) => ({ value: type, label: type })) // ✅ Use dynamic certificateTypes from DataContext
                 ]}
                 value={newGroup.type ? { value: newGroup.type, label: newGroup.type } : { value: "", label: "-- Select Certificate Type --" }}
                 onChange={(selected) => setNewGroup((prev) => ({ ...prev, type: selected?.value || "" }))}
