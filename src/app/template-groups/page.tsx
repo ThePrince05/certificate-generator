@@ -11,7 +11,16 @@ const MAX_LENGTHS = { programName: 65, achievementText: 260 };
 export default function TemplateGroupsPage() {
   const router = useRouter();
   const { selectedOrg } = useOrganization();
-  const { groups, loadGroups, addGroup, updateGroup, deleteGroup, syncStatus } = useTemplates();
+  const { 
+    groups, 
+    loadGroups, 
+    addGroup, 
+    updateGroup, 
+    deleteGroup, 
+    syncStatus,
+    certificateTypes, 
+    loadCertificateTypes
+  } = useTemplates();
 
   // ✅ Use 'type' instead of 'certificateType'
   const [newGroup, setNewGroup] = useState({
@@ -46,8 +55,9 @@ export default function TemplateGroupsPage() {
     if (selectedOrg) {
       // Initial load - don't show the action loading overlay
       loadGroups(selectedOrg.id);
+      loadCertificateTypes(selectedOrg.id); // ✅ Load certificate types from spreadsheet
     }
-  }, [selectedOrg, loadGroups]);
+  }, [selectedOrg, loadGroups, loadCertificateTypes]); // ✅ Add loadCertificateTypes to dependencies
 
   // ✅ Effect to track when we're performing actions vs initial loading
   useEffect(() => {
@@ -203,12 +213,7 @@ export default function TemplateGroupsPage() {
     );
   };
 
-  // ✅ Certificate types for the dropdown
-  const CERTIFICATE_TYPES = [
-    "Achievement",
-    "Appreciation",
-    "Partnership",
-  ];
+  // ✅ REMOVE the hardcoded CERTIFICATE_TYPES array - we now use certificateTypes from context
 
   const CATEGORIES = [
     "Architecture & Design",
@@ -314,7 +319,10 @@ export default function TemplateGroupsPage() {
                   <div className="w-1/2">
                     <label className="block font-semibold mb-2">Certificate Type</label>
                     <Select
-                      options={[{ value: "", label: "-- Select Certificate Type --" }, ...CERTIFICATE_TYPES.map((f) => ({ value: f, label: f }))]}
+                      options={[
+                        { value: "", label: "-- Select Certificate Type --" }, 
+                        ...certificateTypes.map((type: string) => ({ value: type, label: type })) // ✅ Use dynamic certificateTypes
+                      ]}
                       value={editingGroup.type ? { value: editingGroup.type, label: editingGroup.type } : { value: "", label: "-- Select Certificate Type --" }}
                       onChange={(selected) => setEditingGroup(prev => prev ? { ...prev, type: selected?.value || "" } : null)}
                       isClearable={false}
@@ -461,11 +469,14 @@ export default function TemplateGroupsPage() {
               )}
             </div>
 
-            {/* ✅ Certificate Type dropdown - Required */}
+            {/* ✅ Certificate Type dropdown - Now uses dynamic certificateTypes */}
             <div className="w-1/2">
               <label className="block font-semibold mb-1">Certificate Type</label>
               <Select
-                options={[{ value: "", label: "-- Select Certificate Type --" }, ...CERTIFICATE_TYPES.map((f) => ({ value: f, label: f }))]}
+                options={[
+                  { value: "", label: "-- Select Certificate Type --" }, 
+                  ...certificateTypes.map((type: string) => ({ value: type, label: type })) // ✅ Use dynamic certificateTypes
+                ]}
                 value={newGroup.type ? { value: newGroup.type, label: newGroup.type } : { value: "", label: "-- Select Certificate Type --" }}
                 onChange={(selected) => setNewGroup((prev) => ({ ...prev, type: selected?.value || "" }))}
                 isClearable={false}

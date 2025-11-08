@@ -26,55 +26,76 @@ interface TemplateContextType {
   selectedTemplate: Template;
   setTemplate: React.Dispatch<React.SetStateAction<Template>>;
   syncStatus: 'idle' | 'loading' | 'success' | 'error';
+  certificateTypes: string[];
+  loadCertificateTypes: (orgId: string) => Promise<void>;
 }
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
 
 // ⚠️ REPLACE WITH YOUR GOOGLE APPS SCRIPT URL ⚠️
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqWzg-h9NGaJnXtqhXl73m8kzJsivN_G6TF1X8pBQmraLSh4r7ZJS2kPaVbujUmI3xYg/exec";
+const SCRIPT_URL = "/api/google-sheets";
 
 // Function to fetch groups from Google Apps Script
-// Function to fetch groups from Google Apps Script
 const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> => {
+    try {
+      console.debug(`🔍 fetchGroupsFromSheets called for orgId: ${orgId}`);
+      
+      const url = `${SCRIPT_URL}?action=getGroups&orgId=${orgId}`;
+      console.debug(`🌐 Fetching from proxy URL: ${url}`);
+      
+      const response = await fetch(url);
+      console.debug(`📡 Response status: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        console.error(`❌ Failed to fetch from Google Sheets: ${response.status}`);
+        return [];
+      }
+
+      const result = await response.json();
+      console.debug(`📊 API Response:`, result);
+
+      if (!result.success) {
+        console.error(`❌ Google Sheets error: ${result.error}`);
+        return [];
+      }
+
+      console.debug(`✨ Successfully fetched ${result.groups?.length || 0} groups from Google Sheets`);
+      return result.groups || [];
+    } catch (error) {
+      console.error(`💥 Error loading from Google Sheets:`, error);
+      return [];
+    }
+};
+
+// Add this function to fetch certificate types from Google Sheets
+// Update this function in template-context.tsx
+const fetchCertificateTypesFromSheets = async (orgId: string): Promise<string[]> => {
   try {
-    console.debug(`🔍 fetchGroupsFromSheets called for orgId: ${orgId}`);
+    console.debug(`🔍 fetchCertificateTypesFromSheets called for orgId: ${orgId}`);
     
-    const url = `${SCRIPT_URL}?action=getGroups&orgId=${orgId}`;
-    console.debug(`🌐 Fetching from URL: ${url}`);
+    const url = `${SCRIPT_URL}?action=getCertificateTypes&orgId=${orgId}`;
+    console.debug(`🌐 Fetching certificate types from proxy URL: ${url}`);
     
     const response = await fetch(url);
     console.debug(`📡 Response status: ${response.status} ${response.statusText}`);
     
     if (!response.ok) {
-      console.error(`❌ Failed to fetch from Google Sheets: ${response.status}`);
+      console.error(`❌ Failed to fetch certificate types: ${response.status}`);
       return [];
     }
 
     const result = await response.json();
-    console.debug(`📊 API Response:`, result);
+    console.debug(`📊 Certificate Types API Response:`, result);
 
     if (!result.success) {
       console.error(`❌ Google Sheets error: ${result.error}`);
       return [];
     }
 
-    console.debug(`✨ Successfully fetched ${result.groups?.length || 0} groups from Google Sheets`);
-    
-    // Debug the first group to see all fields
-    if (result.groups && result.groups.length > 0) {
-      console.log('🔍 Sample group from Google Sheets:', result.groups[0]);
-      console.log('Sample group fields:', {
-        programName: result.groups[0].programName,
-        achievementText: result.groups[0].achievementText,
-        category: result.groups[0].category,
-        fieldOfInterest: result.groups[0].fieldOfInterest,
-        type: result.groups[0].type
-      });
-    }
-    
-    return result.groups || [];
+    console.debug(`✨ Successfully fetched ${result.certificateTypes?.length || 0} certificate types`);
+    return result.certificateTypes || [];
   } catch (error) {
-    console.error(`💥 Error loading from Google Sheets:`, error);
+    console.error(`💥 Error loading certificate types:`, error);
     return [];
   }
 };
@@ -82,7 +103,7 @@ const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> =>
 // Function to add group to Google Sheets
 const addGroupToSheets = async (orgId: string, group: TemplateGroup): Promise<boolean> => {
   try {
-    console.log('📤 SENDING TO GOOGLE APPS SCRIPT:');
+    console.log('📤 SENDING TO PROXY:');
     console.log('Organization:', orgId);
     console.log('Group data being sent:', group);
     
@@ -94,20 +115,20 @@ const addGroupToSheets = async (orgId: string, group: TemplateGroup): Promise<bo
       body: `action=addGroup&orgId=${orgId}&groupData=${encodeURIComponent(JSON.stringify(group))}`
     });
 
-    console.log('📡 Response status:', response.status, response.statusText);
+    console.log('📡 Proxy response status:', response.status, response.statusText);
     
     const result = await response.json();
-    console.log('📊 Google Apps Script response:', result);
+    console.log('📊 Proxy response:', result);
 
     if (result.success) {
-      console.log('✅ Successfully added group to Google Sheets');
+      console.log('✅ Successfully added group via proxy');
       return true;
     } else {
       console.error(`❌ Failed to add group: ${result.error}`);
       return false;
     }
   } catch (error) {
-    console.error(`💥 Error adding group to Google Sheets:`, error);
+    console.error(`💥 Error adding group via proxy:`, error);
     return false;
   }
 };
@@ -115,7 +136,7 @@ const addGroupToSheets = async (orgId: string, group: TemplateGroup): Promise<bo
 // Function to update group in Google Sheets
 const updateGroupInSheets = async (orgId: string, groupId: string, group: TemplateGroup): Promise<boolean> => {
   try {
-    console.debug(`✏️ Updating group in Google Sheets: ${groupId}`);
+    console.debug(`✏️ Updating group via proxy: ${groupId}`);
     
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -129,14 +150,14 @@ const updateGroupInSheets = async (orgId: string, groupId: string, group: Templa
     console.debug(`📊 Update group response:`, result);
 
     if (result.success) {
-      console.debug(`✅ Successfully updated group in Google Sheets`);
+      console.debug(`✅ Successfully updated group via proxy`);
       return true;
     } else {
       console.error(`❌ Failed to update group: ${result.error}`);
       return false;
     }
   } catch (error) {
-    console.error(`💥 Error updating group in Google Sheets:`, error);
+    console.error(`💥 Error updating group via proxy:`, error);
     return false;
   }
 };
@@ -144,7 +165,7 @@ const updateGroupInSheets = async (orgId: string, groupId: string, group: Templa
 // Function to delete group from Google Sheets
 const deleteGroupFromSheets = async (orgId: string, groupId: string): Promise<boolean> => {
   try {
-    console.debug(`🗑️ Deleting group from Google Sheets: ${groupId}`);
+    console.debug(`🗑️ Deleting group via proxy: ${groupId}`);
     
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -158,14 +179,14 @@ const deleteGroupFromSheets = async (orgId: string, groupId: string): Promise<bo
     console.debug(`📊 Delete group response:`, result);
 
     if (result.success) {
-      console.debug(`✅ Successfully deleted group from Google Sheets`);
+      console.debug(`✅ Successfully deleted group via proxy`);
       return true;
     } else {
       console.error(`❌ Failed to delete group: ${result.error}`);
       return false;
     }
   } catch (error) {
-    console.error(`💥 Error deleting group from Google Sheets:`, error);
+    console.error(`💥 Error deleting group via proxy:`, error);
     return false;
   }
 };
@@ -179,6 +200,30 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     backgroundUrl: "/templates/one-planet-one-people/certificate-template.jpg",
     name: "Default Template",
   });
+
+  const [certificateTypes, setCertificateTypes] = useState<string[]>([]);
+  const loadCertificateTypes = useCallback(async (orgId: string) => {
+    try {
+      console.debug(`🔄 loadCertificateTypes called for orgId: ${orgId}`);
+      const types = await fetchCertificateTypesFromSheets(orgId);
+      
+      // If no types from Google Sheets, use fallback
+      if (types.length === 0) {
+        console.debug(`📦 Using fallback certificate types for ${orgId}`);
+        const fallbackTypes = ["Achievement", "Appreciation", "Partnership"];
+        setCertificateTypes(fallbackTypes);
+      } else {
+        setCertificateTypes(types);
+      }
+      
+      console.debug(`✅ Loaded ${types.length} certificate types for ${orgId}`);
+    } catch (error) {
+      console.error(`💥 Error in loadCertificateTypes:`, error);
+      // Use fallback on error
+      const fallbackTypes = ["Achievement", "Appreciation", "Partnership"];
+      setCertificateTypes(fallbackTypes);
+    }
+  }, []);
 
   const saveGroups = useCallback((groups: TemplateGroup[], orgId: string) => {
     const saved = localStorage.getItem("templateGroupsByOrg");
@@ -350,6 +395,8 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
         selectedTemplate,
         setTemplate,
         syncStatus,
+        certificateTypes, 
+        loadCertificateTypes, 
       }}
     >
       {children}
