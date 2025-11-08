@@ -12,7 +12,7 @@ export type CertificateFields =
 export type CertificateData = {
   organization: string;
   category: string;
-  email: string;
+  email?: string;
   fieldOfInterest: string;
   programName: string;
   achievementText: string;
