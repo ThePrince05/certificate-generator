@@ -1,7 +1,7 @@
 // app/context/DataContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useOrganization } from './OrganizationContext';
 
 export interface TemplateGroup {
@@ -24,6 +24,11 @@ interface DataContextType {
     fieldOfInterest: boolean;
     certificateTypes: boolean;
   };
+  
+  // ✅ ADDED: Individual refresh functions
+  refreshGroups: () => void;
+  refreshCertificateTypes: () => void;
+  refreshFieldOfInterest: () => void;
   
   // Error states
   errors: {
@@ -185,6 +190,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ✅ ADDED: Individual refresh functions
+  const refreshGroups = useCallback(async () => {
+    if (selectedOrg?.id) {
+      console.log('🔄 Refreshing groups data...');
+      const groupsData = await fetchGroups(selectedOrg.id);
+      setGroups(groupsData);
+    }
+  }, [selectedOrg?.id]);
+
+  const refreshCertificateTypes = useCallback(async () => {
+    if (selectedOrg?.id) {
+      console.log('🔄 Refreshing certificate types data...');
+      const certificateTypesData = await fetchCertificateTypesData(selectedOrg.id);
+      setCertificateTypes(certificateTypesData);
+    }
+  }, [selectedOrg?.id]);
+
+  const refreshFieldOfInterest = useCallback(async () => {
+    if (selectedOrg?.id) {
+      console.log('🔄 Refreshing field of interest data...');
+      const fieldOfInterestData = await fetchFieldOfInterest(selectedOrg.id);
+      setFieldOfInterestOptions(fieldOfInterestData);
+    }
+  }, [selectedOrg?.id]);
+
   // Main data loading function
   const loadOrganizationData = async (orgId: string) => {
     if (!orgId) return;
@@ -209,11 +239,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const refreshData = () => {
-    if (selectedOrg) {
+  // ✅ UPDATED: refreshData now uses individual refresh functions
+  const refreshData = useCallback(() => {
+    if (selectedOrg?.id) {
+      console.log('🔄 Refreshing all data...');
       loadOrganizationData(selectedOrg.id);
     }
-  };
+  }, [selectedOrg?.id]);
 
   // Check if all essential data is loaded
   const isDataLoaded = 
@@ -250,6 +282,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       certificateTypes,
       loading,
       errors,
+      // ✅ ADDED: Individual refresh functions
+      refreshGroups,
+      refreshCertificateTypes,
+      refreshFieldOfInterest,
       refreshData,
       isDataLoaded
     }}>

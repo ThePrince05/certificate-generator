@@ -1,6 +1,6 @@
 "use client";
 import Select from "react-select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTemplates, TemplateGroup } from "../context/TemplateContext";
 import { useOrganization } from "../context/OrganizationContext";
@@ -18,8 +18,7 @@ export default function TemplateGroupsPage() {
     deleteGroup, 
     syncStatus,
   } = useTemplates(); // Remove groups, loadGroups, certificateTypes, loadCertificateTypes
-  const { groups, certificateTypes, loading } = useData(); // Add DataContext
-
+   const { groups, certificateTypes, loading, refreshGroups, refreshCertificateTypes } = useData();
   // ✅ Use 'type' instead of 'certificateType'
   const [newGroup, setNewGroup] = useState({
     programName: "",
@@ -49,6 +48,19 @@ export default function TemplateGroupsPage() {
     type: ""
   });
 
+    const refreshAllData = useCallback(() => {
+    console.log('🔄 Refreshing all data after operation...');
+    refreshGroups();
+    refreshCertificateTypes();
+  }, [refreshGroups, refreshCertificateTypes]);
+
+  useEffect(() => {
+    if (syncStatus === 'loading' && isPerformingAction) {
+      // Keep the loading state
+    } else if (syncStatus === 'success' || syncStatus === 'error') {
+      setIsPerformingAction(false);
+    }
+  }, [syncStatus, isPerformingAction]);
   // Data is now automatically loaded by DataContext when selectedOrg changes
   // Remove the manual loadGroups and loadCertificateTypes calls
 
@@ -145,14 +157,14 @@ export default function TemplateGroupsPage() {
     return !errors.programName && !errors.achievementText && !errors.category && !errors.type;
   };
 
-  const handleAddGroup = async (e: React.FormEvent) => {
+ const handleAddGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    setIsPerformingAction(true); // ✅ Set action flag
+    setIsPerformingAction(true);
     const group: TemplateGroup = {
       id: uuidv4(),
       programName: newGroup.programName.trim(),
@@ -161,7 +173,8 @@ export default function TemplateGroupsPage() {
       type: newGroup.type.trim(),
     };
 
-    await addGroup(group, selectedOrg.id);
+    // ✅ Pass refresh function to addGroup
+    await addGroup(group, selectedOrg.id, refreshAllData);
     setNewGroup({
       programName: "",
       achievementText: "",
@@ -170,27 +183,30 @@ export default function TemplateGroupsPage() {
     });
     setFormErrors({ programName: "", achievementText: "", category: "", type: "" });
   };
-
-  const handleEditGroup = async (e: React.FormEvent) => {
+  
+ const handleEditGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!editingGroup || !validateEditForm(editingGroup)) {
       return;
     }
 
-    setIsPerformingAction(true); // ✅ Set action flag
-    await updateGroup(editingGroup.id, editingGroup, selectedOrg.id);
+    setIsPerformingAction(true);
+    // ✅ Pass refresh function to updateGroup
+    await updateGroup(editingGroup.id, editingGroup, selectedOrg.id, refreshAllData);
     setIsEditDialogOpen(false);
     setEditingGroup(null);
     setFormErrors({ programName: "", achievementText: "", category: "", type: "" });
   };
 
-  const handleDeleteGroup = async () => {
+
+   const handleDeleteGroup = async () => {
     if (!deletingGroup) return;
 
-    setIsPerformingAction(true); // ✅ Set action flag
+    setIsPerformingAction(true);
     setIsDeleting(deletingGroup.id);
-    await deleteGroup(deletingGroup.id, selectedOrg.id);
+    // ✅ Pass refresh function to deleteGroup
+    await deleteGroup(deletingGroup.id, selectedOrg.id, refreshAllData);
     setIsDeleteDialogOpen(false);
     setDeletingGroup(null);
     setIsDeleting(null);

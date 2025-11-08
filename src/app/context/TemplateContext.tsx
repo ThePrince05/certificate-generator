@@ -21,9 +21,9 @@ interface TemplateContextType {
   setTemplate: React.Dispatch<React.SetStateAction<Template>>;
   
   // CRUD operations (these will work with external data from DataContext)
-  addGroup: (group: TemplateGroup, orgId: string) => Promise<boolean>;
-  updateGroup: (id: string, updated: TemplateGroup, orgId: string) => Promise<boolean>;
-  deleteGroup: (id: string, orgId: string) => Promise<boolean>;
+  addGroup: (group: TemplateGroup, orgId: string, refreshData?: () => void) => Promise<boolean>;
+  updateGroup: (id: string, updated: TemplateGroup, orgId: string, refreshData?: () => void) => Promise<boolean>;
+  deleteGroup: (id: string, orgId: string, refreshData?: () => void) => Promise<boolean>;
   syncStatus: 'idle' | 'loading' | 'success' | 'error';
 }
 
@@ -33,19 +33,9 @@ const TemplateContext = createContext<TemplateContextType | undefined>(undefined
 const addGroupToSheets = async (group: TemplateGroup, orgId: string): Promise<boolean> => {
   console.log('🚀 SENDING GROUP DATA TO GOOGLE SHEETS:');
   console.log('Full group object:', group);
-  console.log('programName:', group.programName);
-  console.log('achievementText:', group.achievementText);
-  console.log('category:', group.category);
-  console.log('type:', group.type);
   
   try {
-    console.log('📤 SENDING TO PROXY:');
-    console.log('Group data being sent:', group);
-    
-    // ✅ FIXED: Add action and orgId as query parameters
     const url = `/api/google-sheets?action=addGroup&orgId=${encodeURIComponent(orgId)}`;
-    
-    console.log('📤 Final URL:', url);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -77,13 +67,8 @@ const addGroupToSheets = async (group: TemplateGroup, orgId: string): Promise<bo
 const updateGroupInSheets = async (groupId: string, group: TemplateGroup, orgId: string): Promise<boolean> => {
   try {
     console.log('✏️ UPDATING GROUP DATA TO GOOGLE SHEETS:');
-    console.log('Group ID:', groupId);
-    console.log('Updated group object:', group);
     
-    // ✅ FIXED: Add action, orgId, and groupId as query parameters
     const url = `/api/google-sheets?action=updateGroup&orgId=${encodeURIComponent(orgId)}&groupId=${encodeURIComponent(groupId)}`;
-    
-    console.log('📤 Update URL:', url);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -115,19 +100,14 @@ const updateGroupInSheets = async (groupId: string, group: TemplateGroup, orgId:
 const deleteGroupFromSheets = async (groupId: string, orgId: string): Promise<boolean> => {
   try {
     console.log('🗑️ DELETING GROUP FROM GOOGLE SHEETS:');
-    console.log('Group ID:', groupId);
     
-    // ✅ FIXED: Add action, orgId, and groupId as query parameters
     const url = `/api/google-sheets?action=deleteGroup&orgId=${encodeURIComponent(orgId)}&groupId=${encodeURIComponent(groupId)}`;
-    
-    console.log('📤 Delete URL:', url);
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      // No body needed for delete, just the query parameters
     });
 
     console.log('📡 Delete response status:', response.status, response.statusText);
@@ -157,18 +137,17 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     name: "Default Template",
   });
 
-  const addGroup = useCallback(async (group: TemplateGroup, orgId: string): Promise<boolean> => {
-    console.log('🚀 STARTING ADD GROUP OPERATION:');
-    console.log('Organization ID:', orgId);
-    console.log('Group to add:', group);
-    
+  const addGroup = useCallback(async (group: TemplateGroup, orgId: string, refreshData?: () => void): Promise<boolean> => {
     setSyncStatus('loading');
     try {
-      // Try to add to Google Sheets first
       const sheetsSuccess = await addGroupToSheets(group, orgId);
       
       if (sheetsSuccess) {
         console.log('✅ Successfully added to Google Sheets');
+        // ✅ Refresh data after successful add
+        if (refreshData) {
+          refreshData();
+        }
         setSyncStatus('success');
         return true;
       } else {
@@ -183,19 +162,17 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const updateGroup = useCallback(async (id: string, updatedGroup: TemplateGroup, orgId: string): Promise<boolean> => {
-    console.log('✏️ STARTING UPDATE GROUP OPERATION:');
-    console.log('Organization ID:', orgId);
-    console.log('Group ID to update:', id);
-    console.log('Updated group:', updatedGroup);
-    
+  const updateGroup = useCallback(async (id: string, updatedGroup: TemplateGroup, orgId: string, refreshData?: () => void): Promise<boolean> => {
     setSyncStatus('loading');
     try {
-      // Try to update in Google Sheets first
       const sheetsSuccess = await updateGroupInSheets(id, updatedGroup, orgId);
       
       if (sheetsSuccess) {
         console.log('✅ Successfully updated in Google Sheets');
+        // ✅ Refresh data after successful update
+        if (refreshData) {
+          refreshData();
+        }
         setSyncStatus('success');
         return true;
       } else {
@@ -210,18 +187,17 @@ export const TemplateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const deleteGroup = useCallback(async (id: string, orgId: string): Promise<boolean> => {
-    console.log('🗑️ STARTING DELETE GROUP OPERATION:');
-    console.log('Organization ID:', orgId);
-    console.log('Group ID to delete:', id);
-    
+  const deleteGroup = useCallback(async (id: string, orgId: string, refreshData?: () => void): Promise<boolean> => {
     setSyncStatus('loading');
     try {
-      // Try to delete from Google Sheets first
       const sheetsSuccess = await deleteGroupFromSheets(id, orgId);
       
       if (sheetsSuccess) {
         console.log('✅ Successfully deleted from Google Sheets');
+        // ✅ Refresh data after successful delete
+        if (refreshData) {
+          refreshData();
+        }
         setSyncStatus('success');
         return true;
       } else {
