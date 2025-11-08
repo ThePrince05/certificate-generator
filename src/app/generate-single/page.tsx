@@ -87,7 +87,7 @@ export default function GenerateSingle() {
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
   const [dbSearch, setDbSearch] = useState("");
-  const [showHistory, setShowHistory] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
   const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
@@ -175,34 +175,56 @@ useEffect(() => {
   console.log('🔍 Form data updated:', formData);
 }, [formData]);
 
+// Debug when history changes
+useEffect(() => {
+  console.log('🔍 History updated:', history);
+  console.log('🔍 History items count:', history.length);
+}, [history]);
+
   // Handlers - Updated to use DataContext history functions
-  const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
-    const newItem = {
-      ...cert,
-      certificateType: cert.type || "Achievement",
-      type: cert.type || "generate-single",
-      id: uuidv4(),
-      generatedAt: new Date().toISOString(),
-    };
-
-    // Check if already exists in history
-    const alreadyExists = history.some(
-      (h) =>
-        h.recipientName === cert.recipientName &&
-        h.programName === cert.programName &&
-        h.email === cert.email
-    );
-
-    if (!alreadyExists) {
-      await saveHistory([newItem]);
-    }
-
-    // Make sure certificateType is included
-    setFormData({
-      ...cert,
-      type: cert.type || "generate-single",
-    });
+const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
+  console.log('🚀 handleGenerateFromDatabase called with certificate:', cert);
+  
+  // Create the history item
+  const newItem = {
+    ...cert,
+    certificateType: cert.type || "Achievement",
+    type: cert.type || "generate-single",
+    id: uuidv4(),
+    generatedAt: new Date().toISOString(),
   };
+
+  console.log('📦 Created history item:', newItem);
+
+  // Check if already exists in history
+  const alreadyExists = history.some(
+    (h) =>
+      h.recipientName === cert.recipientName &&
+      h.programName === cert.programName &&
+      h.email === cert.email
+  );
+
+  console.log('✅ Certificate already in history:', alreadyExists);
+
+  if (!alreadyExists) {
+    try {
+      console.log('💾 Saving to history...');
+      const saveResult = await saveHistory([newItem]);
+      console.log('✅ saveHistory result:', saveResult);
+    } catch (error) {
+      console.error('💥 Error saving to history:', error);
+    }
+  } else {
+    console.log('⏩ Certificate already in history, skipping save');
+  }
+
+  // Set form data for preview
+  console.log('🎯 Setting form data for preview...');
+  setFormData({
+    ...cert,
+    type: cert.type || "generate-single",
+  });
+};
 
   const getCertificateDate = () => {
     const today = new Date();
@@ -276,9 +298,7 @@ useEffect(() => {
   };
 
   const handleClearHistory = async () => {
-    if (window.confirm('Are you sure you want to clear all history?')) {
       await clearHistory();
-    }
   };
 
   const doDownloadPDF = (item: any) => {
@@ -407,14 +427,12 @@ useEffect(() => {
             )}
 
             {/* Person Search */}
-            <PersonSearch
+           <PersonSearch
               dbCertificates={dbCertificates}
               contactInfoList={contactInfoList}
               setSelectedPerson={setSelectedPerson}
               setPersonCertificates={setPersonCertificates}
               setFormData={setFormData}
-              history={history}
-              saveHistory={saveHistory}
               getCertificateDate={getCertificateDate}
               organization={selectedOrg.name}
             />
@@ -464,16 +482,18 @@ useEffect(() => {
                         const isSelected = selectedCertificates.includes(cert.id);
                         return (
                           <div
-                            key={cert.id}
-                            onClick={(e) => {
-                              if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
-                                setFormData(cert);
-                              }
-                            }}
-                            className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
-                              isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
-                            }`}
-                          >
+                              key={cert.id}
+                              onClick={(e) => {
+                                if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
+                                  // Add to history when certificate is clicked
+                                  handleGenerateFromDatabase(cert);
+                                  setFormData(cert);
+                                }
+                              }}
+                              className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
+                                isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
+                              }`}
+                            >
                             <div className="flex items-start gap-3">
                               <input
                                 type="checkbox"
@@ -497,7 +517,7 @@ useEffect(() => {
                               <DownloadDropdown
                                 onDownloadPDF={() => {
                                   console.log("[DEBUG] PDF download clicked for certificate:", cert);
-                                  handleGenerateFromDatabase(cert);
+                                  handleGenerateFromDatabase(cert); // This will add to history
                                   setTimeout(
                                     () =>
                                       generatePDF({
@@ -513,7 +533,7 @@ useEffect(() => {
                                 }}
                                 onDownloadJPEG={() => {
                                   console.log("[DEBUG] JPEG download clicked for certificate:", cert);
-                                  handleGenerateFromDatabase(cert);
+                                  handleGenerateFromDatabase(cert); // This will add to history
                                   setTimeout(
                                     () =>
                                       generateJPEG({
@@ -567,6 +587,7 @@ useEffect(() => {
                           );
 
                           if (newHistoryEntries.length > 0) {
+                            console.log('💾 Saving multiple certificates to history:', newHistoryEntries);
                             await saveHistory(newHistoryEntries);
                           }
 
@@ -765,10 +786,11 @@ useEffect(() => {
           setShowHistory={setShowHistory}
           setSearchQuery={setSearchQuery}
           setFormData={setFormData}
-          saveHistory={handleClearHistory} // Use clearHistory for the "Clear all" button
+          saveHistory={handleClearHistory}
           handleDeleteHistory={handleDeleteHistory}
           doDownloadPDF={doDownloadPDF}
           doDownloadJPEG={doDownloadJPEG}
+          // REMOVED: selectedPerson, setSelectedPerson, personCertificates
         />
       </motion.div>
     </AnimatePresence>

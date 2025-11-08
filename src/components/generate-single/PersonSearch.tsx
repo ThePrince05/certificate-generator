@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { v4 as uuidv4 } from "uuid";
 import type { CleanCertificateData } from "@/types/certificates";
 
 type DemoCertificate = CleanCertificateData & { id: string };
@@ -12,8 +11,6 @@ interface PersonSearchProps {
   setSelectedPerson: (name: string | null) => void;
   setPersonCertificates: (certs: DemoCertificate[]) => void;
   setFormData: (data: CleanCertificateData | null) => void;
-  history: any[];
-  saveHistory: (items: any[]) => void;
   getCertificateDate: () => string;
   organization?: string;
 }
@@ -24,8 +21,6 @@ export default function PersonSearch({
   setSelectedPerson,
   setPersonCertificates,
   setFormData,
-  history,
-  saveHistory,
   getCertificateDate,
   organization,
 }: PersonSearchProps) {
@@ -117,23 +112,7 @@ export default function PersonSearch({
       };
 
       setFormData(firstCert);
-
-      // Add to history if not exists
-      const alreadyExists = history.some(
-        (h) =>
-          h.recipientName === firstCert.recipientName &&
-          h.programName === firstCert.programName &&
-          h.email === firstCert.email
-      );
-
-      if (!alreadyExists) {
-        const newHistoryItem = {
-          ...firstCert,
-          id: uuidv4(),
-          generatedAt: new Date().toISOString(),
-        };
-        saveHistory([newHistoryItem, ...history]);
-      }
+      // REMOVED: Automatic history saving - history will be added only when user downloads/generates/shares
     } else {
       setFormData(null);
       console.log("No certificates found for:", person);
@@ -181,8 +160,6 @@ export default function PersonSearch({
           </div>
         </div>
       )}
-
-   
     </div>
   );
 }

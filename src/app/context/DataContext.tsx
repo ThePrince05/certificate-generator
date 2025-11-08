@@ -41,7 +41,7 @@ interface DataContextType {
     fieldOfInterest: boolean;
     certificateTypes: boolean;
     history: boolean;
-    deletingHistory: boolean; // NEW: Separate loading for delete operations
+    deletingHistory: boolean;
   };
   
   // Individual refresh functions
@@ -71,13 +71,6 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const SCRIPT_URL = "/api/google-sheets";
-
-// Helper function to get the correct organization identifier
-const getOrgIdentifier = (orgId: string, orgName: string): string => {
-  // For history operations, use the organization name
-  // For other operations, use the original orgId to maintain compatibility
-  return orgName || orgId;
-};
 
 // Existing fetch functions - KEEP ORIGINAL orgId FOR COMPATIBILITY
 const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> => {
@@ -268,6 +261,50 @@ const clearHistoryFromSheets = async (orgName: string): Promise<boolean> => {
   }
 };
 
+// Add this helper function for duplicate detection
+const isDuplicateCertificate = (existingHistory: HistoryItem[], newCert: HistoryItem): boolean => {
+  return existingHistory.some((existingCert) => {
+    // Normalize fields for comparison
+    const existingName = existingCert.recipientName?.toLowerCase().trim() || '';
+    const newName = newCert.recipientName?.toLowerCase().trim() || '';
+    
+    const existingProgram = existingCert.programName?.toLowerCase().trim() || '';
+    const newProgram = newCert.programName?.toLowerCase().trim() || '';
+    
+    const existingEmail = existingCert.email?.toLowerCase().trim() || '';
+    const newEmail = newCert.email?.toLowerCase().trim() || '';
+    
+    const existingOrg = existingCert.organization?.toLowerCase().trim() || '';
+    const newOrg = newCert.organization?.toLowerCase().trim() || '';
+    
+    // Check if it's a duplicate
+    const isDuplicate = 
+      existingName === newName &&
+      existingProgram === newProgram &&
+      existingEmail === newEmail &&
+      existingOrg === newOrg;
+    
+    if (isDuplicate) {
+      console.log('🚫 Found duplicate certificate in history:', {
+        existing: {
+          recipient: existingCert.recipientName,
+          program: existingCert.programName,
+          email: existingCert.email,
+          org: existingCert.organization
+        },
+        new: {
+          recipient: newCert.recipientName,
+          program: newCert.programName,
+          email: newCert.email,
+          org: newCert.organization
+        }
+      });
+    }
+    
+    return isDuplicate;
+  });
+};
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const { selectedOrg } = useOrganization();
   
@@ -283,7 +320,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     fieldOfInterest: false,
     certificateTypes: false,
     history: false,
-    deletingHistory: false // NEW: Track delete operations separately
+    deletingHistory: false
   });
   
   // Error states
@@ -410,23 +447,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   };
 
+  // Enhanced saveHistory with duplicate detection
   const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Promise<boolean> => {
     if (!selectedOrg?.name) return false;
     
     try {
-      const itemsToSave = Array.isArray(items) 
-        ? items.map(item => ({
-            ...item,
-            id: item.id || generateId(),
-            organization: selectedOrg.name,
-            createdAt: item.createdAt || new Date().toISOString()
-          }))
-        : {
-            ...items,
-            id: items.id || generateId(),
-            organization: selectedOrg.name,
-            createdAt: items.createdAt || new Date().toISOString()
-          };
+      const itemsArray = Array.isArray(items) ? items : [items];
+      
+      // Filter out duplicates before saving
+      const itemsToSave = itemsArray
+        .map(item => ({
+          ...item,
+          id: item.id || generateId(),
+          organization: selectedOrg.name,
+          createdAt: item.createdAt || new Date().toISOString()
+        }))
+        .filter(newItem => {
+          const isDuplicate = isDuplicateCertificate(history, newItem);
+          if (isDuplicate) {
+            console.log('⏩ Skipping duplicate certificate:', {
+              recipient: newItem.recipientName,
+              program: newItem.programName
+            });
+          }
+          return !isDuplicate;
+        });
+      
+      console.log('📊 Save history - Input items:', itemsArray.length);
+      console.log('📊 Save history - After duplicate filtering:', itemsToSave.length);
+      
+      if (itemsToSave.length === 0) {
+        console.log('✅ No new items to save (all were duplicates)');
+        return true; // Return true since there's no error, just no new items
+      }
       
       const success = await saveHistoryToSheets(selectedOrg.name, itemsToSave);
       if (success) {
@@ -437,7 +490,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.error('Error saving history:', error);
       return false;
     }
-  }, [selectedOrg, refreshHistory]);
+  }, [selectedOrg, refreshHistory, history]);
 
   // Enhanced deleteHistoryItem with loading state
   const deleteHistoryItem = useCallback(async (id: string): Promise<boolean> => {

@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { createPortal } from "react-dom";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
-import { FaShareAlt, FaDownload,  FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 // Components
 import CertificateTemplate from "@/components/CertificateTemplate";
-import PersonSearchBatch from "@/components/generate-batch/PersonSearchBatch";
 
 // Contexts
 import { useOrganization } from "../context/OrganizationContext";
 import { useTemplates } from "../context/TemplateContext";
+import { useData } from "../context/DataContext"; // ADDED: Import DataContext
 
 // Utilities
 import { generatePDF, generateJPEG } from "../utils/generatePDF";
@@ -25,11 +24,9 @@ import { loadCSVData, parseCSVData } from "../utils/csvLoader";
 import { CertificateData, CertificateFields, CleanCertificateData } from "@/types/certificates";
 import { contactInfoList } from "@/data/SocialMediaData";
 
-import PreviewSection from "@/components/PreviewSection"; 
 import HistoryToggle from "@/components/HistoryToggle";
 import HistorySection from "@/components/HistorySection";
 import DownloadDropdown from "@/components/DownloadDropdown";
-import MultiDownloadDropdown from "@/components/MultiDownloadDropdown";
 
 // Types
 type DemoCertificate = CleanCertificateData & {
@@ -62,87 +59,33 @@ const getCertificateDate = () => {
   return `Awarded ${month} ${year}`;
 };
 
-
 // Main Component
 export default function GenerateBatch() {
   const router = useRouter();
   const { selectedOrg } = useOrganization();
-  const { loadGroups, selectedTemplate } = useTemplates();
+  const { selectedTemplate } = useTemplates();
+  
+  // ADDED: Use DataContext for history
+  const { 
+    history, 
+    saveHistory, 
+    deleteHistoryItem, 
+    clearHistory,
+    loading 
+  } = useData();
 
   // State
   const [validatedBatch, setValidatedBatch] = useState<CertificateDataWithValidation[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-
   const [formData, setFormData] = useState<CertificateData | null>(null);
   const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
- 
-  const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);  
-
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCSVSection, setShowCSVSection] = useState(true);
-  const [history, setHistory] = useState<any[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem("certificateHistory_v1");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Handlers
-const saveHistory = (items: any[]) => {
-  setHistory(items);
-  try {
-    localStorage.setItem("certificateHistory_v1", JSON.stringify(items));
-  } catch (e) {
-    // ignore
-  }
-};
-
-const handleDeleteHistory = (id: string) => {
-  saveHistory(history.filter((h) => h.id !== id));
-};
-
-const doDownloadPDF = (item: any) => {
-  setFormData(item);
-  setTimeout(() => {
-    generatePDF({
-      organization: -30,
-      programName: -14,
-      achievementText: -15,
-      recipientName: -16,
-      certificateDate: -10,
-      signatory: -10,
-    });
-  }, 250);
-};
-
-const doDownloadJPEG = (item: any) => {
-  setFormData(item);
-  setTimeout(() => {
-    generateJPEG({
-      organization: -30,
-      programName: -14,
-      achievementText: -15,
-      recipientName: -16,
-      certificateDate: -10,
-      signatory: -10,
-    });
-  }, 250);
-};
-
 
   // Derived state
-  const searchDbCertificates = useMemo(
-    () => validatedBatch.map((c) => ({ ...c, id: c.id ?? uuidv4() })),
-    [validatedBatch]
-  );
-
-    const filteredHistory = useMemo(() => 
+  const filteredHistory = useMemo(() => 
     history.filter((h) =>
       [h.recipientName, h.programName, h.category, h.fieldOfInterest, h.email]
         .join(" ")
@@ -152,44 +95,82 @@ const doDownloadJPEG = (item: any) => {
     [history, searchQuery]
   );
 
+
+  const handleClearHistory = async (): Promise<void> => {
+    await clearHistory();
+    // No return value needed - void is expected
+  };
+
+    const handleDeleteHistoryItem = async (id: string): Promise<void> => {
+      await deleteHistoryItem(id);
+      // No return value needed - void is expected
+    };
   // Effects
   useEffect(() => {
-    if (!selectedOrg) router.push("/generate?step=org");;
+    if (!selectedOrg) router.push("/generate?step=org");
   }, [selectedOrg, router]);
 
   useEffect(() => {
-  const loadDemoData = async () => {
-    if (!selectedOrg) return;
+    const loadDemoData = async () => {
+      if (!selectedOrg) return;
 
-    const csvContent = await loadCSVData();
-    const parsedData = parseCSVData(csvContent, selectedOrg.name);
+      const csvContent = await loadCSVData();
+      const parsedData = parseCSVData(csvContent, selectedOrg.name);
 
-    const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
-      const emailFromCSV = (item.recipientName || "").trim();
-      
-      const contact = contactInfoList.find(
-        (c) => c.email?.toLowerCase().trim() === emailFromCSV.toLowerCase()
-      );
+      const demoCertificates: DemoCertificate[] = parsedData.map((item) => {
+        const emailFromCSV = (item.recipientName || "").trim();
+        
+        const contact = contactInfoList.find(
+          (c) => c.email?.toLowerCase().trim() === emailFromCSV.toLowerCase()
+        );
 
-      return {
-        id: uuidv4(),
-        recipientName: contact?.recipientName || "Unknown",
-        email: emailFromCSV,
-        programName: item.programName || "",
-        category: item.category || "",
-        achievementText: item.achievementText || "",
-        fieldOfInterest: item.fieldOfInterest ?? "",
-        certificateDate: item.certificateDate || getCertificateDate(),
-        organization: item.organization || selectedOrg.name,
-      };
-    });
+        return {
+          id: uuidv4(),
+          recipientName: contact?.recipientName || "Unknown",
+          email: emailFromCSV,
+          programName: item.programName || "",
+          category: item.category || "",
+          achievementText: item.achievementText || "",
+          fieldOfInterest: item.fieldOfInterest ?? "",
+          certificateDate: item.certificateDate || getCertificateDate(),
+          organization: item.organization || selectedOrg.name,
+        };
+      });
 
-    setDbCertificates(demoCertificates);
+      setDbCertificates(demoCertificates);
+    };
+
+    loadDemoData();
+  }, [selectedOrg]);
+
+  // Handlers
+  const doDownloadPDF = (item: any) => {
+    setFormData(item);
+    setTimeout(() => {
+      generatePDF({
+        organization: -30,
+        programName: -14,
+        achievementText: -15,
+        recipientName: -16,
+        certificateDate: -10,
+        signatory: -10,
+      });
+    }, 250);
   };
 
-  loadDemoData();
-}, [selectedOrg]);
-
+  const doDownloadJPEG = (item: any) => {
+    setFormData(item);
+    setTimeout(() => {
+      generateJPEG({
+        organization: -30,
+        programName: -14,
+        achievementText: -15,
+        recipientName: -16,
+        certificateDate: -10,
+        signatory: -10,
+      });
+    }, 250);
+  };
 
   const validateBatch = (
     data: CertificateData[]
@@ -218,52 +199,31 @@ const doDownloadJPEG = (item: any) => {
   };
 
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file || !selectedOrg) return;
+    const file = e.target.files?.[0];
+    if (!file || !selectedOrg) return;
 
-  Papa.parse(file, {
-    header: true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      const rawData = (results.data as CertificateData[]).map((item) => ({
-        ...item,
-        organization: selectedOrg.name,
-        category: item.category || "General",
-        fieldOfInterest:
-          item.category === "Gaming & Development" ? "" : item.fieldOfInterest || "Unspecified",
-      }));
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rawData = (results.data as CertificateData[]).map((item) => ({
+          ...item,
+          organization: selectedOrg.name,
+          category: item.category || "General",
+          fieldOfInterest:
+            item.category === "Gaming & Development" ? "" : item.fieldOfInterest || "Unspecified",
+        }));
 
-      const { validated, invalidRows } = validateBatch(rawData);
-      const validatedWithIds = validated.map((row) => ({
-        ...row,
-        id: (row as any).id ?? uuidv4(),
-      }));
+        const { validated, invalidRows } = validateBatch(rawData);
+        const validatedWithIds = validated.map((row) => ({
+          ...row,
+          id: (row as any).id ?? uuidv4(),
+        }));
 
-      setValidatedBatch(validatedWithIds);
-      setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
-    },
-  });
-};
-
-  const handleGenerateFromDatabase = (cert: DemoCertificate) => {
-    const newItem = {
-      ...cert,
-      id: uuidv4(),
-      generatedAt: new Date().toISOString(),
-    };
-
-    const alreadyExists = history.some(
-      (h) =>
-        h.recipientName === cert.recipientName &&
-        h.programName === cert.programName &&
-        h.email === cert.email
-    );
-
-    if (!alreadyExists) {
-      saveHistory([newItem, ...history]);
-    }
-
-    setFormData(cert);
+        setValidatedBatch(validatedWithIds);
+        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
+      },
+    });
   };
 
   const hasInvalidRows = (batch: CertificateDataWithValidation[]) =>
@@ -298,50 +258,7 @@ const doDownloadJPEG = (item: any) => {
     }
   };
 
-
-  const handleDownloadCertificate = (cert: DemoCertificate, type: "pdf" | "jpeg") => {
-    console.log("[DEBUG] handleDownloadCertificate called:", { cert, type });
-    handleGenerateFromDatabase(cert);
-    setTimeout(() => {
-      const offsets = {
-        organization: -25,
-        programName: -12,
-        achievementText: -14,
-        recipientName: -18,
-        certificateDate: -10,
-        signatory: -8,
-      };
-      
-      type === "pdf" ? generatePDF(offsets) : generateJPEG(offsets);
-    }, 200);
-  };
-
   // Render Functions
-  const renderCertificate = (item: CertificateDataWithValidation) => {
-    if (!selectedOrg) return null;
-    
-    const templateUrl = item.category === "Gaming & Development"
-      ? "/templates/one-planet-one-people-games/certificate-template.jpg"
-      : selectedOrg.templateUrl;
-
-    return (
-      <CertificateTemplate
-        {...item}
-        templateUrl={templateUrl}
-        certificateDate={item.certificateDate || getCertificateDate()}
-        pdfOffsets={{
-          organization: -30,
-          programName: -15,
-          achievementText: -15,
-          recipientName: -16,
-          certificateDate: -8,
-          signature: 1,
-          signatory: -10,
-        }}
-      />
-    );
-  };
-
   const TableView = () => (
     <div className="overflow-auto max-w-5xl mx-auto mt-4 hidden sm:block">
       <table className="min-w-full border border-black border-collapse">
@@ -445,24 +362,11 @@ const doDownloadJPEG = (item: any) => {
     </div>
   );
 
- 
-
-  if (!selectedOrg) return <p className="p-8 text-center">Redirecting...</p>;
-  const getTemplateUrl = (category?: string) => {
-    if (!category) return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
-
-    if (category.toLowerCase().includes("gaming") || category.toLowerCase().includes("development")) {
-      return "/templates/one-planet-one-people-games/certificate-template.jpg";
-    }
-
-    return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
+  const toggleCSVSection = () => {
+    setShowCSVSection(!showCSVSection);
   };
 
-      const toggleCSVSection = () => {
-          setShowCSVSection(!showCSVSection);
-        };
-
- const CSVUploadSection = () => (
+  const CSVUploadSection = () => (
     <div className="flex justify-center my-6 px-4">
       <div className="w-full max-w-3xl">
         {/* Toggle Header */}
@@ -502,17 +406,17 @@ const doDownloadJPEG = (item: any) => {
                   />
                 </div>
 
-               <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-0">
-                {validatedBatch.length > 0 && (
-                  <DownloadDropdown
-                    onDownloadPDF={() => handleBatchDownload("pdf")}
-                    onDownloadJPEG={() => handleBatchDownload("jpeg")}
-                    isDownloading={isDownloading}
-                    batchCount={validatedBatch.length}
-                    fontSize="base"
-                  />
-                )}
-              </div>
+                <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-0">
+                  {validatedBatch.length > 0 && (
+                    <DownloadDropdown
+                      onDownloadPDF={() => handleBatchDownload("pdf")}
+                      onDownloadJPEG={() => handleBatchDownload("jpeg")}
+                      isDownloading={isDownloading}
+                      batchCount={validatedBatch.length}
+                      fontSize="base"
+                    />
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
@@ -521,7 +425,6 @@ const doDownloadJPEG = (item: any) => {
     </div>
   );
 
-  // Modify the Batch Data Display to be conditionally rendered
   const BatchDataDisplay = () => {
     if (validatedBatch.length === 0 || !showCSVSection) return null;
 
@@ -533,6 +436,7 @@ const doDownloadJPEG = (item: any) => {
     );
   };
 
+  if (!selectedOrg) return <p className="p-8 text-center">Redirecting...</p>;
 
   return (
     <AnimatePresence mode="wait">
@@ -552,42 +456,39 @@ const doDownloadJPEG = (item: any) => {
 
         {/* Navigation */}
         <button
-        onClick={() => router.push("/generate")}
-        className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
-      >
-        ← Change Generation
-      </button>
-      
+          onClick={() => router.push("/generate")}
+          className="fixed top-6 left-6 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg shadow-md z-50"
+        >
+          ← Change Generation
+        </button>
+        
         {/* CSV Upload & Batch Actions */}
         <CSVUploadSection />
 
-        {/* Batch Data Display - Now conditionally rendered */}
+        {/* Batch Data Display */}
         <BatchDataDisplay />
 
-      
+        {/* History Section */}
+        <HistoryToggle
+          history={history}
+          showHistory={showHistory}
+          setShowHistory={setShowHistory}
+        />
 
-              
-          {/* History Section */}
-          <HistoryToggle
-            history={history}
-            showHistory={showHistory}
-            setShowHistory={setShowHistory}
-          />
-
-          <HistorySection
-            history={history}
-            showHistory={showHistory}
-            searchQuery={searchQuery}
-            filteredHistory={filteredHistory}
-            setShowHistory={setShowHistory}
-            setSearchQuery={setSearchQuery}
-            setFormData={setFormData}
-            saveHistory={saveHistory}
-            handleDeleteHistory={handleDeleteHistory}
-            doDownloadPDF={doDownloadPDF}
-            doDownloadJPEG={doDownloadJPEG}
-          />
-               
+        <HistorySection
+          history={history}
+          showHistory={showHistory}
+          searchQuery={searchQuery}
+          filteredHistory={filteredHistory}
+          setShowHistory={setShowHistory}
+          setSearchQuery={setSearchQuery}
+          setFormData={setFormData}
+          saveHistory={handleClearHistory} // Use the wrapper function
+          handleDeleteHistory={handleDeleteHistoryItem} // Use deleteHistoryItem from DataContext
+          doDownloadPDF={doDownloadPDF}
+          doDownloadJPEG={doDownloadJPEG}
+          isDeleting={loading.deletingHistory} // Pass loading state
+        />
 
         {/* Batch Warning */}
         {batchWarning && (

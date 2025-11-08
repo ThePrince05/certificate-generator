@@ -5,6 +5,7 @@ import { CleanCertificateData } from "@/types/certificates";
 import DownloadDropdown from "@/components/DownloadDropdown";
 import { useState } from "react";
 
+// Updated interface - remove person-related props
 interface HistorySectionProps {
   history: any[];
   showHistory: boolean;
@@ -18,9 +19,10 @@ interface HistorySectionProps {
   doDownloadPDF: (item: any) => void;
   doDownloadJPEG: (item: any) => void;
   isDeleting?: boolean;
+  // REMOVED: selectedPerson and personCertificates props
 }
 
-// Delete Confirmation Dialog Component
+// Delete Confirmation Dialog Component (unchanged)
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -47,7 +49,6 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           <h2 className="text-xl font-bold mb-4 text-red-600">{title}</h2>
           <p className="text-gray-700 mb-6">{message}</p>
           
-          {/* Loading Bar - Optional, you can remove this if you prefer spinner */}
           <AnimatePresence>
             {isLoading && (
               <motion.div
@@ -85,7 +86,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   );
 };
 
-// Clear All Confirmation Dialog Component
+// Clear All Confirmation Dialog Component (unchanged)
 interface ClearAllConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -110,7 +111,6 @@ const ClearAllConfirmationDialog: React.FC<ClearAllConfirmationDialogProps> = ({
             Are you sure you want to clear all certificate history? This action cannot be undone and will remove all items.
           </p>
           
-          {/* Loading Bar - Optional, you can remove this if you prefer spinner */}
           <AnimatePresence>
             {isLoading && (
               <motion.div
@@ -161,6 +161,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
   doDownloadPDF,
   doDownloadJPEG,
   isDeleting = false,
+  // REMOVED: selectedPerson and personCertificates from props
 }) => {
   // State for dialogs and loading
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -217,7 +218,6 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
 
   return (
     <>
-      {/* REMOVED: bg-gray-50 to eliminate dimming effect */}
       <section className="max-w-3xl mx-auto border rounded shadow p-6 mt-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-700">Certificate History</h2>
