@@ -73,11 +73,14 @@ const getCertificateDate = () => {
 // Main Component
 export default function GenerateSingle() {
   const router = useRouter();
-  const isDesktop = useIsDesktop();
+  
+  // Remove unused variables
+  const _isDesktop = useIsDesktop();
+  
   const { selectedOrg } = useOrganization();
   const { selectedTemplate } = useTemplates();
   const { 
-    groups, 
+    groups: _groups, 
     isDataLoaded, 
     loading, 
     history,
@@ -93,23 +96,31 @@ export default function GenerateSingle() {
   const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
-  const [dbSearch, setDbSearch] = useState("");
+  
+  // Remove unused state variables
+  const [_dbSearch, _setDbSearch] = useState("");
+  
   const [showHistory, setShowHistory] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: any } | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ type: "person" | "history"; data: DemoCertificate[] | CleanCertificateData | null } | null>(null);
   const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
   const [formData, setFormData] = useState<CleanCertificateData | null>(null);
-  const [forcePreview, setForcePreview] = useState(false);
+  
+  // Remove unused state variables
+  const [_forcePreview, _setForcePreview] = useState(false);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
   const [isSharingSelected, setIsSharingSelected] = useState(false);
-  // In your GenerateSingle component, add this state
-  const [isCertificateReady, setIsCertificateReady] = useState(false);
-  const certificateRef = useRef<HTMLDivElement>(null);
-  // Derived state
-  const certificatesToShare = personCertificates.filter(cert =>
-    selectedCertificates.includes(cert.id)
-  );
+  
+  // Remove unused state variables
+  const [_isCertificateReady, _setIsCertificateReady] = useState(false);
+  const _certificateRef = useRef<HTMLDivElement>(null);
+  
+  // Remove unused derived state
+  // const certificatesToShare = personCertificates.filter(cert =>
+  //   selectedCertificates.includes(cert.id)
+  // );
 
   // Filtered history based on search query
   const filteredHistory = history.filter((h) =>
@@ -137,8 +148,6 @@ useEffect(() => {
       return;
     }
 
-  
-    
     // FIXED: Ensure recipientName is always a string with proper type checking
     const demoCertificates: DemoCertificate[] = demoData
       .filter(item => {
@@ -177,7 +186,7 @@ useEffect(() => {
       });
     
     if (demoCertificates.length > 0) {
-     
+      // Demo data loaded successfully
     }
     
     setDbCertificates(demoCertificates);
@@ -195,8 +204,9 @@ useEffect(() => {
   }, [selectedPerson]);
 
   // Handlers
-  const isDuplicateCertificate = (existingCert: any, newCert: any): boolean => {
-  const normalize = (str: string) => str?.toLowerCase().trim() || '';
+ // FIXED: Handle undefined values in normalize function
+const isDuplicateCertificate = (existingCert: CleanCertificateData, newCert: CleanCertificateData): boolean => {
+  const normalize = (str: string | undefined) => (str || '').toLowerCase().trim();
   
   return (
     normalize(existingCert.recipientName) === normalize(newCert.recipientName) &&
@@ -204,7 +214,7 @@ useEffect(() => {
     normalize(existingCert.email) === normalize(newCert.email) &&
     normalize(existingCert.organization) === normalize(newCert.organization)
   );
-};
+};;
 
  const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
   console.log('🚀 handleGenerateFromDatabase called with certificate:', cert);
@@ -339,9 +349,9 @@ useEffect(() => {
   };
 
   // UPDATED: Download handlers to update history
-const doDownloadPDF = async (item: any) => {
+const doDownloadPDF = async (item: CleanCertificateData) => {
   // First update the history with current timestamp
-  await handleGenerateFromDatabase(item);
+  await handleGenerateFromDatabase(item as DemoCertificate);
   setFormData(item);
   setTimeout(() => {
     generatePDF({
@@ -355,9 +365,9 @@ const doDownloadPDF = async (item: any) => {
   }, 250);
 };
 
-const doDownloadJPEG = async (item: any) => {
+const doDownloadJPEG = async (item: CleanCertificateData) => {
   // First update the history with current timestamp
-  await handleGenerateFromDatabase(item);
+  await handleGenerateFromDatabase(item as DemoCertificate);
   setFormData(item);
   setTimeout(() => {
     generateJPEG({
@@ -387,14 +397,15 @@ const doDownloadJPEG = async (item: any) => {
     return Array.from(uniqueRecipients.values());
   })();
 
-  const filteredPersons = suggestions.filter((s) => {
-    if (!dbSearch) return true;
-    const q = dbSearch.toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      (s.email && s.email.toLowerCase().includes(q))
-    );
-  });
+  // Remove unused variable
+  // const filteredPersons = suggestions.filter((s) => {
+  //   if (!dbSearch) return true;
+  //   const q = dbSearch.toLowerCase();
+  //   return (
+  //     s.name.toLowerCase().includes(q) ||
+  //     (s.email && s.email.toLowerCase().includes(q))
+  //   );
+  // });
 
   const getTemplateUrl = (category?: string) => {
     if (!category) return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
@@ -465,7 +476,7 @@ const doDownloadJPEG = async (item: any) => {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-800">
-                    {personCertificates[0]?.recipientName}'s Certificates
+                    {personCertificates[0]?.recipientName}&apos;s Certificates
                   </h3>
 
                   <div className="flex gap-4 items-center">
@@ -862,8 +873,8 @@ const doDownloadJPEG = async (item: any) => {
                   signatory: -10,
                 })
               }
-              onCertificateReady={() => setIsCertificateReady(true)}
-              onCertificateUnready={() => setIsCertificateReady(false)}
+              onCertificateReady={() => _setIsCertificateReady(true)}
+              onCertificateUnready={() => _setIsCertificateReady(false)}
             />
           )}
 

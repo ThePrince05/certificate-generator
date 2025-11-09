@@ -7,11 +7,10 @@ import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 
-
 // Contexts
 import { useOrganization } from "../context/OrganizationContext";
 import { useTemplates } from "../context/TemplateContext";
-import { useData } from "../context/DataContext"; // ADDED: Import DataContext
+import { useData } from "../context/DataContext";
 
 // Utilities
 import { generatePDF, generateJPEG } from "../utils/generatePDF";
@@ -26,7 +25,6 @@ import HistoryToggle from "@/components/HistoryToggle";
 import HistorySection from "@/components/HistorySection";
 import DownloadDropdown from "@/components/DownloadDropdown";
 import BatchPreviewSection from "@/components/generate-batch/BatchPreviewSection";
-
 
 // Types
 type DemoCertificate = CleanCertificateData & {
@@ -63,9 +61,10 @@ const getCertificateDate = () => {
 export default function GenerateBatch() {
   const router = useRouter();
   const { selectedOrg } = useOrganization();
-  const { selectedTemplate } = useTemplates();
   
-  // ADDED: Use DataContext for history
+  // Remove unused variables
+  const { selectedTemplate: _selectedTemplate } = useTemplates();
+  
   const { 
     history, 
     saveHistory, 
@@ -78,9 +77,11 @@ export default function GenerateBatch() {
   const [validatedBatch, setValidatedBatch] = useState<CertificateDataWithValidation[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  // UPDATE the formData state type
   const [formData, setFormData] = useState<(CleanCertificateData & { id?: string }) | null>(null);
-  const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
+  
+  // Remove unused state variable
+  const [_dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
+  
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCSVSection, setShowCSVSection] = useState(true);
@@ -97,7 +98,7 @@ export default function GenerateBatch() {
     [history, searchQuery]
   );
 
-    const getTemplateUrl = (category?: string) => {
+  const getTemplateUrl = (category?: string) => {
     if (!category) return selectedOrg?.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg";
 
     if (category.toLowerCase().includes("gaming") || category.toLowerCase().includes("development")) {
@@ -109,13 +110,12 @@ export default function GenerateBatch() {
 
   const handleClearHistory = async (): Promise<void> => {
     await clearHistory();
-    // No return value needed - void is expected
   };
 
-    const handleDeleteHistoryItem = async (id: string): Promise<void> => {
-      await deleteHistoryItem(id);
-      // No return value needed - void is expected
-    };
+  const handleDeleteHistoryItem = async (id: string): Promise<void> => {
+    await deleteHistoryItem(id);
+  };
+
   // Effects
   useEffect(() => {
     if (!selectedOrg) router.push("/generate?step=org");
@@ -155,10 +155,7 @@ export default function GenerateBatch() {
   }, [selectedOrg]);
 
   // Handlers
-
-
-  
-  const doDownloadPDF = async (item: any) => {
+  const doDownloadPDF = async (item: CleanCertificateData & { id?: string }) => {
     setFormData(item);
     setTimeout(async () => {
       await generatePDF({
@@ -185,120 +182,116 @@ export default function GenerateBatch() {
     }, 250);
   };
 
-  const doDownloadJPEG = async (item: any) => {
-  setFormData(item);
-  setTimeout(async () => {
-    await generateJPEG({
-      organization: -30,
-      programName: -14,
-      achievementText: -15,
-      recipientName: -16,
-      certificateDate: -10,
-      signatory: -10,
-    });
-    
-    
-    // Save to history after download
-    try {
-      const historyItem = {
-        ...item,
-        id: item.id ?? uuidv4(),
-        generatedAt: new Date().toISOString(),
-      };
-      await saveHistory(historyItem);
-      console.log(`✅ Saved to history: ${item.recipientName}`);
-    } catch (error) {
-      console.error(`❌ Failed to save to history: ${item.recipientName}`, error);
-    }
-  }, 250);
-};
-
-const handlePreviewDownloadPDF = async () => {
-  if (!formData) return;
-  
-  setFormData(formData);
-  setTimeout(async () => {
-    await generatePDF({
-      organization: -30,
-      programName: -14,
-      achievementText: -15,
-      recipientName: -16,
-      certificateDate: -10,
-      signatory: -10,
-    });
-    
-    // Save to history after download
-    try {
-      const historyItem = {
-        ...formData,
-        id: formData.id ?? uuidv4(),
-        generatedAt: new Date().toISOString(),
-      };
-      await saveHistory(historyItem);
-      console.log(`✅ Saved to history: ${formData.recipientName}`);
-    } catch (error) {
-      console.error(`❌ Failed to save to history: ${formData.recipientName}`, error);
-    }
-  }, 250);
-};
-
-
-const handlePreviewDownloadJPEG = async () => {
-  if (!formData) return;
-  
-  setFormData(formData);
-  setTimeout(async () => {
-    await generateJPEG({
-      organization: -30,
-      programName: -14,
-      achievementText: -15,
-      recipientName: -16,
-      certificateDate: -10,
-      signatory: -10,
-    });
-    
-    // Save to history after download
-    try {
-      const historyItem = {
-        ...formData,
-        id: formData.id ?? uuidv4(),
-        generatedAt: new Date().toISOString(),
-      };
-      await saveHistory(historyItem);
-      console.log(`✅ Saved to history: ${formData.recipientName}`);
-    } catch (error) {
-      console.error(`❌ Failed to save to history: ${formData.recipientName}`, error);
-    }
-  }, 250);
-};
-
-
-// UPDATE the handleRowSelect function
-const handleRowSelect = (row: CertificateDataWithValidation) => {
-  const rowId = row.id ?? `row-${validatedBatch.indexOf(row)}`;
-  
-  const previewData: CleanCertificateData & { id?: string } = {
-    recipientName: row.recipientName || "",
-    organization: row.organization || selectedOrg?.name || "",
-    category: row.category || "",
-    programName: row.programName || "",
-    fieldOfInterest: row.fieldOfInterest || "",
-    achievementText: row.achievementText || "",
-    certificateDate: row.certificateDate || getCertificateDate(),
-    email: row.email || "",
-    type: row.type || "Achievement",
-    id: row.id,
+  const doDownloadJPEG = async (item: CleanCertificateData & { id?: string }) => {
+    setFormData(item);
+    setTimeout(async () => {
+      await generateJPEG({
+        organization: -30,
+        programName: -14,
+        achievementText: -15,
+        recipientName: -16,
+        certificateDate: -10,
+        signatory: -10,
+      });
+      
+      // Save to history after download
+      try {
+        const historyItem = {
+          ...item,
+          id: item.id ?? uuidv4(),
+          generatedAt: new Date().toISOString(),
+        };
+        await saveHistory(historyItem);
+        console.log(`✅ Saved to history: ${item.recipientName}`);
+      } catch (error) {
+        console.error(`❌ Failed to save to history: ${item.recipientName}`, error);
+      }
+    }, 250);
   };
-  
-  setFormData(previewData);
-  setSelectedRowId(rowId);
-  
-  console.log('🎯 Selected row:', {
-    rowId,
-    recipient: row.recipientName,
-    program: row.programName
-  });
-};
+
+  const handlePreviewDownloadPDF = async () => {
+    if (!formData) return;
+    
+    setFormData(formData);
+    setTimeout(async () => {
+      await generatePDF({
+        organization: -30,
+        programName: -14,
+        achievementText: -15,
+        recipientName: -16,
+        certificateDate: -10,
+        signatory: -10,
+      });
+      
+      // Save to history after download
+      try {
+        const historyItem = {
+          ...formData,
+          id: formData.id ?? uuidv4(),
+          generatedAt: new Date().toISOString(),
+        };
+        await saveHistory(historyItem);
+        console.log(`✅ Saved to history: ${formData.recipientName}`);
+      } catch (error) {
+        console.error(`❌ Failed to save to history: ${formData.recipientName}`, error);
+      }
+    }, 250);
+  };
+
+  const handlePreviewDownloadJPEG = async () => {
+    if (!formData) return;
+    
+    setFormData(formData);
+    setTimeout(async () => {
+      await generateJPEG({
+        organization: -30,
+        programName: -14,
+        achievementText: -15,
+        recipientName: -16,
+        certificateDate: -10,
+        signatory: -10,
+      });
+      
+      // Save to history after download
+      try {
+        const historyItem = {
+          ...formData,
+          id: formData.id ?? uuidv4(),
+          generatedAt: new Date().toISOString(),
+        };
+        await saveHistory(historyItem);
+        console.log(`✅ Saved to history: ${formData.recipientName}`);
+      } catch (error) {
+        console.error(`❌ Failed to save to history: ${formData.recipientName}`, error);
+      }
+    }, 250);
+  };
+
+  const handleRowSelect = (row: CertificateDataWithValidation) => {
+    const rowId = row.id ?? `row-${validatedBatch.indexOf(row)}`;
+    
+    const previewData: CleanCertificateData & { id?: string } = {
+      recipientName: row.recipientName || "",
+      organization: row.organization || selectedOrg?.name || "",
+      category: row.category || "",
+      programName: row.programName || "",
+      fieldOfInterest: row.fieldOfInterest || "",
+      achievementText: row.achievementText || "",
+      certificateDate: row.certificateDate || getCertificateDate(),
+      email: row.email || "",
+      type: row.type || "Achievement",
+      id: row.id,
+    };
+    
+    setFormData(previewData);
+    setSelectedRowId(rowId);
+    
+    console.log('🎯 Selected row:', {
+      rowId,
+      recipient: row.recipientName,
+      program: row.programName
+    });
+  };
 
   const validateBatch = (
     data: CertificateData[]
@@ -326,72 +319,71 @@ const handleRowSelect = (row: CertificateDataWithValidation) => {
     return { validated, invalidRows };
   };
 
-const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file || !selectedOrg) return;
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedOrg) return;
 
-  Papa.parse(file, {
-    header: true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      console.log('🔍 Original CSV data (first 3 rows):', results.data.slice(0, 3));
-      
-      const rawData = (results.data as CertificateData[]).map((item, index) => {
-        console.log(`📝 Processing row ${index + 1}:`, {
-          recipientName: item.recipientName,
-          originalProgramName: item.programName,
-          originalFieldOfInterest: item.fieldOfInterest,
-          category: item.category
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        console.log('🔍 Original CSV data (first 3 rows):', results.data.slice(0, 3));
+        
+        const rawData = (results.data as CertificateData[]).map((item, index) => {
+          console.log(`📝 Processing row ${index + 1}:`, {
+            recipientName: item.recipientName,
+            originalProgramName: item.programName,
+            originalFieldOfInterest: item.fieldOfInterest,
+            category: item.category
+          });
+
+          // Helper function to convert "Unspecified" to empty string
+          const cleanValue = (value: string | undefined) => {
+            if (!value) return '';
+            return value.trim().toLowerCase() === 'unspecified' ? '' : value.trim();
+          };
+
+          // Clean both programName and fieldOfInterest
+          const cleanedProgramName = cleanValue(item.programName);
+          const cleanedFieldOfInterest = cleanValue(item.fieldOfInterest);
+
+          // Special handling for Gaming & Development category
+          const finalFieldOfInterest = item.category === "Gaming & Development" 
+            ? "" 
+            : cleanedFieldOfInterest;
+
+          const processedItem = {
+            ...item,
+            organization: selectedOrg.name,
+            category: item.category || "General",
+            programName: cleanedProgramName,
+            fieldOfInterest: finalFieldOfInterest,
+          };
+
+          console.log(`✅ After processing row ${index + 1}:`, {
+            programName: processedItem.programName,
+            fieldOfInterest: processedItem.fieldOfInterest,
+            category: processedItem.category
+          });
+
+          return processedItem;
         });
 
-        // Helper function to convert "Unspecified" to empty string
-        const cleanValue = (value: string | undefined) => {
-          if (!value) return '';
-          return value.trim().toLowerCase() === 'unspecified' ? '' : value.trim();
-        };
+        console.log('🎯 Final processed data (first 3 rows):', rawData.slice(0, 3));
 
-        // Clean both programName and fieldOfInterest
-        const cleanedProgramName = cleanValue(item.programName);
-        const cleanedFieldOfInterest = cleanValue(item.fieldOfInterest);
+        const { validated, invalidRows } = validateBatch(rawData);
+        const validatedWithIds = validated.map((row) => ({
+          ...row,
+          id: (row as CertificateDataWithValidation).id ?? uuidv4(),
+        }));
 
-        // Special handling for Gaming & Development category
-        const finalFieldOfInterest = item.category === "Gaming & Development" 
-          ? "" 
-          : cleanedFieldOfInterest;
+        console.log('📋 Validated batch data (first 3 rows):', validatedWithIds.slice(0, 3));
 
-        const processedItem = {
-          ...item,
-          organization: selectedOrg.name,
-          category: item.category || "General",
-          programName: cleanedProgramName,
-          fieldOfInterest: finalFieldOfInterest,
-        };
-
-        console.log(`✅ After processing row ${index + 1}:`, {
-          programName: processedItem.programName,
-          fieldOfInterest: processedItem.fieldOfInterest,
-          category: processedItem.category
-        });
-
-        return processedItem;
-      });
-
-      console.log('🎯 Final processed data (first 3 rows):', rawData.slice(0, 3));
-
-      const { validated, invalidRows } = validateBatch(rawData);
-      const validatedWithIds = validated.map((row) => ({
-        ...row,
-        id: (row as any).id ?? uuidv4(),
-      }));
-
-      console.log('📋 Validated batch data (first 3 rows):', validatedWithIds.slice(0, 3));
-
-      setValidatedBatch(validatedWithIds);
-      setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
-    },
-  });
-};
-
+        setValidatedBatch(validatedWithIds);
+        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
+      },
+    });
+  };
 
   const hasInvalidRows = (batch: CertificateDataWithValidation[]) =>
     batch.some((row) =>
@@ -400,115 +392,196 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       )
     );
 
-   // Add this fallback function right before handleBatchDownload
-const saveIndividualWithDelay = async (items: any[]) => {
-  let savedCount = 0;
-  
-  for (const item of items) {
+  // Remove unused function
+  // const saveIndividualWithDelay = async (items: CleanCertificateData[]) => { ... }
+
+  const handleBatchDownload = async (type: "pdf" | "jpeg") => {
+    if (!validatedBatch.length || !selectedOrg) return;
+
+    if (hasInvalidRows(validatedBatch)) {
+      alert("Some fields are invalid. Please fix them before downloading.");
+      return;
+    }
+
+    setIsDownloading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between saves
-      const success = await saveHistory(item);
+      const batchWithIds = validatedBatch.map((cert) => ({
+        ...cert,
+        id: cert.id ?? uuidv4(),
+      }));
+
+      await handleMultiDownload(
+        batchWithIds,
+        type,
+        selectedOrg.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg"
+      );
+
+      // Create all history items first
+      const historyItems = batchWithIds.map(certificate => ({
+        ...certificate,
+        generatedAt: new Date().toISOString(),
+        organization: certificate.organization || selectedOrg.name,
+        category: certificate.category || "General",
+        type: certificate.type || "Achievement",
+        certificateDate: certificate.certificateDate || getCertificateDate(),
+      }));
+
+      // Save all at once - ONLY ONCE
+      console.log('💾 Saving batch to history...', historyItems.length, 'items');
+      const success = await saveHistory(historyItems);
+      
       if (success) {
-        savedCount++;
-        console.log(`✅ Saved to history: ${item.recipientName}`);
+        console.log(`🎉 Successfully saved ${historyItems.length} certificates to history`);
       } else {
-        console.error(`❌ Failed to save to history: ${item.recipientName}`);
+        console.error('❌ Failed to save batch to history');
       }
-    } catch (error) {
-      console.error(`❌ Error saving to history: ${item.recipientName}`, error);
+      
+    } finally {
+      setIsDownloading(false);
     }
-  }
-  
-  console.log(`🎉 Successfully saved ${savedCount} out of ${items.length} certificates to history`);
-};
+  };
 
-// Then replace the handleBatchDownload function:
-const handleBatchDownload = async (type: "pdf" | "jpeg") => {
-  if (!validatedBatch.length || !selectedOrg) return;
+  // Render Functions with Preview Buttons
+  const TableView = () => (
+    <div className="overflow-auto max-w-7xl mx-auto mt-4 hidden sm:block">
+      <table className="min-w-full border border-black border-collapse">
+        <thead>
+          <tr className="bg-gray-200">
+            {Object.keys(MAX_LENGTHS)
+              .filter((key) => key !== "organization")
+              .map((key) => (
+                <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
+                  {key.toUpperCase()}
+                </th>
+              ))}
+            <th className="border border-black px-3 py-2 text-left font-semibold bg-blue-100">
+              PREVIEW
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {validatedBatch.map((row, rowIndex) => {
+            const rowId = row.id ?? `row-${rowIndex}`;
+            const isSelected = selectedRowId === rowId;
+            
+            return (
+              <tr 
+                key={rowId} 
+                className={`
+                  transition-all duration-200
+                  ${isSelected ? 'bg-blue-50' : ''}
+                `}
+              >
+                {Object.keys(MAX_LENGTHS)
+                  .filter((key) => key !== "organization")
+                  .map((fieldKey) => {
+                    const field = fieldKey as CertificateFields;
+                    const value = (row[field] ?? "") as string;
+                    const isInvalid = (row[`${field}_invalid` as ValidationKey] ?? false) as boolean;
 
-  if (hasInvalidRows(validatedBatch)) {
-    alert("Some fields are invalid. Please fix them before downloading.");
-    return;
-  }
+                    // Custom placeholder logic for specific fields
+                    const getPlaceholder = (fieldName: CertificateFields) => {
+                      switch (fieldName) {
+                        case 'programName':
+                          return 'Program name';
+                        case 'fieldOfInterest':
+                          return 'Field of interest';
+                        default:
+                          return `Enter ${fieldName}`;
+                      }
+                    };
 
-  setIsDownloading(true);
-  try {
-    const batchWithIds = validatedBatch.map((cert) => ({
-      ...cert,
-      id: cert.id ?? uuidv4(),
-    }));
+                    return (
+                      <td
+                        key={fieldKey}
+                        className={`
+                          border px-2 py-1 align-top
+                          ${isSelected ? 'border-blue-200' : 'border-black'}
+                          ${isInvalid ? 'bg-red-100 border-2 border-red-500' : ''}
+                        `}
+                      >
+                        <input
+                          value={value}
+                          onChange={(e) => {
+                            const newData = [...validatedBatch];
+                            newData[rowIndex][field] = e.target.value;
+                            const { validated, invalidRows } = validateBatch(newData as CertificateData[]);
+                            const withIds = validated.map((r, i) => ({
+                              ...r,
+                              id: newData[i]?.id ?? uuidv4(),
+                            }));
+                            setValidatedBatch(withIds);
+                            setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
+                          }}
+                          className={`
+                            w-full px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-300
+                            ${isInvalid ? 'bg-red-100' : 'bg-white'}
+                          `}
+                          placeholder={getPlaceholder(field)}
+                        />
+                      </td>
+                    );
+                  })}
+                
+                {/* Preview Button Column */}
+                <td className="border border-black px-2 py-1 align-middle">
+                  <button
+                    onClick={() => handleRowSelect(row)}
+                    className={`
+                      w-full py-2 px-4 rounded text-sm font-medium transition-colors
+                      ${isSelected 
+                        ? 'bg-blue-500 text-white border border-blue-500' 
+                        : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 hover:border-blue-300'
+                      }
+                    `}
+                  >
+                    {isSelected ? 'Previewing' : 'Preview'}
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 
-    await handleMultiDownload(
-      batchWithIds,
-      type,
-      selectedOrg.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg"
-    );
+  const CardView = () => (
+    <div className="sm:hidden max-w-3xl mx-auto mt-4 space-y-3">
+      {validatedBatch.map((row, rowIndex) => {
+        const rowId = row.id ?? `row-${rowIndex}`;
+        const isSelected = selectedRowId === rowId;
+        
+        return (
+          <div 
+            key={rowId} 
+            className={`
+              border rounded p-3 shadow-sm transition-all duration-200
+              ${isSelected 
+                ? 'border-2 border-blue-500 bg-blue-50 shadow-md' 
+                : 'border-gray-200 bg-white'
+              }
+            `}
+          >
+            {/* Card Header */}
+            <div className="flex justify-between items-center mb-3">
+              <div className={isSelected ? 'text-blue-600 font-semibold' : 'text-gray-600'}>
+                Row {rowIndex + 1}
+              </div>
+              <div className={`text-sm ${isSelected ? 'text-blue-500 font-medium' : 'text-gray-500'}`}>
+                {row.recipientName || "—"}
+              </div>
+            </div>
 
-    // Create all history items first
-    const historyItems = batchWithIds.map(certificate => ({
-      ...certificate,
-      generatedAt: new Date().toISOString(),
-      organization: certificate.organization || selectedOrg.name,
-      category: certificate.category || "General",
-      type: certificate.type || "Achievement",
-      certificateDate: certificate.certificateDate || getCertificateDate(),
-    }));
-
-    // Save all at once - ONLY ONCE
-    console.log('💾 Saving batch to history...', historyItems.length, 'items');
-    const success = await saveHistory(historyItems);
-    
-    if (success) {
-      console.log(`🎉 Successfully saved ${historyItems.length} certificates to history`);
-    } else {
-      console.error('❌ Failed to save batch to history');
-      // Don't fallback to individual saves - this causes duplicates
-    }
-    
-  } finally {
-    setIsDownloading(false);
-  }
-};
-
-
-// Render Functions with Preview Buttons
-const TableView = () => (
-  <div className="overflow-auto max-w-7xl mx-auto mt-4 hidden sm:block">
-    <table className="min-w-full border border-black border-collapse">
-      <thead>
-        <tr className="bg-gray-200">
-          {Object.keys(MAX_LENGTHS)
-            .filter((key) => key !== "organization")
-            .map((key) => (
-              <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
-                {key.toUpperCase()}
-              </th>
-            ))}
-          <th className="border border-black px-3 py-2 text-left font-semibold bg-blue-100">
-            PREVIEW
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {validatedBatch.map((row, rowIndex) => {
-          const rowId = row.id ?? `row-${rowIndex}`;
-          const isSelected = selectedRowId === rowId;
-          
-          return (
-            <tr 
-              key={rowId} 
-              className={`
-                transition-all duration-200
-                ${isSelected ? 'bg-blue-50' : ''}
-              `}
-            >
+            {/* Fields */}
+            <div className="space-y-2">
               {Object.keys(MAX_LENGTHS)
                 .filter((key) => key !== "organization")
                 .map((fieldKey) => {
                   const field = fieldKey as CertificateFields;
                   const value = (row[field] ?? "") as string;
                   const isInvalid = (row[`${field}_invalid` as ValidationKey] ?? false) as boolean;
-
+                  
                   // Custom placeholder logic for specific fields
                   const getPlaceholder = (fieldName: CertificateFields) => {
                     switch (fieldName) {
@@ -522,14 +595,10 @@ const TableView = () => (
                   };
 
                   return (
-                    <td
-                      key={fieldKey}
-                      className={`
-                        border px-2 py-1 align-top
-                        ${isSelected ? 'border-blue-200' : 'border-black'}
-                        ${isInvalid ? 'bg-red-100 border-2 border-red-500' : ''}
-                      `}
-                    >
+                    <div key={fieldKey}>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        {field.toUpperCase()}
+                      </label>
                       <input
                         value={value}
                         onChange={(e) => {
@@ -544,135 +613,34 @@ const TableView = () => (
                           setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
                         }}
                         className={`
-                          w-full px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-300
-                          ${isInvalid ? 'bg-red-100' : 'bg-white'}
+                          w-full px-2 py-2 rounded border focus:outline-none focus:ring-2 focus:ring-blue-300
+                          ${isInvalid ? 'bg-red-100 border-red-400' : 'bg-white border-gray-200'}
                         `}
                         placeholder={getPlaceholder(field)}
                       />
-                    </td>
+                    </div>
                   );
                 })}
-              
-              {/* Preview Button Column */}
-              <td className="border border-black px-2 py-1 align-middle">
-                <button
-                  onClick={() => handleRowSelect(row)}
-                  className={`
-                    w-full py-2 px-4 rounded text-sm font-medium transition-colors
-                    ${isSelected 
-                      ? 'bg-blue-500 text-white border border-blue-500' 
-                      : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 hover:border-blue-300'
-                    }
-                  `}
-                >
-                  {isSelected ? 'Previewing' : 'Preview'}
-                </button>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-);
-
-
-// UPDATE the CardView component with Preview Button
-const CardView = () => (
-  <div className="sm:hidden max-w-3xl mx-auto mt-4 space-y-3">
-    {validatedBatch.map((row, rowIndex) => {
-      const rowId = row.id ?? `row-${rowIndex}`;
-      const isSelected = selectedRowId === rowId;
-      
-      return (
-        <div 
-          key={rowId} 
-          className={`
-            border rounded p-3 shadow-sm transition-all duration-200
-            ${isSelected 
-              ? 'border-2 border-blue-500 bg-blue-50 shadow-md' 
-              : 'border-gray-200 bg-white'
-            }
-          `}
-        >
-          {/* Card Header */}
-          <div className="flex justify-between items-center mb-3">
-            <div className={isSelected ? 'text-blue-600 font-semibold' : 'text-gray-600'}>
-              Row {rowIndex + 1}
             </div>
-            <div className={`text-sm ${isSelected ? 'text-blue-500 font-medium' : 'text-gray-500'}`}>
-              {row.recipientName || "—"}
-            </div>
+            
+            {/* Preview Button */}
+            <button
+              onClick={() => handleRowSelect(row)}
+              className={`
+                w-full mt-3 py-2 px-4 rounded text-sm font-medium transition-colors
+                ${isSelected 
+                  ? 'bg-blue-500 text-white border border-blue-500' 
+                  : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'
+                }
+              `}
+            >
+              {isSelected ? '✓ Currently Previewing' : 'Preview This Certificate'}
+            </button>
           </div>
-
-          {/* Fields */}
-          <div className="space-y-2">
-            {Object.keys(MAX_LENGTHS)
-              .filter((key) => key !== "organization")
-              .map((fieldKey) => {
-                const field = fieldKey as CertificateFields;
-                const value = (row[field] ?? "") as string;
-                const isInvalid = (row[`${field}_invalid` as ValidationKey] ?? false) as boolean;
-                
-                // Custom placeholder logic for specific fields
-                const getPlaceholder = (fieldName: CertificateFields) => {
-                  switch (fieldName) {
-                    case 'programName':
-                      return 'Program name';
-                    case 'fieldOfInterest':
-                      return 'Field of interest';
-                    default:
-                      return `Enter ${fieldName}`;
-                  }
-                };
-
-                return (
-                  <div key={fieldKey}>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      {field.toUpperCase()}
-                    </label>
-                    <input
-                      value={value}
-                      onChange={(e) => {
-                        const newData = [...validatedBatch];
-                        newData[rowIndex][field] = e.target.value;
-                        const { validated, invalidRows } = validateBatch(newData as CertificateData[]);
-                        const withIds = validated.map((r, i) => ({
-                          ...r,
-                          id: newData[i]?.id ?? uuidv4(),
-                        }));
-                        setValidatedBatch(withIds);
-                        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
-                      }}
-                      className={`
-                        w-full px-2 py-2 rounded border focus:outline-none focus:ring-2 focus:ring-blue-300
-                        ${isInvalid ? 'bg-red-100 border-red-400' : 'bg-white border-gray-200'}
-                      `}
-                      placeholder={getPlaceholder(field)}
-                    />
-                  </div>
-                );
-              })}
-          </div>
-          
-          {/* Preview Button */}
-          <button
-            onClick={() => handleRowSelect(row)}
-            className={`
-              w-full mt-3 py-2 px-4 rounded text-sm font-medium transition-colors
-              ${isSelected 
-                ? 'bg-blue-500 text-white border border-blue-500' 
-                : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'
-              }
-            `}
-          >
-            {isSelected ? '✓ Currently Previewing' : 'Preview This Certificate'}
-          </button>
-        </div>
-      );
-    })}
-  </div>
-);
+        );
+      })}
+    </div>
+  );
 
   const toggleCSVSection = () => {
     setShowCSVSection(!showCSVSection);
@@ -808,7 +776,7 @@ const CardView = () => (
             filteredHistory={filteredHistory}
             setShowHistory={setShowHistory}
             setSearchQuery={setSearchQuery}
-            setFormData={setFormData} // This should work now with our updated type
+            setFormData={setFormData}
             saveHistory={handleClearHistory}
             handleDeleteHistory={handleDeleteHistoryItem}
             doDownloadPDF={doDownloadPDF}
