@@ -214,6 +214,18 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
     }
   };
 
+  const getUniqueHistoryItems = (items: any[]) => {
+  const seen = new Set();
+  return items.filter(item => {
+    if (seen.has(item.id)) {
+      console.warn('🚫 Removing duplicate from display:', item.id);
+      return false;
+    }
+    seen.add(item.id);
+    return true;
+  });
+};
+
   if (!showHistory) return null;
 
   return (
@@ -249,60 +261,60 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
             {searchQuery ? `No certificates match "${searchQuery}".` : "No certificates generated yet."}
           </p>
         ) : (
-          <div className="space-y-4">
-            {filteredHistory.map((h) => (
-              <motion.div
-                key={h.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="border p-4 rounded shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
-                onClick={() => setFormData(h)}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900">{h.recipientName}</h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                     {[
-                        h.category,
-                        h.programName || h.fieldOfInterest,
-                        new Date(h.generatedAt).toLocaleString()
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")
-                    }
-                    </p>
-                  </div>
+         <div className="space-y-4">
+  {getUniqueHistoryItems(filteredHistory).map((h) => (
+    <motion.div
+      key={h.id}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="border p-4 rounded shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
+      onClick={() => setFormData(h)}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-900">{h.recipientName}</h3>
+          <p className="text-xs text-gray-500 mt-1">
+            {[
+              h.category,
+              h.programName || h.fieldOfInterest,
+              new Date(h.generatedAt).toLocaleString()
+            ]
+              .filter(Boolean)
+              .join(" · ")
+            }
+          </p>
+        </div>
 
-                  <div className="flex gap-2 ml-4">
-                    <DownloadDropdown
-                      onDownloadPDF={(e) => {
-                        e?.stopPropagation?.();
-                        doDownloadPDF(h);
-                      }}
-                      onDownloadJPEG={(e) => {
-                        e?.stopPropagation?.();
-                        doDownloadJPEG(h);
-                      }}
-                      fontSize="sm"
-                    />
+        <div className="flex gap-2 ml-4">
+          <DownloadDropdown
+            onDownloadPDF={(e) => {
+              e?.stopPropagation?.();
+              doDownloadPDF(h);
+            }}
+            onDownloadJPEG={(e) => {
+              e?.stopPropagation?.();
+              doDownloadJPEG(h);
+            }}
+            fontSize="sm"
+          />
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteClick(h.id, h.recipientName);
-                      }}
-                      disabled={isDeleting || isDeletingSingle || isClearingAll}
-                      className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border border-red-300 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteClick(h.id, h.recipientName);
+            }}
+            disabled={isDeleting || isDeletingSingle || isClearingAll}
+            className="text-red-500 hover:text-red-700 text-sm px-3 py-1 border border-red-300 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
 
-                <p className="text-sm text-gray-600 whitespace-pre-line mt-2">{h.achievementText}</p>
-              </motion.div>
-            ))}
-          </div>
+      <p className="text-sm text-gray-600 whitespace-pre-line mt-2">{h.achievementText}</p>
+    </motion.div>
+  ))}
+</div>
         )}
       </section>
 

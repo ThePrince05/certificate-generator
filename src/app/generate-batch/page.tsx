@@ -444,34 +444,25 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
       selectedOrg.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg"
     );
 
-    // Batch save all items at once to avoid multiple re-renders
-    console.log('💾 Saving batch to history...');
-    
     // Create all history items first
     const historyItems = batchWithIds.map(certificate => ({
       ...certificate,
       generatedAt: new Date().toISOString(),
-      // Ensure all required fields are present
       organization: certificate.organization || selectedOrg.name,
       category: certificate.category || "General",
       type: certificate.type || "Achievement",
       certificateDate: certificate.certificateDate || getCertificateDate(),
     }));
 
-    // Save all at once - your saveHistory supports arrays!
-    try {
-      const success = await saveHistory(historyItems);
-      if (success) {
-        console.log(`🎉 Successfully saved ${historyItems.length} certificates to history`);
-      } else {
-        console.error('❌ Failed to save batch to history');
-        // Fallback: save individually with delay
-        await saveIndividualWithDelay(historyItems);
-      }
-    } catch (error) {
-      console.error('❌ Error saving batch to history:', error);
-      // Fallback: save individually with delay
-      await saveIndividualWithDelay(historyItems);
+    // Save all at once - ONLY ONCE
+    console.log('💾 Saving batch to history...', historyItems.length, 'items');
+    const success = await saveHistory(historyItems);
+    
+    if (success) {
+      console.log(`🎉 Successfully saved ${historyItems.length} certificates to history`);
+    } else {
+      console.error('❌ Failed to save batch to history');
+      // Don't fallback to individual saves - this causes duplicates
     }
     
   } finally {
@@ -518,6 +509,18 @@ const TableView = () => (
                   const value = (row[field] ?? "") as string;
                   const isInvalid = (row[`${field}_invalid` as ValidationKey] ?? false) as boolean;
 
+                  // Custom placeholder logic for specific fields
+                  const getPlaceholder = (fieldName: CertificateFields) => {
+                    switch (fieldName) {
+                      case 'programName':
+                        return 'Program name';
+                      case 'fieldOfInterest':
+                        return 'Field of interest';
+                      default:
+                        return `Enter ${fieldName}`;
+                    }
+                  };
+
                   return (
                     <td
                       key={fieldKey}
@@ -544,7 +547,7 @@ const TableView = () => (
                           w-full px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-300
                           ${isInvalid ? 'bg-red-100' : 'bg-white'}
                         `}
-                        placeholder={`Enter ${field}`}
+                        placeholder={getPlaceholder(field)}
                       />
                     </td>
                   );
@@ -573,7 +576,7 @@ const TableView = () => (
   </div>
 );
 
-// UPDATE the CardView component with Preview Buttons
+
 // UPDATE the CardView component with Preview Button
 const CardView = () => (
   <div className="sm:hidden max-w-3xl mx-auto mt-4 space-y-3">
@@ -610,6 +613,19 @@ const CardView = () => (
                 const field = fieldKey as CertificateFields;
                 const value = (row[field] ?? "") as string;
                 const isInvalid = (row[`${field}_invalid` as ValidationKey] ?? false) as boolean;
+                
+                // Custom placeholder logic for specific fields
+                const getPlaceholder = (fieldName: CertificateFields) => {
+                  switch (fieldName) {
+                    case 'programName':
+                      return 'Program name';
+                    case 'fieldOfInterest':
+                      return 'Field of interest';
+                    default:
+                      return `Enter ${fieldName}`;
+                  }
+                };
+
                 return (
                   <div key={fieldKey}>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -632,7 +648,7 @@ const CardView = () => (
                         w-full px-2 py-2 rounded border focus:outline-none focus:ring-2 focus:ring-blue-300
                         ${isInvalid ? 'bg-red-100 border-red-400' : 'bg-white border-gray-200'}
                       `}
-                      placeholder={`Enter ${field}`}
+                      placeholder={getPlaceholder(field)}
                     />
                   </div>
                 );
