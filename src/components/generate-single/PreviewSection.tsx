@@ -98,15 +98,15 @@ export const PreviewSection: React.FC<PreviewSectionProps> = ({
       const currentCheckCount = readinessCheckCount + 1;
       setReadinessCheckCount(currentCheckCount);
 
-      console.log('🔍 Certificate readiness check:', {
-        count: currentCheckCount,
-        hasValidDimensions,
-        hasSubstantialContent: hasSubstantialContent ? `${certificateElement.innerHTML.length} chars` : 'too short',
-        hasCriticalElements,
-        allImagesLoaded,
-        hasValidStyles,
-        isReady
-      });
+      // console.log('🔍 Certificate readiness check:', {
+      //   count: currentCheckCount,
+      //   hasValidDimensions,
+      //   hasSubstantialContent: hasSubstantialContent ? `${certificateElement.innerHTML.length} chars` : 'too short',
+      //   hasCriticalElements,
+      //   allImagesLoaded,
+      //   hasValidStyles,
+      //   isReady
+      // });
 
       if (isReady) {
         setIsCertificateReady(true);
