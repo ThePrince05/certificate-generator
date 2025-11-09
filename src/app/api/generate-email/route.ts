@@ -53,7 +53,6 @@ function formatCertificateList(groupedCertificates: { [key: string]: string[] })
   return typeList.slice(0, -1).join(", ") + ", and " + typeList.slice(-1);
 }
 
-
 function formatCertificateSummary(groupedCertificates: { [key: string]: string[] }): string {
   const totalCertificates = Object.values(groupedCertificates).flat().length;
   const typeCount = Object.keys(groupedCertificates).length;
@@ -71,12 +70,10 @@ function formatCertificateSummary(groupedCertificates: { [key: string]: string[]
 async function generateGeminiMessage({ 
   recipientName, 
   programs, 
-  organization,
   certificateTypes
 }: {
   recipientName: string;
   programs: string[];
-  organization: string;
   certificateTypes: string[];
 }) {
   const firstName = recipientName.split(' ')[0];
@@ -167,8 +164,9 @@ Working for the Betterment of Kids, People and the Planet!`;
       htmlContent: convertTextToHtml(cleanContent)
     };
     
-  } catch (err: any) {
-    console.warn("Gemini failed, using fallback message:", err.message || err);
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+    console.warn("Gemini failed, using fallback message:", errorMessage);
     return fallbackMessage;
   }
 }
@@ -183,12 +181,11 @@ export async function POST(req: Request) {
       organization: body.organization
     });
     
-    const { recipientName, programs, organization, certificateTypes } = body;
+    const { recipientName, programs, certificateTypes } = body;
     
     const message = await generateGeminiMessage({ 
       recipientName, 
       programs, 
-      organization,
       certificateTypes: certificateTypes || []
     });
     
