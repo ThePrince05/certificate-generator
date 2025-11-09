@@ -20,6 +20,90 @@ type MessageOption = {
 
 type DialogType = 'success' | 'error' | null;
 
+// ADDED: Enhanced certificate validation function
+const validateCertificates = (certificates: ShareableCertificate[]): { valid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  
+  certificates.forEach((cert, index) => {
+    if (!cert.recipientName?.trim()) {
+      errors.push(`Certificate ${index + 1}: Missing recipient name`);
+    }
+    if (!cert.programName?.trim()) {
+      errors.push(`Certificate ${index + 1}: Missing program name`);
+    }
+    if (!cert.organization?.trim()) {
+      errors.push(`Certificate ${index + 1}: Missing organization`);
+    }
+  });
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+};
+
+// ADDED: Certificate readiness checker
+const checkCertificateReadiness = (): { isReady: boolean; issues: string[] } => {
+  const certificateElement = document.getElementById('certificate');
+  const issues: string[] = [];
+
+  if (!certificateElement) {
+    issues.push('Certificate preview element not found');
+    return { isReady: false, issues };
+  }
+
+  // Check dimensions
+  if (certificateElement.offsetWidth < 100 || certificateElement.offsetHeight < 100) {
+    issues.push('Certificate preview has invalid dimensions');
+  }
+
+  // Check content
+  if (certificateElement.innerHTML.length < 500) {
+    issues.push('Certificate content appears incomplete');
+  }
+
+  // Check for critical elements
+  const criticalElements = [
+    '#organization-text',
+    '#programName-text', 
+    '#recipientName-text',
+    '#achievement-text'
+  ];
+  
+  const missingElements = criticalElements.filter(selector => 
+    !certificateElement.querySelector(selector)
+  );
+  
+  if (missingElements.length > 0) {
+    issues.push(`Missing critical elements: ${missingElements.join(', ')}`);
+  }
+
+  // Check images are loaded
+  const images = certificateElement.querySelectorAll('img');
+  const unloadedImages = Array.from(images).filter(img => !img.complete || img.naturalHeight === 0);
+  
+  if (unloadedImages.length > 0) {
+    issues.push(`${unloadedImages.length} image(s) still loading`);
+  }
+
+  // Check for CSS issues
+  const computedStyle = window.getComputedStyle(certificateElement);
+  if (computedStyle.display === 'none') {
+    issues.push('Certificate is hidden (display: none)');
+  }
+  if (computedStyle.visibility === 'hidden') {
+    issues.push('Certificate is not visible');
+  }
+  if (computedStyle.opacity === '0') {
+    issues.push('Certificate is transparent');
+  }
+
+  return {
+    isReady: issues.length === 0,
+    issues
+  };
+};
+
 export const ShareModal = ({
   recipientCertificates,
   isOpen,
@@ -40,6 +124,32 @@ export const ShareModal = ({
   const [loadingMessage, setLoadingMessage] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [dialog, setDialog] = useState<{ type: DialogType; message: string } | null>(null);
+  const [certificateReadiness, setCertificateReadiness] = useState<{ isReady: boolean; issues: string[] }>({ 
+    isReady: false, 
+    issues: [] 
+  });
+
+  // ADDED: Check certificate readiness when modal opens and periodically
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const checkReadiness = () => {
+      const readiness = checkCertificateReadiness();
+      setCertificateReadiness(readiness);
+      console.log('🔍 Certificate readiness check:', readiness);
+      return readiness.isReady;
+    };
+
+    // Initial check
+    checkReadiness();
+
+    // Set up periodic checking
+    const interval = setInterval(() => {
+      checkReadiness();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   // Generate AI messages when modal opens
   useEffect(() => {
@@ -142,17 +252,27 @@ The Team`
     setCustomMessage(option.content);
   };
 
+  // UPDATED: showDialog function to handle auto-close on success
   const showDialog = (type: DialogType, message: string) => {
     setDialog({ type, message });
     
-    // Auto-hide success dialog after 3 seconds
+    // Auto-hide success dialog after 3 seconds AND close the modal
     if (type === 'success') {
       setTimeout(() => {
         setDialog(null);
+        onClose(); // Close the entire modal after success
       }, 3000);
     }
   };
 
+  // UPDATED: closeDialog function to handle both dialog AND modal closing
+  const closeDialog = () => {
+    setDialog(null);
+    // Close the modal when user clicks the cross on ANY dialog (success or error)
+    onClose();
+  };
+
+  // UPDATED: Enhanced handleShare function with comprehensive readiness checking
   const handleShare = async () => {
     if (!recipientCertificates.length) {
       showDialog('error', "No certificates to share");
@@ -165,12 +285,39 @@ The Team`
       return;
     }
 
+    // ADDED: Enhanced certificate readiness check
+    const readiness = checkCertificateReadiness();
+    if (!readiness.isReady) {
+      const issuesText = readiness.issues.join('\n• ');
+      showDialog('error', `Certificate preview is not ready:\n\n• ${issuesText}\n\nPlease ensure the certificate preview is fully loaded before sharing.`);
+      return;
+    }
+
+    // ADDED: Validate certificate data before attempting to generate
+    const validation = validateCertificates(recipientCertificates);
+    if (!validation.valid) {
+      showDialog('error', `Certificate data incomplete:\n${validation.errors.join('\n')}`);
+      return;
+    }
+
     try {
       setIsSharing(true);
 
+      // ADDED: Wait for any pending renders to complete
+      await new Promise(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve(null));
+        });
+      });
+
       // Generate PDF attachments with better error handling
-      const attachmentPromises = recipientCertificates.map(async (cert) => {
+      const attachmentPromises = recipientCertificates.map(async (cert, index) => {
         try {
+          console.log(`🔄 Generating PDF ${index + 1}/${recipientCertificates.length}:`, {
+            recipient: cert.recipientName,
+            program: cert.programName
+          });
+
           const baseName = `${cert.recipientName || "recipient"} - ${cert.programName || "certificate"}`;
           const filename = `${baseName}${cert.certificateDate ? ` - ${cert.certificateDate}` : ""}.pdf`
             .replace(/[/\\?%*:|"<>]/g, "_")
@@ -186,12 +333,18 @@ The Team`
             signatory: -10,
           };
 
-          console.log(`🔄 Generating PDF for: ${filename}`);
-          
+          // ADDED: Enhanced delay with DOM stabilization
+          await new Promise(resolve => setTimeout(resolve, 200));
+
           const blob = await generatePDFBlob(pdfOffsets);
           
           if (!blob) {
             console.error(`❌ No blob generated for certificate: ${filename}`);
+            return null;
+          }
+
+          if (blob.size === 0) {
+            console.error(`❌ Empty blob generated for certificate: ${filename}`);
             return null;
           }
 
@@ -216,13 +369,14 @@ The Team`
       console.log(`📎 Generated ${attachments.length} out of ${recipientCertificates.length} attachments`);
 
       if (!attachments.length) {
-        showDialog('error', "No certificates were generated. Please check the certificate data and try again.");
+        showDialog('error', "No certificates were generated. This usually happens when:\n\n• The certificate preview isn't fully loaded\n• There are missing images or fonts\n• The browser needs more time to render\n\nPlease try generating a single certificate first using the download buttons, then try sharing again.");
         return;
       }
 
       if (attachments.length < recipientCertificates.length) {
         console.warn(`⚠️ Only ${attachments.length} out of ${recipientCertificates.length} certificates were generated`);
-        // Continue with partial success
+        showDialog('error', `Only ${attachments.length} out of ${recipientCertificates.length} certificates were generated successfully. Please try generating the missing certificates individually first.`);
+        return;
       }
 
       // Send email
@@ -233,13 +387,7 @@ The Team`
         attachments,
       });
 
-      showDialog('success', `Certificates shared successfully with ${editableContactInfo.email}!`);
-      
-      // Close modal after successful share (with slight delay for user to see success message)
-      // setTimeout(() => {
-      //   onClose();
-      //   setDialog(null);
-      // }, 1500);
+      showDialog('success', `Certificates shared successfully with ${editableContactInfo.recipientName}!`);
       
     } catch (err) {
       console.error("Failed to share certificates:", err);
@@ -249,15 +397,20 @@ The Team`
     }
   };
 
-  const closeDialog = () => {
-    setDialog(null);
+  // ADDED: Function to handle manual modal close (when user clicks Cancel)
+  const handleModalClose = () => {
+    if (isSharing) return; // Prevent closing while sharing is in progress
+    onClose();
   };
+
+  // ADDED: Determine if share button should be disabled
+  const isShareDisabled = loadingMessage || isSharing || !certificateReadiness.isReady;
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Custom Dialog - REMOVED background overlay */}
+      {/* Custom Dialog */}
       {dialog && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className={`bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4 transform transition-all duration-300 scale-100 opacity-100 ${
@@ -279,18 +432,17 @@ The Team`
                 }`}>
                   {dialog.type === 'success' ? 'Success!' : 'Error'}
                 </h3>
-                <p className="text-gray-700 mt-1">{dialog.message}</p>
+                <p className="text-gray-700 mt-1 whitespace-pre-line">{dialog.message}</p>
               </div>
-              {dialog.type === 'error' && (
-                <button
-                  onClick={closeDialog}
-                  className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+              {/* UPDATED: Close button now closes BOTH dialog AND modal for all dialog types */}
+              <button
+                onClick={closeDialog}
+                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             
             {dialog.type === 'success' && (
@@ -312,6 +464,21 @@ The Team`
         <h2 className="text-xl font-semibold">
           Share with <span className="text-blue-600">{recipient?.recipientName || "Recipient"}</span>
         </h2>
+
+        {/* ADDED: Certificate Readiness Status */}
+        {!certificateReadiness.isReady && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+              <span className="text-yellow-700 text-sm font-medium">
+                Certificate preview loading...
+              </span>
+            </div>
+            <p className="text-yellow-600 text-xs mt-1">
+              Please wait until the certificate is fully loaded before sharing
+            </p>
+          </div>
+        )}
 
         {/* Email Input */}
         <div className="space-y-3">
@@ -349,20 +516,29 @@ The Team`
         <div className="flex justify-end gap-3 pt-4">
           <button 
             className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={onClose}
+            onClick={handleModalClose}
             disabled={isSharing}
           >
             Cancel
           </button>
           <button
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-4 py-2 rounded transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isShareDisabled 
+                ? 'bg-gray-400 text-gray-200' 
+                : 'bg-green-500 text-white hover:bg-green-600'
+            }`}
             onClick={handleShare}
-            disabled={loadingMessage || isSharing}
+            disabled={isShareDisabled}
           >
             {isSharing ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 Sharing...
+              </>
+            ) : !certificateReadiness.isReady ? (
+              <>
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                Loading...
               </>
             ) : (
               <>

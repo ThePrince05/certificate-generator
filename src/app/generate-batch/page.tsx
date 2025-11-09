@@ -25,6 +25,8 @@ import { contactInfoList } from "@/data/SocialMediaData";
 import HistoryToggle from "@/components/HistoryToggle";
 import HistorySection from "@/components/HistorySection";
 import DownloadDropdown from "@/components/DownloadDropdown";
+import BatchPreviewSection from "@/components/generate-batch/BatchPreviewSection";
+
 
 // Types
 type DemoCertificate = CleanCertificateData & {
@@ -76,11 +78,13 @@ export default function GenerateBatch() {
   const [validatedBatch, setValidatedBatch] = useState<CertificateDataWithValidation[]>([]);
   const [batchWarning, setBatchWarning] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [formData, setFormData] = useState<CertificateData | null>(null);
+  // UPDATE the formData state type
+  const [formData, setFormData] = useState<(CleanCertificateData & { id?: string }) | null>(null);
   const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCSVSection, setShowCSVSection] = useState(true);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
   // Derived state
   const filteredHistory = useMemo(() => 
@@ -93,6 +97,15 @@ export default function GenerateBatch() {
     [history, searchQuery]
   );
 
+    const getTemplateUrl = (category?: string) => {
+    if (!category) return selectedOrg?.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg";
+
+    if (category.toLowerCase().includes("gaming") || category.toLowerCase().includes("development")) {
+      return "/templates/one-planet-one-people-games/certificate-template.jpg";
+    }
+
+    return selectedOrg?.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg";
+  };
 
   const handleClearHistory = async (): Promise<void> => {
     await clearHistory();
@@ -142,6 +155,9 @@ export default function GenerateBatch() {
   }, [selectedOrg]);
 
   // Handlers
+
+
+  
   const doDownloadPDF = async (item: any) => {
     setFormData(item);
     setTimeout(async () => {
@@ -181,6 +197,7 @@ export default function GenerateBatch() {
       signatory: -10,
     });
     
+    
     // Save to history after download
     try {
       const historyItem = {
@@ -194,6 +211,93 @@ export default function GenerateBatch() {
       console.error(`❌ Failed to save to history: ${item.recipientName}`, error);
     }
   }, 250);
+};
+
+const handlePreviewDownloadPDF = async () => {
+  if (!formData) return;
+  
+  setFormData(formData);
+  setTimeout(async () => {
+    await generatePDF({
+      organization: -30,
+      programName: -14,
+      achievementText: -15,
+      recipientName: -16,
+      certificateDate: -10,
+      signatory: -10,
+    });
+    
+    // Save to history after download
+    try {
+      const historyItem = {
+        ...formData,
+        id: formData.id ?? uuidv4(),
+        generatedAt: new Date().toISOString(),
+      };
+      await saveHistory(historyItem);
+      console.log(`✅ Saved to history: ${formData.recipientName}`);
+    } catch (error) {
+      console.error(`❌ Failed to save to history: ${formData.recipientName}`, error);
+    }
+  }, 250);
+};
+
+
+const handlePreviewDownloadJPEG = async () => {
+  if (!formData) return;
+  
+  setFormData(formData);
+  setTimeout(async () => {
+    await generateJPEG({
+      organization: -30,
+      programName: -14,
+      achievementText: -15,
+      recipientName: -16,
+      certificateDate: -10,
+      signatory: -10,
+    });
+    
+    // Save to history after download
+    try {
+      const historyItem = {
+        ...formData,
+        id: formData.id ?? uuidv4(),
+        generatedAt: new Date().toISOString(),
+      };
+      await saveHistory(historyItem);
+      console.log(`✅ Saved to history: ${formData.recipientName}`);
+    } catch (error) {
+      console.error(`❌ Failed to save to history: ${formData.recipientName}`, error);
+    }
+  }, 250);
+};
+
+
+// UPDATE the handleRowSelect function
+const handleRowSelect = (row: CertificateDataWithValidation) => {
+  const rowId = row.id ?? `row-${validatedBatch.indexOf(row)}`;
+  
+  const previewData: CleanCertificateData & { id?: string } = {
+    recipientName: row.recipientName || "",
+    organization: row.organization || selectedOrg?.name || "",
+    category: row.category || "",
+    programName: row.programName || "",
+    fieldOfInterest: row.fieldOfInterest || "",
+    achievementText: row.achievementText || "",
+    certificateDate: row.certificateDate || getCertificateDate(),
+    email: row.email || "",
+    type: row.type || "Achievement",
+    id: row.id,
+  };
+  
+  setFormData(previewData);
+  setSelectedRowId(rowId);
+  
+  console.log('🎯 Selected row:', {
+    rowId,
+    recipient: row.recipientName,
+    program: row.programName
+  });
 };
 
   const validateBatch = (
@@ -288,6 +392,7 @@ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   });
 };
 
+
   const hasInvalidRows = (batch: CertificateDataWithValidation[]) =>
     batch.some((row) =>
       (Object.keys(MAX_LENGTHS) as CertificateFields[]).some(
@@ -374,24 +479,38 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
   }
 };
 
-  // Render Functions
-  const TableView = () => (
-    <div className="overflow-auto max-w-7xl mx-auto mt-4 hidden sm:block">
-      <table className="min-w-full border border-black border-collapse">
-        <thead>
-          <tr className="bg-gray-200">
-            {Object.keys(MAX_LENGTHS)
-              .filter((key) => key !== "organization")
-              .map((key) => (
-                <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
-                  {key.toUpperCase()}
-                </th>
-              ))}
-          </tr>
-        </thead>
-        <tbody>
-          {validatedBatch.map((row, rowIndex) => (
-            <tr key={row.id ?? rowIndex} className="hover:bg-gray-50">
+
+// Render Functions with Preview Buttons
+const TableView = () => (
+  <div className="overflow-auto max-w-7xl mx-auto mt-4 hidden sm:block">
+    <table className="min-w-full border border-black border-collapse">
+      <thead>
+        <tr className="bg-gray-200">
+          {Object.keys(MAX_LENGTHS)
+            .filter((key) => key !== "organization")
+            .map((key) => (
+              <th key={key} className="border border-black px-3 py-2 text-left font-semibold">
+                {key.toUpperCase()}
+              </th>
+            ))}
+          <th className="border border-black px-3 py-2 text-left font-semibold bg-blue-100">
+            PREVIEW
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {validatedBatch.map((row, rowIndex) => {
+          const rowId = row.id ?? `row-${rowIndex}`;
+          const isSelected = selectedRowId === rowId;
+          
+          return (
+            <tr 
+              key={rowId} 
+              className={`
+                transition-all duration-200
+                ${isSelected ? 'bg-blue-50' : ''}
+              `}
+            >
               {Object.keys(MAX_LENGTHS)
                 .filter((key) => key !== "organization")
                 .map((fieldKey) => {
@@ -402,9 +521,11 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
                   return (
                     <td
                       key={fieldKey}
-                      className={`border px-2 py-1 align-top ${
-                        isInvalid ? "bg-red-100 border-2 border-red-500" : "border-black"
-                      }`}
+                      className={`
+                        border px-2 py-1 align-top
+                        ${isSelected ? 'border-blue-200' : 'border-black'}
+                        ${isInvalid ? 'bg-red-100 border-2 border-red-500' : ''}
+                      `}
                     >
                       <input
                         value={value}
@@ -419,27 +540,69 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
                           setValidatedBatch(withIds);
                           setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
                         }}
-                        className={`w-full px-2 py-1 rounded focus:outline-none ${isInvalid ? "bg-red-100" : "bg-white"}`}
+                        className={`
+                          w-full px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-300
+                          ${isInvalid ? 'bg-red-100' : 'bg-white'}
+                        `}
+                        placeholder={`Enter ${field}`}
                       />
                     </td>
                   );
                 })}
+              
+              {/* Preview Button Column */}
+              <td className="border border-black px-2 py-1 align-middle">
+                <button
+                  onClick={() => handleRowSelect(row)}
+                  className={`
+                    w-full py-2 px-4 rounded text-sm font-medium transition-colors
+                    ${isSelected 
+                      ? 'bg-blue-500 text-white border border-blue-500' 
+                      : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 hover:border-blue-300'
+                    }
+                  `}
+                >
+                  {isSelected ? 'Previewing' : 'Preview'}
+                </button>
+              </td>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+);
 
-  const CardView = () => (
-    <div className="sm:hidden max-w-3xl mx-auto mt-4 space-y-3">
-      {validatedBatch.map((row, rowIndex) => (
-        <div key={row.id ?? rowIndex} className="border rounded p-3 bg-white shadow-sm">
-          <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
-            <div>Row {rowIndex + 1}</div>
-            <div className="text-xs text-gray-500">{row.recipientName || "—"}</div>
+// UPDATE the CardView component with Preview Buttons
+// UPDATE the CardView component with Preview Button
+const CardView = () => (
+  <div className="sm:hidden max-w-3xl mx-auto mt-4 space-y-3">
+    {validatedBatch.map((row, rowIndex) => {
+      const rowId = row.id ?? `row-${rowIndex}`;
+      const isSelected = selectedRowId === rowId;
+      
+      return (
+        <div 
+          key={rowId} 
+          className={`
+            border rounded p-3 shadow-sm transition-all duration-200
+            ${isSelected 
+              ? 'border-2 border-blue-500 bg-blue-50 shadow-md' 
+              : 'border-gray-200 bg-white'
+            }
+          `}
+        >
+          {/* Card Header */}
+          <div className="flex justify-between items-center mb-3">
+            <div className={isSelected ? 'text-blue-600 font-semibold' : 'text-gray-600'}>
+              Row {rowIndex + 1}
+            </div>
+            <div className={`text-sm ${isSelected ? 'text-blue-500 font-medium' : 'text-gray-500'}`}>
+              {row.recipientName || "—"}
+            </div>
           </div>
 
+          {/* Fields */}
           <div className="space-y-2">
             {Object.keys(MAX_LENGTHS)
               .filter((key) => key !== "organization")
@@ -465,18 +628,35 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
                         setValidatedBatch(withIds);
                         setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
                       }}
-                      className={`w-full px-2 py-2 rounded border focus:outline-none ${
-                        isInvalid ? "bg-red-100 border-red-400" : "bg-white border-gray-200"
-                      }`}
+                      className={`
+                        w-full px-2 py-2 rounded border focus:outline-none focus:ring-2 focus:ring-blue-300
+                        ${isInvalid ? 'bg-red-100 border-red-400' : 'bg-white border-gray-200'}
+                      `}
+                      placeholder={`Enter ${field}`}
                     />
                   </div>
                 );
               })}
           </div>
+          
+          {/* Preview Button */}
+          <button
+            onClick={() => handleRowSelect(row)}
+            className={`
+              w-full mt-3 py-2 px-4 rounded text-sm font-medium transition-colors
+              ${isSelected 
+                ? 'bg-blue-500 text-white border border-blue-500' 
+                : 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'
+              }
+            `}
+          >
+            {isSelected ? '✓ Currently Previewing' : 'Preview This Certificate'}
+          </button>
         </div>
-      ))}
-    </div>
-  );
+      );
+    })}
+  </div>
+);
 
   const toggleCSVSection = () => {
     setShowCSVSection(!showCSVSection);
@@ -583,7 +763,21 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
 
         {/* Batch Data Display */}
         <BatchDataDisplay />
-
+        {formData && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 p-6 bg-white"
+          >
+            <BatchPreviewSection
+              formData={formData}
+              getTemplateUrl={getTemplateUrl}
+              getCertificateDate={getCertificateDate}
+              onDownloadPDF={handlePreviewDownloadPDF}
+              onDownloadJPEG={handlePreviewDownloadJPEG}
+            />
+          </motion.div>
+        )}
         {/* History Section */}
         <HistoryToggle
           history={history}
@@ -591,20 +785,20 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
           setShowHistory={setShowHistory}
         />
 
-        <HistorySection
-          history={history}
-          showHistory={showHistory}
-          searchQuery={searchQuery}
-          filteredHistory={filteredHistory}
-          setShowHistory={setShowHistory}
-          setSearchQuery={setSearchQuery}
-          setFormData={setFormData}
-          saveHistory={handleClearHistory} // Use the wrapper function
-          handleDeleteHistory={handleDeleteHistoryItem} // Use deleteHistoryItem from DataContext
-          doDownloadPDF={doDownloadPDF}
-          doDownloadJPEG={doDownloadJPEG}
-          isDeleting={loading.deletingHistory} // Pass loading state
-        />
+       <HistorySection
+            history={history}
+            showHistory={showHistory}
+            searchQuery={searchQuery}
+            filteredHistory={filteredHistory}
+            setShowHistory={setShowHistory}
+            setSearchQuery={setSearchQuery}
+            setFormData={setFormData} // This should work now with our updated type
+            saveHistory={handleClearHistory}
+            handleDeleteHistory={handleDeleteHistoryItem}
+            doDownloadPDF={doDownloadPDF}
+            doDownloadJPEG={doDownloadJPEG}
+            isDeleting={loading.deletingHistory}
+          />
 
         {/* Batch Warning */}
         {batchWarning && (

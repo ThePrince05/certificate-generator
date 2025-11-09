@@ -24,7 +24,7 @@ import { CleanCertificateData } from "@/types/certificates";
 import { contactInfoList } from "@/data/SocialMediaData";
 
 import PersonSearch from "@/components/generate-single/PersonSearch";
-import PreviewSection from "@/components/PreviewSection"; 
+import PreviewSection from "@/components/generate-single/PreviewSection"; 
 import DownloadDropdown from "@/components/DownloadDropdown";
 import MultiDownloadDropdown from "@/components/MultiDownloadDropdown";
 import HistoryToggle from "@/components/HistoryToggle";
@@ -103,7 +103,9 @@ export default function GenerateSingle() {
   const [searchQuery, setSearchQuery] = useState("");
   const [certificatesCollapsed, setCertificatesCollapsed] = useState(false);
   const [isSharingSelected, setIsSharingSelected] = useState(false);
-
+  // In your GenerateSingle component, add this state
+  const [isCertificateReady, setIsCertificateReady] = useState(false);
+  const certificateRef = useRef<HTMLDivElement>(null);
   // Derived state
   const certificatesToShare = personCertificates.filter(cert =>
     selectedCertificates.includes(cert.id)
@@ -768,6 +770,8 @@ const doDownloadJPEG = async (item: any) => {
                   signatory: -10,
                 })
               }
+              onCertificateReady={() => setIsCertificateReady(true)}
+              onCertificateUnready={() => setIsCertificateReady(false)}
             />
           )}
 

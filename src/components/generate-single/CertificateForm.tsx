@@ -53,6 +53,8 @@ export default function CertificateForm({
   const { selectedTemplate, setTemplate } = useTemplates();
   const { groups, fieldOfInterestOptions, loading } = useData();
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
     today.toLocaleString("en-GB", { month: "long" })
@@ -221,8 +223,16 @@ export default function CertificateForm({
   // --- form submission ---
 // In your CertificateForm component, add debug logs:
 
-const handleSubmit = (e: React.FormEvent) => {
+// --- form submission ---
+const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
+  
+  // ADD THIS: Prevent multiple clicks while generating
+  if (isGenerating) {
+    console.log('⏳ Form submission already in progress');
+    return;
+  }
+
   console.log('🚀 CertificateForm: Form submitted!');
   console.log('📝 Form data being submitted:', formData);
 
@@ -242,8 +252,19 @@ const handleSubmit = (e: React.FormEvent) => {
 
   console.log('✅ Validation passed, calling onSubmit...');
   
-  // Submit the form data
-  onSubmit(formData);
+  // ADD THIS: Set loading state
+  setIsGenerating(true);
+
+  try {
+    // Submit the form data
+    await onSubmit(formData);
+  } catch (error) {
+    console.error('❌ Form submission error:', error);
+    // You can show an error message here if needed
+  } finally {
+    // ADD THIS: Reset loading state regardless of success/error
+    setIsGenerating(false);
+  }
 };
 
   // --- character counter function ---
@@ -438,15 +459,28 @@ const handleSubmit = (e: React.FormEvent) => {
       <div className="flex flex-col sm:flex-row items-center gap-3 mt-4 w-full">
         <button
           type="submit"
-          className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+          disabled={isGenerating} // ADD THIS: Disable when loading
+          className={`w-full sm:w-auto px-4 py-2 rounded transition flex items-center justify-center gap-2 ${
+            isGenerating 
+              ? 'bg-blue-400 cursor-not-allowed' 
+              : 'bg-blue-500 hover:bg-blue-600 text-white'
+          }`}
         >
-          Generate Certificate
+          {isGenerating ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Generating...
+            </>
+          ) : (
+            'Generate Certificate'
+          )}
         </button>
 
         <button
           type="button"
           onClick={() => router.push("/template-groups")}
-          className="w-full sm:ml-auto sm:w-auto bg-gray-100 text-gray-800 px-4 py-2 rounded border hover:bg-gray-200 transition"
+          disabled={isGenerating} // ADD THIS: Optional - disable other actions too
+          className="w-full sm:ml-auto sm:w-auto bg-gray-100 text-gray-800 px-4 py-2 rounded border hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Manage Template
         </button>
