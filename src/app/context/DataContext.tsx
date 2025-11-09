@@ -548,50 +548,105 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   // Enhanced saveHistory with duplicate detection
-  const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Promise<boolean> => {
-    if (!selectedOrg?.name) return false;
+ // Enhanced saveHistory with date updating for duplicates
+const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Promise<boolean> => {
+  if (!selectedOrg?.name) return false;
+  
+  try {
+    const itemsArray = Array.isArray(items) ? items : [items];
     
-    try {
-      const itemsArray = Array.isArray(items) ? items : [items];
+    // Process items - update dates for duplicates, add new ones
+    const itemsToProcess = itemsArray.map(newItem => {
+      const processedItem = {
+        ...newItem,
+        id: newItem.id || generateId(),
+        organization: selectedOrg.name,
+        createdAt: newItem.createdAt || new Date().toISOString(),
+        generatedAt: new Date().toISOString() // Always update to current time
+      };
       
-      // Filter out duplicates before saving
-      const itemsToSave = itemsArray
-        .map(item => ({
-          ...item,
-          id: item.id || generateId(),
-          organization: selectedOrg.name,
-          createdAt: item.createdAt || new Date().toISOString()
-        }))
-        .filter(newItem => {
-          const isDuplicate = isDuplicateCertificate(history, newItem);
-          if (isDuplicate) {
-            console.log('⏩ Skipping duplicate certificate:', {
-              recipient: newItem.recipientName,
-              program: newItem.programName
-            });
-          }
-          return !isDuplicate;
-        });
-      
-      console.log('📊 Save history - Input items:', itemsArray.length);
-      console.log('📊 Save history - After duplicate filtering:', itemsToSave.length);
-      
-      if (itemsToSave.length === 0) {
-        console.log('✅ No new items to save (all were duplicates)');
-        return true; // Return true since there's no error, just no new items
-      }
-      
-      const success = await saveHistoryToSheets(selectedOrg.name, itemsToSave);
-      if (success) {
-        await refreshHistory();
-      }
-      return success;
-    } catch (error) {
-      console.error('Error saving history:', error);
-      return false;
-    }
-  }, [selectedOrg, refreshHistory, history]);
+      return processedItem;
+    });
 
+    console.log('📊 Save history - Input items:', itemsArray.length);
+    
+    // Get current history to check for duplicates
+    const currentHistory = [...history];
+    
+    // Separate new items from duplicates
+    const newItems: HistoryItem[] = [];
+    const updatedItems: HistoryItem[] = [];
+    
+    itemsToProcess.forEach(item => {
+      const existingIndex = currentHistory.findIndex(existing => 
+        existing.recipientName?.toLowerCase().trim() === item.recipientName?.toLowerCase().trim() &&
+        existing.programName?.toLowerCase().trim() === item.programName?.toLowerCase().trim() &&
+        existing.email?.toLowerCase().trim() === item.email?.toLowerCase().trim() &&
+        existing.organization?.toLowerCase().trim() === item.organization?.toLowerCase().trim()
+      );
+      
+      if (existingIndex !== -1) {
+        // Update the existing item with new date
+        const updatedItem = {
+          ...currentHistory[existingIndex],
+          generatedAt: item.generatedAt, // Update to current timestamp
+          // You can update other fields here if needed
+        };
+        updatedItems.push(updatedItem);
+        console.log('🔄 Updating existing certificate date:', {
+          recipient: item.recipientName,
+          program: item.programName,
+          oldDate: currentHistory[existingIndex].generatedAt,
+          newDate: item.generatedAt
+        });
+      } else {
+        // Add as new item
+        newItems.push(item);
+        console.log('🆕 Adding new certificate:', {
+          recipient: item.recipientName,
+          program: item.programName
+        });
+      }
+    });
+    
+    console.log('📊 Save history - New items:', newItems.length);
+    console.log('📊 Save history - Updated items:', updatedItems.length);
+    
+    // Combine all items to save
+    const allItemsToSave = [...newItems, ...updatedItems];
+    
+    if (allItemsToSave.length === 0) {
+      console.log('✅ No items to save');
+      return true;
+    }
+    
+    const success = await saveHistoryToSheets(selectedOrg.name, allItemsToSave);
+    if (success) {
+      // Update local state immediately for better UX
+      const updatedHistory = [...currentHistory];
+      
+      // Remove updated items from current history (they'll be re-added with new dates)
+      updatedItems.forEach(updatedItem => {
+        const index = updatedHistory.findIndex(item => item.id === updatedItem.id);
+        if (index !== -1) {
+          updatedHistory.splice(index, 1);
+        }
+      });
+      
+      // Add all processed items (new and updated) with current dates
+      const finalHistory = [...updatedHistory, ...allItemsToSave]
+        .sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime());
+      
+      setHistory(finalHistory);
+    }
+    return success;
+  } catch (error) {
+    console.error('Error saving history:', error);
+    return false;
+  }
+}, [selectedOrg, history]);
+
+// Added history to dependencies
   // Enhanced deleteHistoryItem with loading state
   const deleteHistoryItem = useCallback(async (id: string): Promise<boolean> => {
     if (!selectedOrg?.name) return false;

@@ -522,7 +522,7 @@ const handleBatchDownload = async (type: "pdf" | "jpeg") => {
                   />
                 </div>
 
-                <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-0">
+                <div className="flex gap-2 flex-wrap justify-center md:justify-end mt-2 md:mt-7">
                   {validatedBatch.length > 0 && (
                     <DownloadDropdown
                       onDownloadPDF={() => handleBatchDownload("pdf")}

@@ -193,73 +193,140 @@ useEffect(() => {
   }, [selectedPerson]);
 
   // Handlers
-  const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
-    console.log('🚀 handleGenerateFromDatabase called with certificate:', cert);
-    
-    // Create the history item
-    const newItem = {
-      ...cert,
-      certificateType: cert.type || "Achievement",
-      type: cert.type || "generate-single",
-      id: uuidv4(),
-      generatedAt: new Date().toISOString(),
+  const isDuplicateCertificate = (existingCert: any, newCert: any): boolean => {
+  const normalize = (str: string) => str?.toLowerCase().trim() || '';
+  
+  return (
+    normalize(existingCert.recipientName) === normalize(newCert.recipientName) &&
+    normalize(existingCert.programName) === normalize(newCert.programName) &&
+    normalize(existingCert.email) === normalize(newCert.email) &&
+    normalize(existingCert.organization) === normalize(newCert.organization)
+  );
+};
+
+ const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
+  console.log('🚀 handleGenerateFromDatabase called with certificate:', cert);
+  
+  // Create the history item with current timestamp
+  const newItem = {
+    ...cert,
+    certificateType: cert.type || "Achievement",
+    type: cert.type || "generate-single",
+    id: uuidv4(), // Always generate new ID for tracking
+    generatedAt: new Date().toISOString(), // Always current timestamp
+    createdAt: new Date().toISOString(), // Set creation date
+  };
+
+
+  // Check if similar certificate already exists in history
+  const existingItemIndex = history.findIndex(h => 
+    isDuplicateCertificate(h, cert)
+  );
+
+  if (existingItemIndex !== -1) {
+    // UPDATE EXISTING ITEM: Keep the original ID but update timestamp
+    const existingItem = history[existingItemIndex];
+    const updatedItem = {
+      ...existingItem,
+      generatedAt: new Date().toISOString(), // Update generation timestamp
+      // You can update other fields here if they changed
+      category: cert.category || existingItem.category,
+      achievementText: cert.achievementText || existingItem.achievementText,
+      fieldOfInterest: cert.fieldOfInterest || existingItem.fieldOfInterest,
     };
 
-    // Check if already exists in history
-    const alreadyExists = history.some(
-      (h) =>
-        h.recipientName === cert.recipientName &&
-        h.programName === cert.programName &&
-        h.email === cert.email
-    );
-
-    if (!alreadyExists) {
-      try {
-        await saveHistory([newItem]);
-      } catch (error) {
-        console.error('💥 Error saving to history:', error);
-      }
-    }
-
-    // Set form data for preview
-    setFormData({
-      ...cert,
-      type: cert.type || "generate-single",
+    console.log('🔄 Updating existing history item:', {
+      recipient: cert.recipientName,
+      program: cert.programName,
+      oldDate: existingItem.generatedAt,
+      newDate: updatedItem.generatedAt
     });
+
+    try {
+      // Save the updated item
+      await saveHistory([updatedItem]);
+    } catch (error) {
+      console.error('💥 Error updating history:', error);
+    }
+  } else {
+    // ADD NEW ITEM
+    console.log('🆕 Adding new history item:', {
+      recipient: cert.recipientName,
+      program: cert.programName
+    });
+
+    try {
+      await saveHistory([newItem]);
+    } catch (error) {
+      console.error('💥 Error saving to history:', error);
+    }
+  }
+
+  // Set form data for preview
+  setFormData({
+    ...cert,
+    type: cert.type || "generate-single",
+  });
+};
+  const handleGenerate = async (data: CleanCertificateData) => {
+  console.log('🚀 handleGenerate called with data:', data);
+  
+  // Create the history item
+  const newItem = {
+    ...data,
+    type: data.type || "Achievement",
+    id: uuidv4(),
+    generatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
   };
 
-  const handleGenerate = async (data: CleanCertificateData) => {
-    console.log('🚀 handleGenerate called with data:', data);
-    
-    // Check if already exists in history
-    const exists = history.some(
-      (h) =>
-        h.recipientName === data.recipientName &&
-        h.programName === data.programName
-    );
+  // Check if similar certificate already exists
+  const existingItemIndex = history.findIndex(h => 
+    isDuplicateCertificate(h, data)
+  );
 
-    // Set the type directly from the data
-    const formDataWithType = {
-      ...data,
-      type: data.type || "Achievement"
+  if (existingItemIndex !== -1) {
+    // UPDATE EXISTING ITEM
+    const existingItem = history[existingItemIndex];
+    const updatedItem = {
+      ...existingItem,
+      generatedAt: new Date().toISOString(), // Update timestamp
+      // Update other fields if needed
+      category: data.category || existingItem.category,
+      achievementText: data.achievementText || existingItem.achievementText,
+      fieldOfInterest: data.fieldOfInterest || existingItem.fieldOfInterest,
     };
 
-    if (!exists) {
-      const item = {
-        ...formDataWithType,
-        id: uuidv4(),
-        generatedAt: new Date().toISOString(),
-      };
-      
-      try {
-        await saveHistory([item]);
-      } catch (error) {
-        console.error('💥 Error in saveHistory call:', error);
-      }
-    }
+    console.log('🔄 Updating existing manual entry:', {
+      recipient: data.recipientName,
+      program: data.programName
+    });
 
-    setFormData(formDataWithType);
-  };
+    try {
+      await saveHistory([updatedItem]);
+    } catch (error) {
+      console.error('💥 Error updating history:', error);
+    }
+  } else {
+    // ADD NEW ITEM
+    console.log('🆕 Adding new manual entry:', {
+      recipient: data.recipientName,
+      program: data.programName
+    });
+
+    try {
+      await saveHistory([newItem]);
+    } catch (error) {
+      console.error('💥 Error in saveHistory call:', error);
+    }
+  }
+
+  setFormData({
+    ...data,
+    type: data.type || "Achievement"
+  });
+};
+
 
   const handleDeleteHistory = async (id: string) => {
     await deleteHistoryItem(id);
@@ -269,33 +336,38 @@ useEffect(() => {
       await clearHistory();
   };
 
-  const doDownloadPDF = (item: any) => {
-    setFormData(item);
-    setTimeout(() => {
-      generatePDF({
-        organization: -30,
-        programName: -14,
-        achievementText: -15,
-        recipientName: -16,
-        certificateDate: -10,
-        signatory: -10,
-      });
-    }, 250);
-  };
+  // UPDATED: Download handlers to update history
+const doDownloadPDF = async (item: any) => {
+  // First update the history with current timestamp
+  await handleGenerateFromDatabase(item);
+  setFormData(item);
+  setTimeout(() => {
+    generatePDF({
+      organization: -30,
+      programName: -14,
+      achievementText: -15,
+      recipientName: -16,
+      certificateDate: -10,
+      signatory: -10,
+    });
+  }, 250);
+};
 
-  const doDownloadJPEG = (item: any) => {
-    setFormData(item);
-    setTimeout(() => {
-      generateJPEG({
-        organization: -30,
-        programName: -14,
-        achievementText: -15,
-        recipientName: -16,
-        certificateDate: -10,
-        signatory: -10,
-      });
-    }, 250);
-  };
+const doDownloadJPEG = async (item: any) => {
+  // First update the history with current timestamp
+  await handleGenerateFromDatabase(item);
+  setFormData(item);
+  setTimeout(() => {
+    generateJPEG({
+      organization: -30,
+      programName: -14,
+      achievementText: -15,
+      recipientName: -16,
+      certificateDate: -10,
+      signatory: -10,
+    });
+  }, 250);
+};
 
   // SIMPLIFIED: Remove complex contact matching logic since we have recipientName in CSV
   const suggestions = (() => {
@@ -431,19 +503,19 @@ useEffect(() => {
                         const isSelected = selectedCertificates.includes(cert.id);
                         return (
                           <div
-                              key={cert.id}
-                              onClick={(e) => {
-                                if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
-                                  // Add to history when certificate is clicked
-                                  handleGenerateFromDatabase(cert);
-                                  setFormData(cert);
-                                }
-                              }}
-                              className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
-                                isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
-                              }`}
-                            >
-                            <div className="flex items-start gap-3">
+                                key={cert.id}
+                                onClick={(e) => {
+                                  if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
+                                    // This will now properly update the history item
+                                    handleGenerateFromDatabase(cert);
+                                    setFormData(cert);
+                                  }
+                                }}
+                                className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
+                                  isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
+                                }`}
+                              >
+                          <div className="flex items-start gap-3">
                               <input
                                 type="checkbox"
                                 checked={isSelected}
