@@ -536,41 +536,49 @@ const doDownloadJPEG = async (item: any) => {
                               </div>
                             </div>
 
-                            <div className="flex gap-2 flex-wrap">
-                              <DownloadDropdown
-                                onDownloadPDF={() => {
-                                  handleGenerateFromDatabase(cert); // This will add to history
-                                  setTimeout(
-                                    () =>
-                                      generatePDF({
-                                        organization: -25,
-                                        programName: -12,
-                                        achievementText: -14,
-                                        recipientName: -18,
-                                        certificateDate: -10,
-                                        signatory: -8,
-                                      }),
-                                    200
-                                  );
-                                }}
-                                onDownloadJPEG={() => {
-                                  handleGenerateFromDatabase(cert); // This will add to history
-                                  setTimeout(
-                                    () =>
-                                      generateJPEG({
-                                        organization: -25,
-                                        programName: -12,
-                                        achievementText: -14,
-                                        recipientName: -18,
-                                        certificateDate: -10,
-                                        signatory: -8,
-                                      }),
-                                    200
-                                  );
-                                }}
-                                fontSize="sm"
-                              />
-                            </div>
+                          <div className="flex gap-2 flex-wrap">
+                            <DownloadDropdown
+                              onDownloadPDF={async () => {
+                                // First add to history and wait for it to complete
+                                await handleGenerateFromDatabase(cert);
+                                setFormData(cert);
+                                
+                                // Then start download after a brief delay
+                                setTimeout(
+                                  () =>
+                                    generatePDF({
+                                      organization: -25,
+                                      programName: -12,
+                                      achievementText: -14,
+                                      recipientName: -18,
+                                      certificateDate: -10,
+                                      signatory: -8,
+                                    }),
+                                  200
+                                );
+                              }}
+                              onDownloadJPEG={async () => {
+                                // First add to history and wait for it to complete
+                                await handleGenerateFromDatabase(cert);
+                                setFormData(cert);
+                                
+                                // Then start download after a brief delay
+                                setTimeout(
+                                  () =>
+                                    generateJPEG({
+                                      organization: -25,
+                                      programName: -12,
+                                      achievementText: -14,
+                                      recipientName: -18,
+                                      certificateDate: -10,
+                                      signatory: -8,
+                                    }),
+                                  200
+                                );
+                              }}
+                              fontSize="sm"
+                            />
+                          </div>
                           </div>
                         );
                       })}
@@ -598,22 +606,40 @@ const doDownloadJPEG = async (item: any) => {
                           setIsSharingSelected(true);
                           
                           try {
-                            // Add to history if not already there
-                            const newHistoryEntries = selected.map((c) => ({
-                              ...c,
-                              id: uuidv4(),
-                              generatedAt: new Date().toISOString(),
-                            })).filter((newItem) =>
-                              !history.some(
-                                (h) =>
-                                  h.recipientName === newItem.recipientName &&
-                                  h.programName === newItem.programName &&
-                                  h.email === newItem.email
-                              )
-                            );
+                            // Use the same logic as handleGenerateFromDatabase for consistency
+                            const historyUpdates = selected.map(cert => {
+                              // Check if certificate already exists in history
+                              const existingItemIndex = history.findIndex(h => 
+                                isDuplicateCertificate(h, cert)
+                              );
 
-                            if (newHistoryEntries.length > 0) {
-                              await saveHistory(newHistoryEntries);
+                              if (existingItemIndex !== -1) {
+                                // UPDATE EXISTING ITEM - same logic as download
+                                const existingItem = history[existingItemIndex];
+                                return {
+                                  ...existingItem,
+                                  generatedAt: new Date().toISOString(), // Update timestamp
+                                  category: cert.category || existingItem.category,
+                                  achievementText: cert.achievementText || existingItem.achievementText,
+                                  fieldOfInterest: cert.fieldOfInterest || existingItem.fieldOfInterest,
+                                };
+                              } else {
+                                // ADD NEW ITEM - same logic as download
+                                return {
+                                  ...cert,
+                                  certificateType: cert.type || "Achievement",
+                                  type: cert.type || "generate-single",
+                                  id: uuidv4(),
+                                  generatedAt: new Date().toISOString(),
+                                  createdAt: new Date().toISOString(),
+                                };
+                              }
+                            });
+
+                            // Save all updates to history
+                            if (historyUpdates.length > 0) {
+                              await saveHistory(historyUpdates);
+                              console.log(`✅ Saved ${historyUpdates.length} certificates to history before sharing`);
                             }
 
                             setShareTarget({ type: "person", data: selected });
@@ -634,12 +660,12 @@ const doDownloadJPEG = async (item: any) => {
                         {isSharingSelected ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Loading...
+                            Saving...
                           </>
                         ) : (
                           <>
                             <FaShareAlt className="w-4 h-4" />
-                            Share Selected
+                            Share Selected ({selectedCertificates.length})
                           </>
                         )}
                       </button>
@@ -649,8 +675,41 @@ const doDownloadJPEG = async (item: any) => {
                         onDownloadPDF={async () => {
                           const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
                           if (selected.length === 0) return;
+                          
                           setIsDownloadingMulti(true);
                           try {
+                            // First save all selected certificates to history using consistent logic
+                            const historyUpdates = selected.map(cert => {
+                              const existingItemIndex = history.findIndex(h => 
+                                isDuplicateCertificate(h, cert)
+                              );
+
+                              if (existingItemIndex !== -1) {
+                                const existingItem = history[existingItemIndex];
+                                return {
+                                  ...existingItem,
+                                  generatedAt: new Date().toISOString(),
+                                  category: cert.category || existingItem.category,
+                                  achievementText: cert.achievementText || existingItem.achievementText,
+                                  fieldOfInterest: cert.fieldOfInterest || existingItem.fieldOfInterest,
+                                };
+                              } else {
+                                return {
+                                  ...cert,
+                                  certificateType: cert.type || "Achievement",
+                                  type: cert.type || "generate-single",
+                                  id: uuidv4(),
+                                  generatedAt: new Date().toISOString(),
+                                  createdAt: new Date().toISOString(),
+                                };
+                              }
+                            });
+
+                            if (historyUpdates.length > 0) {
+                              await saveHistory(historyUpdates);
+                            }
+
+                            // Then start batch download
                             await handleMultiDownload(
                               selected,
                               "pdf",
@@ -663,8 +722,41 @@ const doDownloadJPEG = async (item: any) => {
                         onDownloadJPEG={async () => {
                           const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
                           if (selected.length === 0) return;
+                          
                           setIsDownloadingMulti(true);
                           try {
+                            // First save all selected certificates to history using consistent logic
+                            const historyUpdates = selected.map(cert => {
+                              const existingItemIndex = history.findIndex(h => 
+                                isDuplicateCertificate(h, cert)
+                              );
+
+                              if (existingItemIndex !== -1) {
+                                const existingItem = history[existingItemIndex];
+                                return {
+                                  ...existingItem,
+                                  generatedAt: new Date().toISOString(),
+                                  category: cert.category || existingItem.category,
+                                  achievementText: cert.achievementText || existingItem.achievementText,
+                                  fieldOfInterest: cert.fieldOfInterest || existingItem.fieldOfInterest,
+                                };
+                              } else {
+                                return {
+                                  ...cert,
+                                  certificateType: cert.type || "Achievement",
+                                  type: cert.type || "generate-single",
+                                  id: uuidv4(),
+                                  generatedAt: new Date().toISOString(),
+                                  createdAt: new Date().toISOString(),
+                                };
+                              }
+                            });
+
+                            if (historyUpdates.length > 0) {
+                              await saveHistory(historyUpdates);
+                            }
+
+                            // Then start batch download
                             await handleMultiDownload(
                               selected,
                               "jpeg",
