@@ -7,8 +7,6 @@ import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 
-// Components
-import CertificateTemplate from "@/components/CertificateTemplate";
 
 // Contexts
 import { useOrganization } from "../context/OrganizationContext";
@@ -198,33 +196,65 @@ export default function GenerateBatch() {
     return { validated, invalidRows };
   };
 
-  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedOrg) return;
+ const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file || !selectedOrg) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rawData = (results.data as CertificateData[]).map((item) => ({
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      console.log('🔍 Original CSV data (first 3 rows):', results.data.slice(0, 3));
+      
+      const rawData = (results.data as CertificateData[]).map((item, index) => {
+        console.log(`📝 Processing row ${index + 1}:`, {
+          recipientName: item.recipientName,
+          originalProgramName: item.programName,
+          originalFieldOfInterest: item.fieldOfInterest,
+          category: item.category
+        });
+
+        // Helper function to convert "Unspecified" to empty string
+        const cleanValue = (value: string | undefined) => {
+          if (!value) return '';
+          return value.trim().toLowerCase() === 'unspecified' ? '' : value.trim();
+        };
+
+        // Clean both programName and fieldOfInterest
+        const cleanedProgramName = cleanValue(item.programName);
+        const cleanedFieldOfInterest = cleanValue(item.fieldOfInterest);
+
+        const processedItem = {
           ...item,
           organization: selectedOrg.name,
           category: item.category || "General",
-          fieldOfInterest:
-            item.category === "Gaming & Development" ? "" : item.fieldOfInterest || "Unspecified",
-        }));
+          programName: cleanedProgramName,
+          fieldOfInterest: cleanedFieldOfInterest,
+        };
 
-        const { validated, invalidRows } = validateBatch(rawData);
-        const validatedWithIds = validated.map((row) => ({
-          ...row,
-          id: (row as any).id ?? uuidv4(),
-        }));
+        console.log(`✅ After processing row ${index + 1}:`, {
+          programName: processedItem.programName,
+          fieldOfInterest: processedItem.fieldOfInterest
+        });
 
-        setValidatedBatch(validatedWithIds);
-        setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
-      },
-    });
-  };
+        return processedItem;
+      });
+
+      console.log('🎯 Final processed data (first 3 rows):', rawData.slice(0, 3));
+
+      const { validated, invalidRows } = validateBatch(rawData);
+      const validatedWithIds = validated.map((row) => ({
+        ...row,
+        id: (row as any).id ?? uuidv4(),
+      }));
+
+      console.log('📋 Validated batch data (first 3 rows):', validatedWithIds.slice(0, 3));
+
+      setValidatedBatch(validatedWithIds);
+      setBatchWarning(invalidRows.length ? invalidRows.join("\n") : null);
+    },
+  });
+};
 
   const hasInvalidRows = (batch: CertificateDataWithValidation[]) =>
     batch.some((row) =>

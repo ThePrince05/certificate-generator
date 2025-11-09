@@ -135,7 +135,7 @@ useEffect(() => {
       return;
     }
 
-    console.log(`📊 Processing ${demoData.length} demo records for: ${selectedOrg.name}`);
+  
     
     // FIXED: Ensure recipientName is always a string with proper type checking
     const demoCertificates: DemoCertificate[] = demoData
@@ -173,11 +173,9 @@ useEffect(() => {
           type: item.type || "Achievement",
         };
       });
-
-    console.log(`✅ Created ${demoCertificates.length} certificates from demo data`);
     
     if (demoCertificates.length > 0) {
-      console.log(`👥 Sample certificates:`, demoCertificates.slice(0, 2));
+     
     }
     
     setDbCertificates(demoCertificates);

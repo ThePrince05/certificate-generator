@@ -104,7 +104,7 @@ export async function POST(req: Request) {
         console.log(`✅ Added base64 attachment: ${att.filename || `attachment_${i}.pdf`}`);
         
       } else if (att.url) {
-        console.log(`🔗 Attachment ${i + 1}: Fetching from URL: ${att.url}`);
+    
         try {
           const res = await fetch(att.url);
           console.log(`📡 URL fetch response: ${res.status} ${res.statusText}`);

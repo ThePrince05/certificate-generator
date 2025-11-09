@@ -12,27 +12,41 @@ export function parseCSVData(csvContent: string, organizationName: string): any[
 
   // 🔹 Read headers dynamically (case-insensitive)
   const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+  
 
-  return lines.slice(1).map((line) => {
+  const parsedData = lines.slice(1).map((line, index) => {
     const cols = line.split(';');
 
     const get = (name: string) => {
       const idx = headers.indexOf(name.toLowerCase());
-      return idx >= 0 ? cols[idx]?.trim() || '' : '';
+      const value = idx >= 0 ? cols[idx]?.trim() || '' : '';
+      
+      // Convert "Unspecified" to empty string
+      if (value.toLowerCase() === 'unspecified') {
+        return '';
+      }
+      return value;
     };
 
+    const programName = get('programname');
+    const fieldOfInterest = get('fieldofinterest');
+    
     return {
       recipientName: get('recipientname'),
-      programName: get('programname'),
+      programName: programName,
       category: get('category'),
       achievementText: get('achievementtext'),
+      fieldOfInterest: fieldOfInterest,
       email: get('email').toLowerCase(),
       type: get('type') || 'Achievement',
-      organization: get('organization'), // Use organization from CSV data
+      organization: get('organization') || organizationName,
+      certificateDate: get('certificatedate') || '',
     };
   });
-}
 
+
+  return parsedData;
+}
 
 export function parseCSVDataForSharing(csvContent: string, organizationName: string): any[] {
   if (!csvContent.trim()) return [];
@@ -44,7 +58,13 @@ export function parseCSVDataForSharing(csvContent: string, organizationName: str
 
   const get = (cols: string[], name: string) => {
     const idx = headers.indexOf(name.toLowerCase());
-    return idx >= 0 ? cols[idx]?.trim() || '' : '';
+    const value = idx >= 0 ? cols[idx]?.trim() || '' : '';
+    
+    // Convert "Unspecified" to empty string
+    if (value.toLowerCase() === 'unspecified') {
+      return '';
+    }
+    return value;
   };
 
   return lines.slice(1).map((line) => {
@@ -55,17 +75,12 @@ export function parseCSVDataForSharing(csvContent: string, organizationName: str
       programName: get(cols, 'programname'),
       category: get(cols, 'category'),
       achievementText: get(cols, 'achievementtext'),
+      fieldOfInterest: get(cols, 'fieldofinterest'),
       email: get(cols, 'email').toLowerCase(),
       type: get(cols, 'type') || 'Achievement',
-      organization: get(cols, 'organization'),
+      organization: get(cols, 'organization') || organizationName,
+      certificateDate: get(cols, 'certificatedate') || '',
     };
-
-    // Optional social/contact fields
-    if (headers.includes('whatsapp')) recipient.whatsapp = get(cols, 'whatsapp');
-    if (headers.includes('phone')) recipient.phone = get(cols, 'phone');
-    if (headers.includes('facebook')) recipient.facebook = get(cols, 'facebook');
-    if (headers.includes('linkedin')) recipient.linkedin = get(cols, 'linkedin');
-    if (headers.includes('twitter')) recipient.twitter = get(cols, 'twitter');
 
     return recipient;
   });

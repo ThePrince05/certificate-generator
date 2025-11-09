@@ -91,35 +91,32 @@ const SCRIPT_URL = "/api/google-sheets";
 // UPDATED: fetchDemoDataFromSheets now uses organization name
 const fetchDemoDataFromSheets = async (orgName: string): Promise<DemoCertificateData[]> => {
   try {
-    console.debug(`🔍 [DEMO DATA] fetchDemoDataFromSheets called for orgName: ${orgName}`);
+   
     
     // Build URL with organization name instead of ID
     const url = `${SCRIPT_URL}?action=getDemoData&orgId=${encodeURIComponent(orgName)}`;
-    console.debug(`🔗 [DEMO DATA] Fetching from URL: ${url}`);
+  
     
     const response = await fetch(url);
-    console.debug(`📡 [DEMO DATA] Response status: ${response.status}, ok: ${response.ok}`);
+    
     
     if (!response.ok) {
-      console.error(`❌ [DEMO DATA] Failed to fetch demo data: ${response.status} ${response.statusText}`);
+    
       return [];
     }
 
     const result = await response.json();
-    console.debug(`📄 [DEMO DATA] Full API response:`, result);
     
     if (!result.success) {
-      console.error(`❌ [DEMO DATA] API returned success: false`, result.error);
+     
       return [];
     }
 
     const demoDataCount = result.demoData?.length || 0;
-    console.debug(`✨ [DEMO DATA] API returned ${demoDataCount} records`);
+    
     
     if (demoDataCount > 0) {
-      console.debug(`📊 [DEMO DATA] First record:`, result.demoData[0]);
-      console.debug(`🏢 [DEMO DATA] All organizations:`, [...new Set(result.demoData.map((item: DemoCertificateData) => item.organization))]);
-      console.debug(`👥 [DEMO DATA] Sample recipient names:`, result.demoData.slice(0, 3).map((item: DemoCertificateData) => item.recipientName));
+     
     }
     
     return result.demoData || [];
@@ -130,8 +127,7 @@ const fetchDemoDataFromSheets = async (orgName: string): Promise<DemoCertificate
 };
 
 const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> => {
-  try {
-    console.debug(`🔍 fetchGroupsFromSheets called for orgId: ${orgId}`);
+  try { 
     const url = `${SCRIPT_URL}?action=getGroups&orgId=${orgId}`;
     
     const response = await fetch(url);
@@ -151,7 +147,7 @@ const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> =>
       return [];
     }
 
-    console.debug(`✨ Successfully fetched ${result.groups?.length || 0} groups from Google Sheets`);
+    
     return result.groups || [];
   } catch (error) {
     console.error(`💥 Error loading from Google Sheets:`, error);
@@ -215,9 +211,8 @@ const fetchCertificateTypesFromSheets = async (orgId: string): Promise<string[]>
 // HISTORY FUNCTIONS - USE ORGANIZATION NAME
 const fetchHistoryFromSheets = async (orgName: string): Promise<HistoryItem[]> => {
   try {
-    console.log('🔄 fetchHistoryFromSheets called for orgName:', orgName);
+   
     const url = `${SCRIPT_URL}?action=getHistory&orgId=${encodeURIComponent(orgName)}`;
-    console.log('🔗 Fetching from URL:', url);
     
     const response = await fetch(url);
     
@@ -227,10 +222,9 @@ const fetchHistoryFromSheets = async (orgName: string): Promise<HistoryItem[]> =
     }
     
     const data = await response.json();
-    console.log('📄 History API response:', data);
     
     if (data.success && data.history) {
-      console.log(`✅ Successfully loaded ${data.history.length} history items`);
+    
       return data.history;
     } else {
       console.error('❌ API returned success: false', data.error);
@@ -393,16 +387,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // UPDATED: fetchDemoData now uses organization name
   const fetchDemoData = async (orgName: string): Promise<DemoCertificateData[]> => {
     try {
-      console.debug(`🔄 [DEMO DATA] Starting fetch for orgName: ${orgName}`);
+    
       setLoading(prev => ({ ...prev, demoData: true }));
       setErrors(prev => ({ ...prev, demoData: null }));
       
       const demoDataResult = await fetchDemoDataFromSheets(orgName);
       
-      console.debug(`✅ [DEMO DATA] Fetch completed. Result count: ${demoDataResult.length}`);
+      
       if (demoDataResult.length > 0) {
-        console.debug(`📋 [DEMO DATA] First record sample:`, demoDataResult[0]);
-        console.debug(`👥 [DEMO DATA] Recipient names found:`, demoDataResult.map(item => item.recipientName).slice(0, 5));
+       
       }
       
       return demoDataResult;
@@ -417,7 +410,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return [];
     } finally {
       setLoading(prev => ({ ...prev, demoData: false }));
-      console.debug(`🏁 [DEMO DATA] Fetch process completed`);
+    
     }
   };
 
@@ -534,9 +527,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // UPDATED: refreshDemoData now uses organization name
   const refreshDemoData = useCallback(async () => {
     if (selectedOrg?.name) {
-      console.log('🔄 [DEMO DATA] Refreshing demo data for organization:', selectedOrg.name);
+   
       const demoDataResult = await fetchDemoData(selectedOrg.name);
-      console.log(`✅ [DEMO DATA] Setting demo data state with ${demoDataResult.length} records`);
+     
       setDemoData(demoDataResult);
     }
   }, [selectedOrg?.name]);
@@ -640,7 +633,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const loadOrganizationData = async (orgId: string, orgName: string) => {
     if (!orgId || !orgName) return;
 
-    console.log(`🔄 [DATA CONTEXT] Loading data for organization: ${orgName} (ID: ${orgId})`);
+   
     
     // Fetch all data in parallel
     const [groupsData, fieldOfInterestData, certificateTypesData, historyData, demoDataResult] = await Promise.all([
@@ -657,21 +650,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setHistory(historyData);
     
     // Enhanced demo data state setting with detailed logging
-    console.log(`✅ [DEMO DATA] Setting demo data state with ${demoDataResult.length} records`);
+   
     if (demoDataResult.length > 0) {
-      console.log(`📊 [DEMO DATA] Organizations in demo data:`, [...new Set(demoDataResult.map(item => item.organization))]);
-      console.log(`👥 [DEMO DATA] Unique recipients: ${[...new Set(demoDataResult.map(item => item.recipientName))].length}`);
-      console.log(`📧 [DEMO DATA] Sample emails:`, demoDataResult.slice(0, 3).map(item => item.email));
+     
     }
     setDemoData(demoDataResult);
 
-    console.log(`✅ [DATA CONTEXT] Data loaded for ${orgName}:`, {
-      groups: groupsData.length,
-      fieldOfInterestOptions: fieldOfInterestData.length,
-      certificateTypes: certificateTypesData.length,
-      history: historyData.length,
-      demoData: demoDataResult.length
-    });
+ 
   };
 
   const isDataLoaded = 
@@ -684,11 +669,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Enhanced data loading effect
   useEffect(() => {
     if (selectedOrg) {
-      console.log(`🏁 [DATA CONTEXT] Organization selected: ${selectedOrg.name} (${selectedOrg.id})`);
-      console.log(`🔄 [DATA CONTEXT] Starting data load...`);
+   
+      
       loadOrganizationData(selectedOrg.id, selectedOrg.name);
     } else {
-      console.log(`🏁 [DATA CONTEXT] No organization selected, clearing data`);
+    
       // Clear data when no organization is selected
       setGroups([]);
       setFieldOfInterestOptions([]);
