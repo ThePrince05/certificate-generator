@@ -136,8 +136,9 @@ export async function POST(req: Request) {
           });
           console.log(`✅ Added URL attachment: ${filename}`);
 
-        } catch (err) {
-          console.error(`❌ Error processing attachment ${i + 1}:`, err);
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+          console.error(`❌ Error processing attachment ${i + 1}:`, errorMessage);
         }
       } else {
         console.warn(`⚠️ Attachment ${i + 1}: No content or URL provided, skipping`);
@@ -149,7 +150,8 @@ export async function POST(req: Request) {
 
     if (processed.length > 0) {
       console.log("📎 Setting attachments on email...");
-      emailParams.setAttachments(processed as any);
+      // Use type assertion instead of any
+      emailParams.setAttachments(processed as Parameters<typeof emailParams.setAttachments>[0]);
     } else {
       console.log("ℹ️ No attachments to add to email");
     }
@@ -166,31 +168,41 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ === EMAIL API CALL FAILED ===");
-    console.error("❌ Error details:", {
-      message: err.message,
-      stack: err.stack,
-      name: err.name
-    });
+    
+    // Proper error type checking
+    if (err instanceof Error) {
+      console.error("❌ Error details:", {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+    } else {
+      console.error("❌ Unknown error type:", err);
+    }
     
     // Log additional MailerSend specific error details if available
-    if (err.response) {
+    // Note: You might need to adjust this based on the actual error structure from MailerSend
+    if (err && typeof err === 'object' && 'response' in err) {
+      const errorWithResponse = err as { response?: { status?: number; statusText?: string; data?: unknown } };
       console.error("📡 MailerSend API Response:", {
-        status: err.response.status,
-        statusText: err.response.statusText,
-        data: err.response.data
+        status: errorWithResponse.response?.status,
+        statusText: errorWithResponse.response?.statusText,
+        data: errorWithResponse.response?.data
       });
     }
     
-    if (err.code) {
-      console.error("🔍 Error code:", err.code);
+    if (err && typeof err === 'object' && 'code' in err) {
+      console.error("🔍 Error code:", (err as { code?: unknown }).code);
     }
     
     console.error("❌ === END ERROR DETAILS ===");
     
+    const errorMessage = err instanceof Error ? err.message : "Failed to send email";
+    
     return NextResponse.json({ 
-      error: err.message || "Failed to send email" 
+      error: errorMessage
     }, { status: 500 });
   }
 }

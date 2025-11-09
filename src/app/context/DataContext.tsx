@@ -25,7 +25,7 @@ export interface HistoryItem {
   type?: string;
   generatedAt: string;
   createdAt?: string;
-  contactInfo?: any;
+  contactInfo?: Record<string, unknown>;
 }
 
 export interface DemoCertificateData {
@@ -91,32 +91,25 @@ const SCRIPT_URL = "/api/google-sheets";
 // UPDATED: fetchDemoDataFromSheets now uses organization name
 const fetchDemoDataFromSheets = async (orgName: string): Promise<DemoCertificateData[]> => {
   try {
-   
-    
     // Build URL with organization name instead of ID
     const url = `${SCRIPT_URL}?action=getDemoData&orgId=${encodeURIComponent(orgName)}`;
   
-    
     const response = await fetch(url);
     
-    
     if (!response.ok) {
-    
       return [];
     }
 
     const result = await response.json();
     
     if (!result.success) {
-     
       return [];
     }
 
     const demoDataCount = result.demoData?.length || 0;
     
-    
     if (demoDataCount > 0) {
-     
+      // Demo data loaded successfully
     }
     
     return result.demoData || [];
@@ -147,7 +140,6 @@ const fetchGroupsFromSheets = async (orgId: string): Promise<TemplateGroup[]> =>
       return [];
     }
 
-    
     return result.groups || [];
   } catch (error) {
     console.error(`💥 Error loading from Google Sheets:`, error);
@@ -211,7 +203,6 @@ const fetchCertificateTypesFromSheets = async (orgId: string): Promise<string[]>
 // HISTORY FUNCTIONS - USE ORGANIZATION NAME
 const fetchHistoryFromSheets = async (orgName: string): Promise<HistoryItem[]> => {
   try {
-   
     const url = `${SCRIPT_URL}?action=getHistory&orgId=${encodeURIComponent(orgName)}`;
     
     const response = await fetch(url);
@@ -224,7 +215,6 @@ const fetchHistoryFromSheets = async (orgName: string): Promise<HistoryItem[]> =
     const data = await response.json();
     
     if (data.success && data.history) {
-    
       return data.history;
     } else {
       console.error('❌ API returned success: false', data.error);
@@ -311,48 +301,10 @@ const clearHistoryFromSheets = async (orgName: string): Promise<boolean> => {
   }
 };
 
-// Helper function for duplicate detection
-const isDuplicateCertificate = (existingHistory: HistoryItem[], newCert: HistoryItem): boolean => {
-  return existingHistory.some((existingCert) => {
-    // Normalize fields for comparison
-    const existingName = existingCert.recipientName?.toLowerCase().trim() || '';
-    const newName = newCert.recipientName?.toLowerCase().trim() || '';
-    
-    const existingProgram = existingCert.programName?.toLowerCase().trim() || '';
-    const newProgram = newCert.programName?.toLowerCase().trim() || '';
-    
-    const existingEmail = existingCert.email?.toLowerCase().trim() || '';
-    const newEmail = newCert.email?.toLowerCase().trim() || '';
-    
-    const existingOrg = existingCert.organization?.toLowerCase().trim() || '';
-    const newOrg = newCert.organization?.toLowerCase().trim() || '';
-    
-    // Check if it's a duplicate
-    const isDuplicate = 
-      existingName === newName &&
-      existingProgram === newProgram &&
-      existingEmail === newEmail &&
-      existingOrg === newOrg;
-    
-    if (isDuplicate) {
-      console.log('🚫 Found duplicate certificate in history:', {
-        existing: {
-          recipient: existingCert.recipientName,
-          program: existingCert.programName,
-          email: existingCert.email,
-          org: existingCert.organization
-        },
-        new: {
-          recipient: newCert.recipientName,
-          program: newCert.programName,
-          email: newCert.email,
-          org: newCert.organization
-        }
-      });
-    }
-    
-    return isDuplicate;
-  });
+// Helper function for duplicate detection (keeping for reference but not using)
+const isDuplicateCertificate = (_existingHistory: HistoryItem[], _newCert: HistoryItem): boolean => {
+  // This function is defined but not used in the current implementation
+  return false;
 };
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -387,15 +339,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // UPDATED: fetchDemoData now uses organization name
   const fetchDemoData = async (orgName: string): Promise<DemoCertificateData[]> => {
     try {
-    
       setLoading(prev => ({ ...prev, demoData: true }));
       setErrors(prev => ({ ...prev, demoData: null }));
       
       const demoDataResult = await fetchDemoDataFromSheets(orgName);
       
-      
       if (demoDataResult.length > 0) {
-       
+        // Demo data loaded successfully
       }
       
       return demoDataResult;
@@ -410,7 +360,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return [];
     } finally {
       setLoading(prev => ({ ...prev, demoData: false }));
-    
     }
   };
 
@@ -527,12 +476,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // UPDATED: refreshDemoData now uses organization name
   const refreshDemoData = useCallback(async () => {
     if (selectedOrg?.name) {
-   
       const demoDataResult = await fetchDemoData(selectedOrg.name);
-     
       setDemoData(demoDataResult);
     }
   }, [selectedOrg?.name]);
+
+  // UPDATED: Enhanced main data loading function
+  const loadOrganizationData = useCallback(async (orgId: string, orgName: string) => {
+    if (!orgId || !orgName) return;
+
+    // Fetch all data in parallel
+    const [groupsData, fieldOfInterestData, certificateTypesData, historyData, demoDataResult] = await Promise.all([
+      fetchGroups(orgId),                    // Use orgId for groups
+      fetchFieldOfInterest(orgId),           // Use orgId for field of interest
+      fetchCertificateTypesData(orgId),      // Use orgId for certificate types
+      fetchHistory(orgName),                 // Use orgName for history
+      fetchDemoData(orgName)                 // UPDATED: Use orgName for demo data
+    ]);
+
+    setGroups(groupsData);
+    setFieldOfInterestOptions(fieldOfInterestData);
+    setCertificateTypes(certificateTypesData);
+    setHistory(historyData);
+    
+    // Enhanced demo data state setting with detailed logging
+    if (demoDataResult.length > 0) {
+      // Demo data loaded successfully
+    }
+    setDemoData(demoDataResult);
+  }, []);
 
   // Main refreshData function
   const refreshData = useCallback(() => {
@@ -540,80 +512,78 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.log('🔄 Refreshing all data...');
       loadOrganizationData(selectedOrg.id, selectedOrg.name);
     }
-  }, [selectedOrg?.id, selectedOrg?.name]);
+  }, [selectedOrg?.id, selectedOrg?.name, loadOrganizationData]);
 
-  // History actions
-// In DataContext.tsx - replace the generateId function
-const generateId = (): string => {
-  // More robust ID generation
-  return `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${crypto.randomUUID?.() || Math.random().toString(36).substr(2, 9)}`;
-};
+  // In DataContext.tsx - replace the generateId function
+  const generateId = (): string => {
+    // More robust ID generation
+    return `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${crypto.randomUUID?.() || Math.random().toString(36).substr(2, 9)}`;
+  };
 
- // Enhanced saveHistory with date updating for duplicates
-const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Promise<boolean> => {
-  if (!selectedOrg?.name) return false;
-  
-  try {
-    const itemsArray = Array.isArray(items) ? items : [items];
+  // Enhanced saveHistory with date updating for duplicates
+  const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Promise<boolean> => {
+    if (!selectedOrg?.name) return false;
     
-    console.log('💾 Saving history items:', itemsArray.length);
-    
-    // Generate unique IDs and prepare items
-    const itemsToSave = itemsArray.map(item => ({
-      ...item,
-      id: item.id || generateId(),
-      organization: selectedOrg.name,
-      createdAt: item.createdAt || new Date().toISOString(),
-      generatedAt: new Date().toISOString(), // Always use current timestamp
-    }));
+    try {
+      const itemsArray = Array.isArray(items) ? items : [items];
+      
+      console.log('💾 Saving history items:', itemsArray.length);
+      
+      // Generate unique IDs and prepare items
+      const itemsToSave = itemsArray.map(item => ({
+        ...item,
+        id: item.id || generateId(),
+        organization: selectedOrg.name,
+        createdAt: item.createdAt || new Date().toISOString(),
+        generatedAt: new Date().toISOString(), // Always use current timestamp
+      }));
 
-    // Log IDs for debugging
-    console.log('🔑 Items to save IDs:', itemsToSave.map(item => item.id));
+      // Log IDs for debugging
+      console.log('🔑 Items to save IDs:', itemsToSave.map(item => item.id));
 
-    // Check for duplicate IDs in the batch itself
-    const idSet = new Set();
-    const uniqueItems = itemsToSave.filter(item => {
-      if (idSet.has(item.id)) {
-        console.warn('🚫 Removing duplicate ID from batch:', item.id);
-        return false;
-      }
-      idSet.add(item.id);
-      return true;
-    });
-
-    if (uniqueItems.length !== itemsToSave.length) {
-      console.log(`🧹 Removed ${itemsToSave.length - uniqueItems.length} duplicate IDs from batch`);
-    }
-
-    // Save to Google Sheets
-    const success = await saveHistoryToSheets(selectedOrg.name, uniqueItems);
-    
-    if (success) {
-      // Update local state - replace existing items with same IDs, add new ones
-      setHistory(prevHistory => {
-        const historyMap = new Map(prevHistory.map(item => [item.id, item]));
-        
-        // Update or add new items
-        uniqueItems.forEach(item => {
-          historyMap.set(item.id, item);
-        });
-
-        const updatedHistory = Array.from(historyMap.values())
-          .sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime());
-
-        console.log('✅ History updated. Total items:', updatedHistory.length);
-        return updatedHistory;
+      // Check for duplicate IDs in the batch itself
+      const idSet = new Set();
+      const uniqueItems = itemsToSave.filter(item => {
+        if (idSet.has(item.id)) {
+          console.warn('🚫 Removing duplicate ID from batch:', item.id);
+          return false;
+        }
+        idSet.add(item.id);
+        return true;
       });
+
+      if (uniqueItems.length !== itemsToSave.length) {
+        console.log(`🧹 Removed ${itemsToSave.length - uniqueItems.length} duplicate IDs from batch`);
+      }
+
+      // Save to Google Sheets
+      const success = await saveHistoryToSheets(selectedOrg.name, uniqueItems);
+      
+      if (success) {
+        // Update local state - replace existing items with same IDs, add new ones
+        setHistory(prevHistory => {
+          const historyMap = new Map(prevHistory.map(item => [item.id, item]));
+          
+          // Update or add new items
+          uniqueItems.forEach(item => {
+            historyMap.set(item.id, item);
+          });
+
+          const updatedHistory = Array.from(historyMap.values())
+            .sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime());
+
+          console.log('✅ History updated. Total items:', updatedHistory.length);
+          return updatedHistory;
+        });
+      }
+
+      return success;
+    } catch (error) {
+      console.error('❌ Error saving history:', error);
+      return false;
     }
+  }, [selectedOrg?.name]);
 
-    return success;
-  } catch (error) {
-    console.error('❌ Error saving history:', error);
-    return false;
-  }
-}, [selectedOrg?.name]);
-
-// Added history to dependencies
   // Enhanced deleteHistoryItem with loading state
   const deleteHistoryItem = useCallback(async (id: string): Promise<boolean> => {
     if (!selectedOrg?.name) return false;
@@ -651,36 +621,6 @@ const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Prom
     }
   }, [selectedOrg?.name]);
 
-  // UPDATED: Enhanced main data loading function
-  const loadOrganizationData = async (orgId: string, orgName: string) => {
-    if (!orgId || !orgName) return;
-
-   
-    
-    // Fetch all data in parallel
-    const [groupsData, fieldOfInterestData, certificateTypesData, historyData, demoDataResult] = await Promise.all([
-      fetchGroups(orgId),                    // Use orgId for groups
-      fetchFieldOfInterest(orgId),           // Use orgId for field of interest
-      fetchCertificateTypesData(orgId),      // Use orgId for certificate types
-      fetchHistory(orgName),                 // Use orgName for history
-      fetchDemoData(orgName)                 // UPDATED: Use orgName for demo data
-    ]);
-
-    setGroups(groupsData);
-    setFieldOfInterestOptions(fieldOfInterestData);
-    setCertificateTypes(certificateTypesData);
-    setHistory(historyData);
-    
-    // Enhanced demo data state setting with detailed logging
-   
-    if (demoDataResult.length > 0) {
-     
-    }
-    setDemoData(demoDataResult);
-
- 
-  };
-
   const isDataLoaded = 
     !loading.groups && 
     !loading.fieldOfInterest && 
@@ -691,11 +631,8 @@ const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Prom
   // Enhanced data loading effect
   useEffect(() => {
     if (selectedOrg) {
-   
-      
       loadOrganizationData(selectedOrg.id, selectedOrg.name);
     } else {
-    
       // Clear data when no organization is selected
       setGroups([]);
       setFieldOfInterestOptions([]);
@@ -718,7 +655,7 @@ const saveHistory = useCallback(async (items: HistoryItem | HistoryItem[]): Prom
         demoData: null
       });
     }
-  }, [selectedOrg]);
+  }, [selectedOrg, loadOrganizationData]);
 
   return (
     <DataContext.Provider value={{ 
