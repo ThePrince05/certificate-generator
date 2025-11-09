@@ -236,10 +236,10 @@ The Team`
       showDialog('success', `Certificates shared successfully with ${editableContactInfo.email}!`);
       
       // Close modal after successful share (with slight delay for user to see success message)
-      setTimeout(() => {
-        onClose();
-        setDialog(null);
-      }, 1500);
+      // setTimeout(() => {
+      //   onClose();
+      //   setDialog(null);
+      // }, 1500);
       
     } catch (err) {
       console.error("Failed to share certificates:", err);
@@ -257,9 +257,9 @@ The Team`
 
   return (
     <>
-      {/* Custom Dialog */}
+      {/* Custom Dialog - REMOVED background overlay */}
       {dialog && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className={`bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4 transform transition-all duration-300 scale-100 opacity-100 ${
             dialog.type === 'success' ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'
           }`}>
