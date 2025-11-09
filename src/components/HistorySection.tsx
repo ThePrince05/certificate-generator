@@ -262,7 +262,14 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-900">{h.recipientName}</h3>
                     <p className="text-xs text-gray-500 mt-1">
-                      {h.category} · {h.programName} · {h.fieldOfInterest} · {new Date(h.generatedAt).toLocaleString()}
+                     {[
+                        h.category,
+                        h.programName || h.fieldOfInterest,
+                        new Date(h.generatedAt).toLocaleString()
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    }
                     </p>
                   </div>
 

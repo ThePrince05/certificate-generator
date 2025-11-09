@@ -39,12 +39,12 @@ type CertificateDataWithValidation = CertificateData &
 
 // Constants
 const MAX_LENGTHS: Record<CertificateFields, number> = {
+  recipientName: 15,
   organization: 25,
   category: 30,
-  fieldOfInterest: 50,
   programName: 65,
+  fieldOfInterest: 50,
   achievementText: 260,
-  recipientName: 15,
   certificateDate: 22,
   type: 30,
 };
@@ -142,10 +142,10 @@ export default function GenerateBatch() {
   }, [selectedOrg]);
 
   // Handlers
-  const doDownloadPDF = (item: any) => {
+  const doDownloadPDF = async (item: any) => {
     setFormData(item);
-    setTimeout(() => {
-      generatePDF({
+    setTimeout(async () => {
+      await generatePDF({
         organization: -30,
         programName: -14,
         achievementText: -15,
@@ -153,22 +153,48 @@ export default function GenerateBatch() {
         certificateDate: -10,
         signatory: -10,
       });
+      
+      // Save to history after download
+      try {
+        const historyItem = {
+          ...item,
+          id: item.id ?? uuidv4(),
+          generatedAt: new Date().toISOString(),
+        };
+        await saveHistory(historyItem);
+        console.log(`✅ Saved to history: ${item.recipientName}`);
+      } catch (error) {
+        console.error(`❌ Failed to save to history: ${item.recipientName}`, error);
+      }
     }, 250);
   };
 
-  const doDownloadJPEG = (item: any) => {
-    setFormData(item);
-    setTimeout(() => {
-      generateJPEG({
-        organization: -30,
-        programName: -14,
-        achievementText: -15,
-        recipientName: -16,
-        certificateDate: -10,
-        signatory: -10,
-      });
-    }, 250);
-  };
+  const doDownloadJPEG = async (item: any) => {
+  setFormData(item);
+  setTimeout(async () => {
+    await generateJPEG({
+      organization: -30,
+      programName: -14,
+      achievementText: -15,
+      recipientName: -16,
+      certificateDate: -10,
+      signatory: -10,
+    });
+    
+    // Save to history after download
+    try {
+      const historyItem = {
+        ...item,
+        id: item.id ?? uuidv4(),
+        generatedAt: new Date().toISOString(),
+      };
+      await saveHistory(historyItem);
+      console.log(`✅ Saved to history: ${item.recipientName}`);
+    } catch (error) {
+      console.error(`❌ Failed to save to history: ${item.recipientName}`, error);
+    }
+  }, 250);
+};
 
   const validateBatch = (
     data: CertificateData[]
@@ -196,7 +222,7 @@ export default function GenerateBatch() {
     return { validated, invalidRows };
   };
 
- const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
   if (!file || !selectedOrg) return;
 
@@ -224,17 +250,23 @@ export default function GenerateBatch() {
         const cleanedProgramName = cleanValue(item.programName);
         const cleanedFieldOfInterest = cleanValue(item.fieldOfInterest);
 
+        // Special handling for Gaming & Development category
+        const finalFieldOfInterest = item.category === "Gaming & Development" 
+          ? "" 
+          : cleanedFieldOfInterest;
+
         const processedItem = {
           ...item,
           organization: selectedOrg.name,
           category: item.category || "General",
           programName: cleanedProgramName,
-          fieldOfInterest: cleanedFieldOfInterest,
+          fieldOfInterest: finalFieldOfInterest,
         };
 
         console.log(`✅ After processing row ${index + 1}:`, {
           programName: processedItem.programName,
-          fieldOfInterest: processedItem.fieldOfInterest
+          fieldOfInterest: processedItem.fieldOfInterest,
+          category: processedItem.category
         });
 
         return processedItem;
@@ -263,34 +295,88 @@ export default function GenerateBatch() {
       )
     );
 
-  const handleBatchDownload = async (type: "pdf" | "jpeg") => {
-    if (!validatedBatch.length || !selectedOrg) return;
-
-    if (hasInvalidRows(validatedBatch)) {
-      alert("Some fields are invalid. Please fix them before downloading.");
-      return;
-    }
-
-    setIsDownloading(true);
+   // Add this fallback function right before handleBatchDownload
+const saveIndividualWithDelay = async (items: any[]) => {
+  let savedCount = 0;
+  
+  for (const item of items) {
     try {
-      const batchWithIds = validatedBatch.map((cert) => ({
-        ...cert,
-        id: cert.id ?? uuidv4(),
-      }));
-
-      await handleMultiDownload(
-        batchWithIds,
-        type,
-        selectedOrg.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg"
-      );
-    } finally {
-      setIsDownloading(false);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between saves
+      const success = await saveHistory(item);
+      if (success) {
+        savedCount++;
+        console.log(`✅ Saved to history: ${item.recipientName}`);
+      } else {
+        console.error(`❌ Failed to save to history: ${item.recipientName}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error saving to history: ${item.recipientName}`, error);
     }
-  };
+  }
+  
+  console.log(`🎉 Successfully saved ${savedCount} out of ${items.length} certificates to history`);
+};
+
+// Then replace the handleBatchDownload function:
+const handleBatchDownload = async (type: "pdf" | "jpeg") => {
+  if (!validatedBatch.length || !selectedOrg) return;
+
+  if (hasInvalidRows(validatedBatch)) {
+    alert("Some fields are invalid. Please fix them before downloading.");
+    return;
+  }
+
+  setIsDownloading(true);
+  try {
+    const batchWithIds = validatedBatch.map((cert) => ({
+      ...cert,
+      id: cert.id ?? uuidv4(),
+    }));
+
+    await handleMultiDownload(
+      batchWithIds,
+      type,
+      selectedOrg.templateUrl || "/templates/one-planet-one-people/certificate-template.jpg"
+    );
+
+    // Batch save all items at once to avoid multiple re-renders
+    console.log('💾 Saving batch to history...');
+    
+    // Create all history items first
+    const historyItems = batchWithIds.map(certificate => ({
+      ...certificate,
+      generatedAt: new Date().toISOString(),
+      // Ensure all required fields are present
+      organization: certificate.organization || selectedOrg.name,
+      category: certificate.category || "General",
+      type: certificate.type || "Achievement",
+      certificateDate: certificate.certificateDate || getCertificateDate(),
+    }));
+
+    // Save all at once - your saveHistory supports arrays!
+    try {
+      const success = await saveHistory(historyItems);
+      if (success) {
+        console.log(`🎉 Successfully saved ${historyItems.length} certificates to history`);
+      } else {
+        console.error('❌ Failed to save batch to history');
+        // Fallback: save individually with delay
+        await saveIndividualWithDelay(historyItems);
+      }
+    } catch (error) {
+      console.error('❌ Error saving batch to history:', error);
+      // Fallback: save individually with delay
+      await saveIndividualWithDelay(historyItems);
+    }
+    
+  } finally {
+    setIsDownloading(false);
+  }
+};
 
   // Render Functions
   const TableView = () => (
-    <div className="overflow-auto max-w-5xl mx-auto mt-4 hidden sm:block">
+    <div className="overflow-auto max-w-7xl mx-auto mt-4 hidden sm:block">
       <table className="min-w-full border border-black border-collapse">
         <thead>
           <tr className="bg-gray-200">
