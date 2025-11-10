@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TemplateProvider } from "./context/TemplateContext";
 import { OrganizationProvider } from "./context/OrganizationContext";
-import QuickAccessPanel from "@/components/QuickAccessPanel"; // ✅ Import the panel
+import QuickAccessPanel from "@/components/QuickAccessPanel";
 import { DataProvider } from './context/DataContext';
 import { Suspense } from 'react';
 
@@ -22,6 +22,18 @@ export const metadata: Metadata = {
   description: "Generate personalized certificates quickly and easily.",
 };
 
+// Loading component for Suspense fallback
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,14 +51,7 @@ export default function RootLayout({
               <QuickAccessPanel />
 
               {/* ✅ Main App Content with Suspense boundary */}
-              <Suspense fallback={
-                <div className="min-h-screen flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading...</p>
-                  </div>
-                </div>
-              }>
+              <Suspense fallback={<LoadingFallback />}>
                 <main className="min-h-screen">{children}</main>
               </Suspense>
             </TemplateProvider>
