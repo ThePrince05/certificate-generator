@@ -5,9 +5,16 @@ import type { CleanCertificateData } from "@/types/certificates";
 
 type DemoCertificate = CleanCertificateData & { id: string };
 
+// Define interface for contact info
+interface ContactInfo {
+  recipientName?: string;
+  name?: string;
+  email?: string;
+}
+
 interface PersonSearchProps {
   dbCertificates: DemoCertificate[];
-  contactInfoList: Array<any>;
+  contactInfoList: ContactInfo[];
   setSelectedPerson: (name: string | null) => void;
   setPersonCertificates: (certs: DemoCertificate[]) => void;
   setFormData: (data: CleanCertificateData | null) => void;
@@ -61,7 +68,7 @@ export default function PersonSearch({
     });
 
     return Array.from(map.values());
-  }, [dbCertificates, contactInfoList]);
+  }, [dbCertificates, contactInfoList, organization]); // Added organization to dependencies
 
   const filteredPersons = useMemo(() => {
     if (!dbSearch.trim()) return suggestions;
@@ -154,7 +161,9 @@ export default function PersonSearch({
 
       {dbSearch && filteredPersons.length === 0 && (
         <div className="text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded">
-          <div className="font-semibold">No matching contacts found for "{dbSearch}"</div>
+          <div className="font-semibold">
+            No matching contacts found for &quot;{dbSearch}&quot;
+          </div>
           <div className="text-xs mt-2 text-gray-400">
             Try searching by name or email address. Found {suggestions.length} total contacts in database.
           </div>
