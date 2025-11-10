@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import type { Organization } from "../context/OrganizationContext";
 import { useOrganization } from "../context/OrganizationContext";
 
@@ -21,7 +21,8 @@ const organizations: Organization[] = [
   },
 ];
 
-export default function GeneratePage() {
+// Separate component that uses useSearchParams
+function GeneratePageContent() {
   const { selectedOrg, selectOrg, clearOrg } = useOrganization();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,5 +144,21 @@ export default function GeneratePage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function GeneratePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 p-6 pt-16 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <GeneratePageContent />
+    </Suspense>
   );
 }

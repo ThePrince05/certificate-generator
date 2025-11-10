@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useOrganization } from "../app/context/OrganizationContext";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function QuickAccessPanel() {
+// Create a separate component that uses useSearchParams
+function QuickAccessPanelContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -100,5 +101,18 @@ export default function QuickAccessPanel() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// Main component with Suspense boundary
+export default function QuickAccessPanel() {
+  return (
+    <Suspense fallback={
+      <div className="fixed top-1/4 right-0 bg-white text-gray-800 border border-gray-200 rounded-l-xl shadow-md p-3 z-50">
+        <div className="px-4 py-2 rounded-lg text-base font-medium">Loading...</div>
+      </div>
+    }>
+      <QuickAccessPanelContent />
+    </Suspense>
   );
 }
