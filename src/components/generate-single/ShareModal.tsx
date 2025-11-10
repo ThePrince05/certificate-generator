@@ -465,21 +465,6 @@ The Team`
           Share with <span className="text-blue-600">{recipient?.recipientName || "Recipient"}</span>
         </h2>
 
-        {/* ADDED: Certificate Readiness Status */}
-        {!certificateReadiness.isReady && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
-              <span className="text-yellow-700 text-sm font-medium">
-                Certificate preview loading...
-              </span>
-            </div>
-            <p className="text-yellow-600 text-xs mt-1">
-              Please wait until the certificate is fully loaded before sharing
-            </p>
-          </div>
-        )}
-
         {/* Email Input */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
