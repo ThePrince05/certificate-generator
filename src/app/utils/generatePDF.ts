@@ -208,7 +208,7 @@ export const generatePDFBlob = async (pdfOffsets?: PDFOffsets): Promise<Blob | n
     const resetOffsets = applyOffsetsOnClone(clone, originalPositions, pdfOffsets);
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
-    const canvas = await html2canvas(clone, { scale: 2, useCORS: true });
+    const canvas = await html2canvas(clone, { scale: 1.5, useCORS: true });
     const imgData = canvas.toDataURL("image/png");
 
     const pdf = new jsPDF({
