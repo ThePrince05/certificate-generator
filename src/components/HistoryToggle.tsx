@@ -1,7 +1,15 @@
 "use client";
 
+import { CleanCertificateData } from "@/types/certificates";
+
+// Define a proper type for history items
+interface HistoryItem extends CleanCertificateData {
+  id: string;
+  generatedAt: string;
+}
+
 interface HistoryToggleProps {
-  history: any[];
+  history: HistoryItem[];
   showHistory: boolean;
   setShowHistory: (show: boolean) => void;
 }
