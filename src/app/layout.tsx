@@ -5,7 +5,7 @@ import { TemplateProvider } from "./context/TemplateContext";
 import { OrganizationProvider } from "./context/OrganizationContext";
 import QuickAccessPanel from "@/components/QuickAccessPanel"; // ✅ Import the panel
 import { DataProvider } from './context/DataContext';
-
+import { Suspense } from 'react';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,8 +38,17 @@ export default function RootLayout({
               {/* ✅ Docked Quick Access Panel */}
               <QuickAccessPanel />
 
-              {/* ✅ Main App Content */}
-              <main className="min-h-screen">{children}</main>
+              {/* ✅ Main App Content with Suspense boundary */}
+              <Suspense fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
+                  </div>
+                </div>
+              }>
+                <main className="min-h-screen">{children}</main>
+              </Suspense>
             </TemplateProvider>
           </DataProvider>
         </OrganizationProvider>
