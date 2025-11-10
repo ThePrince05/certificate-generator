@@ -6,21 +6,10 @@ import ReactDOM from "react-dom/client";
 import CertificateTemplate from "@/components/CertificateTemplate";
 import { CertificateData as AppCertificateData } from "@/types/certificates";
 
-// Local type for rendering
-interface LocalCertificateData extends AppCertificateData {
+// Local type for rendering - use the exact same type structure
+type LocalCertificateData = AppCertificateData & {
   id: string;
-  [key: string]: any;
-}
-
-interface PdfOffsets {
-  organizationOffset?: number;
-  programNameOffset?: number;
-  achievementTextOffset?: number;
-  recipientNameOffset?: number;
-  certificateDateOffset?: number;
-  signatureOffset?: number;
-  signatoryOffset?: number;
-}
+};
 
 export async function handleMultiDownload(
   certificates: LocalCertificateData[],
