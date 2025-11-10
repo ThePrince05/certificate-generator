@@ -96,7 +96,8 @@ export default function GenerateSingle() {
   const [dbCertificates, setDbCertificates] = useState<DemoCertificate[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [personCertificates, setPersonCertificates] = useState<DemoCertificate[]>([]);
-  
+  // Add this with your other state declarations
+const [sharingCertificates, setSharingCertificates] = useState<Set<string>>(new Set());
   // Remove unused state variables
   const [_dbSearch, _setDbSearch] = useState("");
   
@@ -117,10 +118,6 @@ export default function GenerateSingle() {
   const [_isCertificateReady, _setIsCertificateReady] = useState(false);
   const _certificateRef = useRef<HTMLDivElement>(null);
   
-  // Remove unused derived state
-  // const certificatesToShare = personCertificates.filter(cert =>
-  //   selectedCertificates.includes(cert.id)
-  // );
 
   // Filtered history based on search query
   const filteredHistory = history.filter((h) =>
@@ -139,8 +136,7 @@ export default function GenerateSingle() {
     // Data loading is now handled automatically by DataContext
   }, [selectedOrg, router]);
 
-  // SIMPLIFIED: Process demo data with merged structure
-  // FIXED: Process demo data with proper type safety
+
 useEffect(() => {
   const processDemoData = () => {
     if (!selectedOrg || !demoData) {
@@ -204,6 +200,24 @@ useEffect(() => {
   }, [selectedPerson]);
 
   // Handlers
+
+// Add these helper functions near your other handlers
+const startSharing = (certificateId: string) => {
+  setSharingCertificates(prev => new Set(prev).add(certificateId));
+};
+
+const stopSharing = (certificateId: string) => {
+  setSharingCertificates(prev => {
+    const newSet = new Set(prev);
+    newSet.delete(certificateId);
+    return newSet;
+  });
+};
+
+const isSharing = (certificateId: string) => {
+  return sharingCertificates.has(certificateId);
+};
+
  // FIXED: Handle undefined values in normalize function
 const isDuplicateCertificate = (existingCert: CleanCertificateData, newCert: CleanCertificateData): boolean => {
   const normalize = (str: string | undefined) => (str || '').toLowerCase().trim();
@@ -397,15 +411,6 @@ const doDownloadJPEG = async (item: CleanCertificateData) => {
     return Array.from(uniqueRecipients.values());
   })();
 
-  // Remove unused variable
-  // const filteredPersons = suggestions.filter((s) => {
-  //   if (!dbSearch) return true;
-  //   const q = dbSearch.toLowerCase();
-  //   return (
-  //     s.name.toLowerCase().includes(q) ||
-  //     (s.email && s.email.toLowerCase().includes(q))
-  //   );
-  // });
 
   const getTemplateUrl = (category?: string) => {
     if (!category) return selectedTemplate?.backgroundUrl ?? "/templates/one-planet-one-people/certificate-template.jpg";
@@ -512,84 +517,121 @@ const doDownloadJPEG = async (item: CleanCertificateData) => {
                       transition={{ duration: 0.25 }}
                       className="space-y-3 overflow-hidden"
                     >
-                      {personCertificates.map((cert) => {
-                        const isSelected = selectedCertificates.includes(cert.id);
-                        return (
-                          <div
-                                key={cert.id}
-                                onClick={(e) => {
-                                  if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
-                                    // This will now properly update the history item
-                                    handleGenerateFromDatabase(cert);
-                                    setFormData(cert);
-                                  }
-                                }}
-                                className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
-                                  isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
-                                }`}
-                              >
+                     {personCertificates.map((cert) => {
+                      const isSelected = selectedCertificates.includes(cert.id);
+                      return (
+                        <div
+                          key={cert.id}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).tagName !== "BUTTON" && (e.target as HTMLElement).tagName !== "INPUT") {
+                              handleGenerateFromDatabase(cert);
+                              setFormData(cert);
+                            }
+                          }}
+                          className={`border rounded p-6 shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer transition ${
+                            isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"
+                          }`}
+                        >
                           <div className="flex items-start gap-3">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={() => {
-                                  setSelectedCertificates((prev) =>
-                                    isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
-                                  );
-                                }}
-                                className="mt-1 accent-blue-500 scale-110"
-                              />
-                              <div>
-                                <p className="font-bold text-gray-900">{cert.programName}</p>
-                                <p className="text-sm text-gray-500">{cert.category}</p>
-                                <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
-                              </div>
-                            </div>
-
-                          <div className="flex gap-2 flex-wrap">
-                            <DownloadDropdown
-                              onDownloadPDF={async () => {
-                                // First add to history and wait for it to complete
-                                await handleGenerateFromDatabase(cert);
-                                setFormData(cert);
-                                
-                                // Then start download after a brief delay
-                                setTimeout(
-                                  () =>
-                                    generatePDF({
-                                      organization: -25,
-                                      programName: -12,
-                                      achievementText: -14,
-                                      recipientName: -18,
-                                      certificateDate: -10,
-                                      signatory: -8,
-                                    }),
-                                  200
+                            {/* Keep checkbox for downloads */}
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => {
+                                setSelectedCertificates((prev) =>
+                                  isSelected ? prev.filter((id) => id !== cert.id) : [...prev, cert.id]
                                 );
                               }}
-                              onDownloadJPEG={async () => {
-                                // First add to history and wait for it to complete
-                                await handleGenerateFromDatabase(cert);
-                                setFormData(cert);
-                                
-                                // Then start download after a brief delay
-                                setTimeout(
-                                  () =>
-                                    generateJPEG({
-                                      organization: -25,
-                                      programName: -12,
-                                      achievementText: -14,
-                                      recipientName: -18,
-                                      certificateDate: -10,
-                                      signatory: -8,
-                                    }),
-                                  200
-                                );
-                              }}
-                              fontSize="sm"
+                              className="mt-1 accent-blue-500 scale-110"
                             />
+                            <div>
+                              <p className="font-bold text-gray-900">{cert.programName}</p>
+                              <p className="text-sm text-gray-500">{cert.category}</p>
+                              <p className="text-sm text-gray-600 mt-1">{cert.achievementText}</p>
+                            </div>
                           </div>
+
+                         <div className="flex gap-2 flex-wrap">
+                          <DownloadDropdown
+                            onDownloadPDF={async () => {
+                              await handleGenerateFromDatabase(cert);
+                              setFormData(cert);
+                              setTimeout(
+                                () =>
+                                  generatePDF({
+                                    organization: -25,
+                                    programName: -12,
+                                    achievementText: -14,
+                                    recipientName: -18,
+                                    certificateDate: -10,
+                                    signatory: -8,
+                                  }),
+                                200
+                              );
+                            }}
+                            onDownloadJPEG={async () => {
+                              await handleGenerateFromDatabase(cert);
+                              setFormData(cert);
+                              setTimeout(
+                                () =>
+                                  generateJPEG({
+                                    organization: -25,
+                                    programName: -12,
+                                    achievementText: -14,
+                                    recipientName: -18,
+                                    certificateDate: -10,
+                                    signatory: -8,
+                                  }),
+                                200
+                              );
+                            }}
+                            fontSize="sm"
+                          />
+                          
+                          {/* ADD THIS: Individual share button */}
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              
+                              if (isSharing(cert.id)) return; // Prevent multiple clicks
+                              
+                              startSharing(cert.id);
+                              
+                              try {
+                                // First save to history
+                                await handleGenerateFromDatabase(cert);
+                                setFormData(cert);
+                                
+                                // Then open share modal for this single certificate
+                                setShareTarget({ type: "person", data: [cert] });
+                                setIsShareModalOpen(true);
+                              } catch (error) {
+                                console.error('Error preparing certificate for sharing:', error);
+                              } finally {
+                                stopSharing(cert.id);
+                              }
+                            }}
+                            disabled={isSharing(cert.id)}
+                            className={`px-3 py-2 rounded transition flex items-center gap-2 text-sm ${
+                              isSharing(cert.id)
+                                ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                                : 'bg-green-500 hover:bg-green-600 text-white'
+                            }`}
+                          >
+                            {isSharing(cert.id) ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                Preparing...
+                              </>
+                            ) : (
+                              <>
+                                <FaShareAlt className="w-3 h-3" />
+                                Share
+                              </>
+                            )}
+                          </button>
+                        </div>
                           </div>
                         );
                       })}
@@ -607,80 +649,7 @@ const doDownloadJPEG = async (item: CleanCertificateData) => {
                       transition={{ duration: 0.18 }}
                       className="flex flex-wrap justify-center gap-4 mt-6"
                     >
-                      <button
-                        onClick={async () => {
-                          if (isSharingSelected) return;
-                          
-                          const selected = personCertificates.filter((c) => selectedCertificates.includes(c.id));
-                          if (selected.length === 0) return;
-
-                          setIsSharingSelected(true);
-                          
-                          try {
-                            // Use the same logic as handleGenerateFromDatabase for consistency
-                            const historyUpdates = selected.map(cert => {
-                              // Check if certificate already exists in history
-                              const existingItemIndex = history.findIndex(h => 
-                                isDuplicateCertificate(h, cert)
-                              );
-
-                              if (existingItemIndex !== -1) {
-                                // UPDATE EXISTING ITEM - same logic as download
-                                const existingItem = history[existingItemIndex];
-                                return {
-                                  ...existingItem,
-                                  generatedAt: new Date().toISOString(), // Update timestamp
-                                  category: cert.category || existingItem.category,
-                                  achievementText: cert.achievementText || existingItem.achievementText,
-                                  fieldOfInterest: cert.fieldOfInterest || existingItem.fieldOfInterest,
-                                };
-                              } else {
-                                // ADD NEW ITEM - same logic as download
-                                return {
-                                  ...cert,
-                                  certificateType: cert.type || "Achievement",
-                                  type: cert.type || "generate-single",
-                                  id: uuidv4(),
-                                  generatedAt: new Date().toISOString(),
-                                  createdAt: new Date().toISOString(),
-                                };
-                              }
-                            });
-
-                            // Save all updates to history
-                            if (historyUpdates.length > 0) {
-                              await saveHistory(historyUpdates);
-                              console.log(`✅ Saved ${historyUpdates.length} certificates to history before sharing`);
-                            }
-
-                            setShareTarget({ type: "person", data: selected });
-                            setIsShareModalOpen(true);
-                          } catch (error) {
-                            console.error('Error sharing selected certificates:', error);
-                          } finally {
-                            setIsSharingSelected(false);
-                          }
-                        }}
-                        disabled={isSharingSelected}
-                        className={`px-4 py-2 rounded transition flex items-center gap-2 ${
-                          isSharingSelected 
-                            ? 'bg-gray-400 cursor-not-allowed' 
-                            : 'bg-green-500 hover:bg-green-600 text-white'
-                        }`}
-                      >
-                        {isSharingSelected ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <FaShareAlt className="w-4 h-4" />
-                            Share Selected ({selectedCertificates.length})
-                          </>
-                        )}
-                      </button>
-
+                      
                       <MultiDownloadDropdown
                         isDownloading={isDownloadingMulti}
                         onDownloadPDF={async () => {
@@ -793,20 +762,19 @@ const doDownloadJPEG = async (item: CleanCertificateData) => {
                   transition={{ duration: 0.3 }}
                   className="mt-6 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
                 >
-                  <ShareModal
+                <ShareModal
                     isOpen={isShareModalOpen}
                     onClose={() => {
                       setIsShareModalOpen(false);
                       setShareTarget(null);
                     }}
-                    recipientCertificates={personCertificates
-                  .filter(c => selectedCertificates.includes(c.id))
-                  .map(c => ({
-                    ...c,
-                    contactInfo: contactInfoList.find(
-                      ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
-                    )
-                  }))}
+                    recipientCertificates={shareTarget?.type === "person" && Array.isArray(shareTarget.data) ? 
+                      shareTarget.data.map(c => ({
+                        ...c,
+                        contactInfo: contactInfoList.find(
+                          ci => ci?.email?.toLowerCase() === c.email?.toLowerCase()
+                        )
+                      })) : []}
                     contactInfoList={contactInfoList}
                     defaultEmail={personCertificates[0]?.email ?? ""}
                   />
@@ -887,7 +855,7 @@ const doDownloadJPEG = async (item: CleanCertificateData) => {
                 transition={{ duration: 0.3 }}
                 className="mt-6 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-w-2xl mx-auto"
               >
-                <ShareModal
+               <ShareModal
                   isOpen={isShareModalOpen}
                   onClose={() => {
                     setIsShareModalOpen(false);
