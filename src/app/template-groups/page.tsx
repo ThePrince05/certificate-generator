@@ -387,7 +387,7 @@ export default function TemplateGroupsPage() {
             <div className="p-6">
               <h2 className="text-xl font-bold mb-4 text-red-600">Delete Template Group</h2>
               <p className="text-gray-700 mb-6">
-                Are you sure you want to delete the template group <strong>"{deletingGroup.programName}"</strong>? 
+                Are you sure you want to delete the template group <strong>&quot;{deletingGroup.programName}&quot;</strong>? 
                 This action cannot be undone.
               </p>
               

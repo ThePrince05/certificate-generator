@@ -1,10 +1,23 @@
 import { demoCSV } from '../../data/demoData';
 
+// Define interface for CSV data
+export interface CSVRecipient {
+  recipientName: string;
+  programName: string;
+  category: string;
+  achievementText: string;
+  fieldOfInterest: string;
+  email: string;
+  type: string;
+  organization: string;
+  certificateDate: string;
+}
+
 export function loadCSVData(): Promise<string> {
   return Promise.resolve(demoCSV);
 }
 
-export function parseCSVData(csvContent: string, organizationName: string): any[] {
+export function parseCSVData(csvContent: string, organizationName: string): CSVRecipient[] {
   if (!csvContent.trim()) return [];
 
   const lines = csvContent.split('\n').filter(line => line.trim() !== '');
@@ -13,8 +26,8 @@ export function parseCSVData(csvContent: string, organizationName: string): any[
   // 🔹 Read headers dynamically (case-insensitive)
   const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
   
-
-  const parsedData = lines.slice(1).map((line, index) => {
+  // Remove the unused 'index' parameter
+  const parsedData = lines.slice(1).map((line) => {
     const cols = line.split(';');
 
     const get = (name: string) => {
@@ -44,11 +57,10 @@ export function parseCSVData(csvContent: string, organizationName: string): any[
     };
   });
 
-
   return parsedData;
 }
 
-export function parseCSVDataForSharing(csvContent: string, organizationName: string): any[] {
+export function parseCSVDataForSharing(csvContent: string, organizationName: string): CSVRecipient[] {
   if (!csvContent.trim()) return [];
 
   const lines = csvContent.split('\n').filter(line => line.trim() !== '');
@@ -70,7 +82,7 @@ export function parseCSVDataForSharing(csvContent: string, organizationName: str
   return lines.slice(1).map((line) => {
     const cols = line.split(';');
 
-    const recipient: any = {
+    const recipient: CSVRecipient = {
       recipientName: get(cols, 'recipientname'),
       programName: get(cols, 'programname'),
       category: get(cols, 'category'),

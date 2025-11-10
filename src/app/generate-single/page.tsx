@@ -214,7 +214,7 @@ const isDuplicateCertificate = (existingCert: CleanCertificateData, newCert: Cle
     normalize(existingCert.email) === normalize(newCert.email) &&
     normalize(existingCert.organization) === normalize(newCert.organization)
   );
-};;
+};
 
  const handleGenerateFromDatabase = async (cert: DemoCertificate) => {
   console.log('🚀 handleGenerateFromDatabase called with certificate:', cert);
