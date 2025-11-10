@@ -165,7 +165,7 @@ export const PreviewSection: React.FC<PreviewSectionProps> = ({
     if (!formData || isCertificateReady) return;
 
     const handleImageLoad = () => {
-      console.log('🖼️ Image loaded, rechecking certificate readiness');
+    //  console.log('🖼️ Image loaded, rechecking certificate readiness');
       // Perform a single check when images load
       setTimeout(() => {
         const certificateElement = document.getElementById('certificate');

@@ -136,7 +136,7 @@ export const ShareModal = ({
     const checkReadiness = () => {
       const readiness = checkCertificateReadiness();
       setCertificateReadiness(readiness);
-      console.log('🔍 Certificate readiness check:', readiness);
+     // console.log('🔍 Certificate readiness check:', readiness);
       return readiness.isReady;
     };
 
