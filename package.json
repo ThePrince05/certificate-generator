@@ -18,7 +18,7 @@
     "jszip": "^3.10.1",
     "mailersend": "^2.6.0",
     "multer": "^2.0.2",
-    "next": "15.5.4",
+    "next": "15.5.9",
     "papaparse": "^5.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
